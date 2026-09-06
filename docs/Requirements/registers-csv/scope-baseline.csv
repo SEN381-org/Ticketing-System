@@ -1,0 +1,30 @@
+﻿Scope Baseline;;;;;
+Capabilities classified in scope, deferred or out of scope for the M1 baseline, with justification and source;;;;;
+;;;;;
+ID;Item / capability;Classification;Justification;Source;Defend in presentation?
+SCP-001;Submit a service request with category, location and description;IN SCOPE;"Minimum requester capability required by the Master Brief; the core of the business need";Master Brief s.3, STK-001;No
+SCP-002;Controlled category mechanism;IN SCOPE;"Required capability; reporting in SCP-011 and triage in SCP-006 both depend on controlled categories rather than free text";Master Brief s.3, STK-004, STK-005;No
+SCP-003;View status and history of own requests;IN SCOPE;Directly addresses the visibility problem identified in the scenario;Master Brief s.3, STK-001;No
+SCP-004;Feedback when a request is accepted, rejected, updated or completed;IN SCOPE;"Required capability; delivered as in-application feedback only (see SCP-014 for notifications)";Master Brief s.3, STK-001;No
+SCP-005;Staff view of requests relevant to their authorisation;IN SCOPE;Required staff capability and the point at which authorisation becomes functional rather than administrative;Master Brief s.3, STK-002, STK-003;No
+SCP-006;Search, filter and sort requests;IN SCOPE;"Required staff capability; addresses the prioritisation difficulty described in the scenario";Master Brief s.3, STK-004;No
+SCP-007;Assign or accept responsibility for a request;IN SCOPE;"Required staff capability; implements the assignment model agreed in CFL-003";Master Brief s.3, CFL-003;No
+SCP-008;Controlled status transitions with recorded acting user;IN SCOPE;"Required staff capability; the recorded actor is what supplies the accountability the current process lacks";Master Brief s.3, s.2, STK-005;No
+SCP-009;Record actions, comments and resolution information;IN SCOPE;"Required staff capability; creates the single controlled lifecycle record the scenario identifies as missing";Master Brief s.3;No
+SCP-010;Resolve or close requests where authorised;IN SCOPE;Required staff capability;Master Brief s.3;No
+SCP-011;Management view of open, overdue, resolved and closed requests by category and status;IN SCOPE;"Required management capability; the reporting need behind CFL-001";Master Brief s.3, STK-005;No
+SCP-012;Authentication and role-based access control;IN SCOPE;"Not listed as a business capability but made necessary by the CFL-002 resolution and CON-006; without it the restricted handling of security requests cannot be delivered";CFL-002, CON-006, STK-007;Yes
+SCP-013;Native mobile application;OUT OF SCOPE;A responsive web interface satisfies the stated access need within CON-002 and CON-004. A native build adds a second toolchain, store release process and test matrix with no additional evidenced stakeholder benefit at M1.;CON-002, CON-004;Yes
+SCP-014;Email or push notification of status changes;DEFERRED;Valuable to STK-001 but depends on a delivery service whose cost and free-tier limits are unknown until the platform decision in M2. In-application feedback (SCP-004) meets the minimum capability in the interim.;CON-003, DEC-003;No
+SCP-015;Photograph attachments on a request;DEFERRED;Would materially improve fault triage, but introduces file storage cost, malware scanning and additional personal-information handling under CON-007. Deferred pending the platform and retention decisions.;CON-003, CON-007;No
+SCP-016;Integration with existing campus systems (student records, HR, asset register);OUT OF SCOPE;No evidence is currently available that institutional APIs exist or would be made accessible to a student project. Committing to an integration the team cannot verify would create unmanageable dependency risk.;CON-008, CON-002;No
+SCP-017;Ingestion of requests from existing email, telephone or WhatsApp channels;OUT OF SCOPE;The business need is to replace fragmented channels with a single controlled record, not to federate them. Ingestion would preserve the duplication the platform exists to remove.;Master Brief s.2, s.2.1;No
+SCP-018;Technician scheduling, rostering or workload balancing;OUT OF SCOPE;"Not a stated capability and not raised by any identified stakeholder; would substantially expand the domain model under a fixed schedule";CON-001, CON-002;No
+SCP-019;Multi-campus or multi-tenant operation;DEFERRED;Single-campus operation satisfies the current stakeholders. Recorded as deferred rather than excluded so that the M2 data model does not foreclose it unnecessarily.;CON-002;No
+SCP-020;Automated enforcement of the data retention period;DEFERRED;The retention period itself is undecided (DEC-005). Automating enforcement before the rule exists would encode an unverified assumption.;CFL-004, DEC-005;No
+;;;;;
+Baseline summary;;;;;
+In scope;12;;;;
+Deferred;4;;;;
+Out of scope;4;;;;
+Total items;20;;;;
