@@ -1042,7 +1042,7 @@ FR-3.5 · NFR-3.3 · NFR-4.4
  
 ---
  
-## C-03 — Record a decision for the service-level target behind "overdue"
+## C-02 — Record a decision for the service-level target behind "overdue"
  
 **Status:** Open
 **Owner:** Robert van der Merwe
@@ -1062,7 +1062,7 @@ decision, **or** a deferment is logged stating the evidence required to decide.
  
 ---
  
-## C-04 — Close the four unsettled requirements
+## C-03 — Close the four unsettled requirements
  
 **Status:** Open
 **Owner:** Robert van der Merwe
@@ -1087,7 +1087,7 @@ RTM v0.2 · Open Items v0.2
  
 ---
  
-## C-05 — Progress the three deferred decisions with dated evidence tasks
+## C-04 — Progress the three deferred decisions with dated evidence tasks
  
 **Status:** Open
 **Owner:** Ethan Lindsay
