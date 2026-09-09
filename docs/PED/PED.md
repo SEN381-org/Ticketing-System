@@ -70,7 +70,7 @@ been committed to scope.
 
 ## 2.4 How success will be judged
 
-Project success is not "the system works". It is whether the problems in 2.1 are
+Project success is not "the system works". It is whether the problems mentioned in 2.1 are
 demonstrably reduced. Three measures follow directly from the problem statement, and
 Member B should express each as a measurable requirement:
 
