@@ -15,7 +15,7 @@
 |---|---|
 | Project name | CivicConnect — Community Service Request Management Platform |
 | Project manager | Robert |
-| Project sponsor | *[Name required]* — role identified as **STK-008 Campus executive sponsor** |
+| Project sponsor | Campus Sponsor — role identified as **STK-008 Campus executive sponsor** |
 | Expected start date | Week 1 of the SEN381 delivery period *[calendar date required]* |
 | Expected completion date | Week 13 *[calendar date required]* |
 | Organisational unit | Software Engineering 381 (SEN381), Belgium Campus |
@@ -544,11 +544,13 @@ Every mitigation in the register returns more than its cost (all RRL > 1.0). Por
 
 ### 8.1 Quality Standards
 
-Quality is governed by **ISO/IEC 25010**. Member B's non-functional requirements are classified under the four-category scheme used in Systems Analysis & Design; the mapping below reconciles the two without reclassifying the requirements.
+Quality is governed by **ISO/IEC 25010**(International Organization for Standardization, 2023).
+
+Member B's non-functional requirements are classified under the four-category scheme used in Systems Analysis & Design; the mapping below reconciles the two without reclassifying the requirements.
 
 | SAD category | ISO/IEC 25010 characteristic | Requirements |
 |---|---|---|
-| 1. Operational | Compatibility; Portability; Reliability (recoverability) | NFR-1.1 – NFR-1.6 |
+| 1. Operational | Compatibility; Flexibility (portability); Reliability (recoverability) | NFR-1.1 – NFR-1.6 |
 | 2. Performance | Performance Efficiency; Reliability (availability) | NFR-2.1 – NFR-2.5 |
 | 3. Security | Security (confidentiality, integrity, non-repudiation, accountability, authenticity) | NFR-3.1 – NFR-3.6 |
 | 4. Cultural & Political | Compliance aspects of Security and Maintainability | NFR-4.1 – NFR-4.5 |
