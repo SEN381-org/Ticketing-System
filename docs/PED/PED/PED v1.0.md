@@ -37,11 +37,14 @@ author, in accordance with Master Brief §9. No member self-approves.
 
 | Version | Date | Author | Summary of change | Reviewed by |
 |---|---|---|---|---|
-| 0.1 | 06/09/2026 | E. Lindsay | Initial drafts: stakeholder register (STK-001–009), stakeholder conflicts (CFL-001–004), constraints (CON-001–008), scope baseline (SCP-001–020), decision log (DEC-001–007), problem and business need | R. van der Merwe, C. Burger |
-| 0.2 | 08/09/2026 | E. Lindsay | Repository structure established; registers separated into requirements and decisions folders; DEC-008 recorded (two-stage protected branching) | R. van der Merwe, C. Burger |
-| 0.3 | 09/09/2026 | E. Lindsay | Client instructions of 09/09/2026 incorporated: STK-010 added; CON-009–CON-019 recorded; SCP-021 added; DEC-007 revised; DEC-009 recorded | R. van der Merwe, C. Burger |
-| 0.4 | 09/09/2026 | E. Lindsay | Scope baseline extended with a Type column distinguishing product from project scope | R. van der Merwe, C. Burger |
-| 1.0 | 09/09/2026 | E. Lindsay | Integration of all M1 artefacts into a single controlled document; references added; baseline sign-off completed | R. van der Merwe, C. Burger |
+| 0.1 | 06/09/2026 | E. Lindsay | Initial drafts: stakeholder register (STK-001–009), stakeholder conflicts (CFL-001–004), constraints (CON-001–008), scope baseline (SCP-001–020), decision log (DEC-001–007), problem and business need. PR #1 | R. van der Merwe, C. Burger |
+| 0.2 | 08/09/2026 | E. Lindsay | Repository structure established; registers separated into requirements and decisions folders; DEC-008 recorded (two-stage protected branching). PR #14 | R. van der Merwe, C. Burger |
+| 0.3 | 09/09/2026 | E. Lindsay | AI Usage Register established; client instructions of 09/09/2026 incorporated: STK-010 added; CON-009–CON-019 recorded; SCP-021 added; DEC-007 revised; DEC-009 recorded. PR #15 | R. van der Merwe, C. Burger |
+| 0.4 | 09/09/2026 | E. Lindsay | PED document created; cascaded decision log updates applied across affected artefacts; scope baseline extended with a Type column distinguishing product from project scope. PR #16 | R. van der Merwe, C. Burger |
+| 0.5 | 09/09/2026 | R. van der Merwe | Requirements baseline: 49 functional and 30 non-functional requirements (FR-1.1–FR-9.2, NFR-1.1–NFR-4.5), 80 acceptance criteria, RTM v0.2, traced example, open items register. PR #17 | E. Lindsay, C. Burger |
+| 0.6 | 09/09/2026 | C. Burger | Risk register v0.3 (RSK-001–013) and forward engineering considerations register v0.2 (FEC-001–007 with recorded baseline influence). PR #18 | E. Lindsay, R. van der Merwe |
+| 0.7 | 09/09/2026 | R. van der Merwe | Artefact updates derived from the additional client constraints recorded at v0.3. PR #19 | E. Lindsay, C. Burger |
+| 1.0 | 09/09/2026 | E. Lindsay | Integration of all M1 artefacts into a single controlled document; references added; Team Working Agreement drafted; baseline conditions recorded; baseline sign-off completed | R. van der Merwe, C. Burger |
 
 Baselined content is not silently overwritten. Changes after this baseline follow the
 change control process in Master Brief §14.
@@ -977,24 +980,24 @@ Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Acc
 
 | Artefact | Version | Location |
 |---|---|---|
-| Stakeholder Register | v0.2 | `docs/requirements/` |
-| Stakeholder Conflicts | v0.1 | `docs/requirements/` |
-| Scope Baseline | v0.2 | `docs/requirements/` |
-| Constraints | v0.2 | `docs/requirements/` |
-| Functional Requirements | v0.2 | `docs/requirements/` |
-| Non-Functional Requirements | v0.2 | `docs/requirements/` |
-| Acceptance Criteria | v0.2 | `docs/requirements/` |
-| Requirements Traceability Matrix | v0.2 | `docs/requirements/` |
-| Traced Example | v0.2 | `docs/requirements/` |
-| Open Items | v0.2 | `docs/requirements/` |
-| Engineering Decision Log | v0.2 | `docs/decisions/` |
-| Risk Register | v0.3 | `docs/risk/` |
-| Forward Engineering Considerations Register | v0.2 | `docs/risk/` |
-| AI Usage Register | v0.1 | `docs/AI-Usage/` |
-| Project Charter | v0.2 | `extras/` |
-| Team Working Agreement | v0.1 | `docs/` |
+| Stakeholder Register | v0.2 | `docs/requirements/Stakeholder Register` |
+| Stakeholder Conflicts | v0.1 | `docs/requirements/Stakeholder Conflicts` |
+| Scope Baseline | v0.2 | `docs/requirements/Scope Baseline` |
+| Constraints | v0.2 | `docs/requirements/Constraints` |
+| Functional Requirements | v0.2 | `docs/requirements/Functional Requirements` |
+| Non-Functional Requirements | v0.2 | `docs/requirements/Non-Functional Requirements` |
+| Acceptance Criteria | v0.2 | `docs/requirements/Acceptance Criteria` |
+| Requirements Traceability Matrix | v0.2 | `docs/requirements/Requirements Traceability Matrix` |
+| Traced Example | v0.2 | `docs/requirements/Traced Example` |
+| Open Items | v0.2 | `docs/requirements/Open Items` |
+| Engineering Decision Log | v0.2 | `docs/decisions/Decision Log` |
+| Risk Register | v0.3 | `docs/risk/Risk Register` |
+| Forward Engineering Considerations Register | v0.2 | `docs/risk/FEC Register` |
+| AI Usage Register | v0.1 | `docs/AI-Usage/AI Usage Register` |
+| Project Charter | v0.2 | `extras/Project Charter` |
+| Team Working Agreement | v0.1 | `docs/Team Work Agreement` |
 
-*Paths to be confirmed against the repository at commit.*
+*All paths contain an outdated folder that carries the previous versions of said artefact*
 
 ---
 
@@ -1008,22 +1011,138 @@ Per Master Brief Appendix D.
 | **Baseline type** | M1 Engineering Foundation and Requirements Baseline |
 | **Version** | PED v1.0 |
 | **Date** | 9 September 2026 |
-| **Scope reviewed** | YES / NO |
-| **Requirements and traceability checked** | YES / NO |
-| **Risk review completed** | YES / NO |
-| **Repository and governance controls checked** | YES / NO |
-| **Outcome** | ACCEPTED / CONDITIONALLY ACCEPTED / REVISION REQUIRED |
+| **Scope reviewed** | <mark>YES</mark> / NO |
+| **Requirements and traceability checked** | <mark>YES</mark> / NO |
+| **Risk review completed** | <mark>YES</mark> / NO |
+| **Repository and governance controls checked** | <mark>YES</mark> / NO |
+| **Outcome** | ACCEPTED / <mark>CONDITIONALLY ACCEPTED</mark> / REVISION REQUIRED |
 
 **Conditions recorded (if any):**
 
+## C-01 — Confirm the stakeholder conflict resolutions
+ 
+**Status:** Open
+**Owner:** Ethan Lindsay
+**Priority:** Close CFL-002 before the M2 data model is fixed
+ 
+All four stakeholder conflict resolutions (CFL-001 to CFL-004) are recorded as
+*Proposed*. They represent the team's engineering position and have driven the
+requirements baseline, but none has been confirmed with the stakeholder concerned.
+ 
+CFL-002 carries the greatest exposure. Its resolution produced SCP-012 and DEC-004, and
+generated FR-1.5, FR-3.5, NFR-3.3 and NFR-4.4. A substantial part of the security
+requirement set therefore rests on a resolution that STK-006 has not agreed.
+ 
+**Closed when:** each resolution is confirmed or amended with the relevant stakeholder
+and the conflict register status changes from *Proposed* to *Agreed*.
+ 
+**Affected artefacts:** Stakeholder Conflicts v0.1 · SCP-012 · DEC-004 · FR-1.5 ·
+FR-3.5 · NFR-3.3 · NFR-4.4
+**Tracked as:** RSK-005, RSK-009
+ 
+---
+ 
+## C-03 — Record a decision for the service-level target behind "overdue"
+ 
+**Status:** Open
+**Owner:** Robert van der Merwe
+ 
+SCP-011 commits the platform to identifying overdue requests, but no service-level
+target has been agreed. Without one the capability cannot be specified precisely, and no
+acceptance criterion for it can be evaluated by a third party.
+ 
+Unlike every other open question in this baseline, no decision log entry exists for it —
+the gap is in the decision log itself, not only in the product.
+ 
+**Closed when:** a service-level target is agreed with STK-005 and recorded as a
+decision, **or** a deferment is logged stating the evidence required to decide.
+ 
+**Affected artefacts:** SCP-011 · Decision Log v0.2 · Acceptance Criteria v0.2
+**Tracked as:** RSK-003; named as an outstanding ask under FEC-003
+ 
+---
+ 
+## C-04 — Close the four unsettled requirements
+ 
+**Status:** Open
+**Owner:** Robert van der Merwe
+ 
+Four requirements are baselined in a qualified state:
+ 
+| Requirement | Status | Dependency |
+|---|---|---|
+| FR-4.2 | Proposed — OI-01 | — |
+| FR-8.4 | Proposed — OI-02 | — |
+| FR-9.1 | Proposed — OI-03 | — |
+| NFR-4.2 | Blocked — OI-05 | DEC-005 (see C-05) |
+ 
+NFR-4.2 is blocked rather than merely open: it states a retention period that cannot be
+written until DEC-005 closes.
+ 
+**Closed when:** each requirement is baselined or withdrawn through controlled change,
+and its RTM status is updated accordingly.
+ 
+**Affected artefacts:** Functional Requirements v0.2 · Non-Functional Requirements v0.2 ·
+RTM v0.2 · Open Items v0.2
+ 
+---
+ 
+## C-05 — Progress the three deferred decisions with dated evidence tasks
+ 
+**Status:** Open
+**Owner:** Ethan Lindsay
+**Priority:** All three must close before the M2 architecture is fixed
+ 
+Three decisions are deliberately deferred. Each states the evidence required, but none
+carries a named evidence task with a target date, so there is currently no mechanism
+ensuring they close before they block M2.
+ 
+| Decision | Deferred | Blocks |
+|---|---|---|
+| DEC-002 | Technology stack selection | M2 architecture; availability verification under CON-008 |
+| DEC-003 | Hosting and deployment platform | SCP-014, SCP-015 |
+| DEC-005 | Personal-information retention period | NFR-4.2, SCP-020 |
+ 
+DEC-005 carries the highest exposure in the risk register. Until it closes, the platform
+has no rule governing how long identifiable request data is held, and the compliance
+exposure under CON-007 accrues.
+ 
+**Closed when:** each deferment has a named owner and a target date for producing the
+stated evidence, and that evidence exists before the M2 architecture is fixed.
+ 
+**Affected artefacts:** Decision Log v0.2 · SCP-014 · SCP-015 · SCP-020 · NFR-4.2
+**Tracked as:** RSK-002, RSK-007, RSK-008; named as outstanding asks under FEC-004,
+FEC-005
+ 
+---
+ 
+## Condition summary
+ 
+| ID | Condition | Owner | Must close by |
+|---|---|---|---|
+| C-01 | Confirm stakeholder conflict resolutions | E. Lindsay | CFL-002 before M2 data model |
+| C-02 | Record a decision for the "overdue" target | R. van der Merwe | Before SCP-011 is specified |
+| C-03 | Close the four unsettled requirements | R. van der Merwe | Before M2 sign-off |
+| C-04 | Progress the three deferred decisions | E. Lindsay | Before M2 architecture is fixed |
+ 
+---
+ 
+## Review
+ 
+These conditions are reviewed at the M2 milestone gate. A condition is closed by
+recording the evidence that satisfies it and updating the affected artefacts; closure is
+noted in the PED version history. A condition that cannot be closed is carried forward
+explicitly with its reason, not allowed to lapse.
+ 
+---
 _____________________________________________________________________
 
 **Team approval**
 
 | Name | Role | Signature | Date |
 |---|---|---|---|
-| Ethan Lindsay | Team Lead | | |
-| Robert van der Merwe | Project Manager | | |
-| Christiaan Burger | Developer | | |
+| Ethan Lindsay | Team Lead | EJL | 9 September 2026 |
+| Robert van der Merwe | Project Manager | RRVDM | 9 September 2026 |
+| Christiaan Burger | Developer | CJB | 9 September 2026 |
 
 **Baseline tag:** `v1.0-M1-baseline` on `main`.
