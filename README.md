@@ -1,2 +1,0 @@
-# SEN381
-SEN381 Project

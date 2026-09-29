@@ -2,7 +2,7 @@
 
 ## CivicConnect — Campus Service Request Management Platform
 
-**Version 2.0 — Architecture, Technology & Initial Design Baseline**
+**Version 1.5 — working draft toward the Architecture, Technology & Initial Design Baseline (v2.0)**
 
 | | |
 |---|---|
@@ -10,10 +10,10 @@
 | **Module** | Software Engineering 381 (SEN381), NQF Level 8 |
 | **Institution** | Belgium Campus ITversity |
 | **Document** | Project Engineering Document (PED) |
-| **Version** | 1.2 |
+| **Version** | 1.5 |
 | **Status** | Draft |
 | **Date** | 29 September 2026 |
-| **Supersedes** | PED v1.1 |
+| **Supersedes** | PED v1.4 |
 | **Governing document** | SEN381 CivicConnect Master Project Brief v1.1 |
 
 ---
@@ -59,7 +59,7 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 1.2 | | C. Burger | Architecturally significant requirements identified and linked to stakeholder, constraint and risk evidence; architecture baseline and diagrams recorded | E. Lindsay, R. van der Merwe |
 | 1.3 | | R. van der Merwe | Data and persistence baseline: entities, ownership, lifecycle and initial data model recorded with supporting decisions | E. Lindsay, C. Burger |
 | 1.4 | | R. van der Merwe | Technology stack selected and DEC-002 closed; deployment direction recorded against DEC-003; versions, compatibility assumptions and dependencies recorded | E. Lindsay, C. Burger |
-| 1.5 | | E. Lindsay | Initial design decisions recorded as architecture decision records; requirements traceability matrix extended with the M2 evidence columns | R. van der Merwe, C. Burger |
+| 1.5 | 29/09/2026 | E. Lindsay | Initial design decisions recorded as architecture decision records (DEC-011, DEC-012) with supporting component and sequence diagrams; requirements traceability matrix extended from nine columns to fourteen (v0.4); end-to-end trace for FR-6.7 recorded at §7.5 and completed into implementation and initial verification evidence | R. van der Merwe, C. Burger |
 | 1.6 | | C. Burger | Repository structure aligned to the architecture; continuous integration controls adopted; application and technical documentation recorded | E. Lindsay, R. van der Merwe |
 | 1.7 | | E. Lindsay, R. van der Merwe, C. Burger | Risk register, assumptions, dependencies and forward engineering considerations updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone | Reviewed by the two members other than each author |
 | 2.0 | | E. Lindsay | Integration of all M2 artefacts into this document; Architecture, Technology & Initial Design Baseline identified, approved and signed off; M1 baseline conditions reviewed and their status recorded | R. van der Merwe, C. Burger |
@@ -796,6 +796,60 @@ stakeholder.
 
 ---
 
+## 7.5 End-to-end trace at this milestone
+
+§7.4 records the Milestone 1 trace for FR-6.7. That trace is retained unchanged. This
+section carries the same requirement forward across the full chain required at this
+milestone, so that the evolution of the engineering evidence for one requirement is
+visible rather than asserted.
+
+FR-6.7 was chosen because it is the requirement on which the largest number of this
+milestone's decisions converge: it is constrained by a client instruction, it determines a
+persistence structure, it is the reason one consequence of a status transition is
+deliberately handled differently from the others, and the technology selected under
+DEC-002 changes where part of it is enforced.
+
+| Link | Evidence at v2.0 |
+|---|---|
+| **Requirement** | FR-6.7 — the system shall maintain an immutable history of status, assignment and comment changes. Acceptance criterion AC-FR-6.7. Sourced from STK-005 and committed in scope as SCP-008. |
+| **ASR / Constraint** | The quality driver is auditability: a record of who changed what, when, that cannot be altered after the fact. CON-015 requires database changes to be auditable through triggers and logging. CON-007 requires auditable handling of personal information. NFR-1.9 states the audit obligation as a measurable property. The architecturally significant requirement identifier assigned to this driver is recorded in the architecture baseline. |
+| **Architecture Responsibility** | Request lifecycle management. `StatusTransitionService` owns the transition and is the only component permitted to write a history entry. The audit record is not owned by the application layer at all; responsibility for it sits in the data tier, which is what CON-015 requires and what makes the record unfalsifiable by application code. |
+| **Data Decision** | `requestHistory` is append-only: no update or delete operation is exposed on it, and the collection is never written except by the transition that caused the change. `auditLog` is written below the application layer. The retention period applying to these records is affected by the conflict recorded as OI-06 between NFR-1.4 and DEC-005, which is escalated and not closed at this version. |
+| **Design / Interface Decision** | DEC-011. The history append is a **direct write inside the transition**, not a subscriber to the published event. This is the point at which DEC-011 draws a line: the event mechanism carries consequences that may fail independently of the transition — notification, projection — whereas FR-6.7 must not be capable of succeeding or failing separately from the status change it records. A history entry that can be lost while the status change commits would not satisfy AC-FR-6.7. The distinction is visible in the component diagram at §10.6: steps 1 and 2 are solid, step 3 is dashed. |
+| **Technology / ADR** | DEC-002 — MongoDB Atlas, Express, React, Node.js. Atlas managed database triggers provide the mechanism CON-015 requires, attached to the collection rather than to application code, so the audit write cannot be bypassed by any route. DEC-010 remains open against this link: the cluster tier is deferred, and the free tier does not support automated backup, so the durability of the history is an accepted exposure recorded rather than resolved at this version. |
+| **Application Artefact** | `src/services/statusTransitionService.js` performs the transition in a fixed order: the status change is committed, the history entry is appended, and the event is published last. `src/models/RequestHistory.js` enforces append-only storage at the schema, refusing every mutating operation Mongoose exposes, and `src/repositories/historyRepository.js` offers callers no mutating method at all. Immutability is therefore a property of the record rather than a discipline of the caller, which is what AC-FR-6.7 requires. The Atlas trigger writing `auditLog` under CON-015 is held as repository configuration and is added with the deployment work under DEC-003. |
+| **Initial Verification** | `tests/statusTransitionService.test.js`, eight assertions executed by `npm test`. The suite asserts that a permitted transition writes exactly one history entry; that the entry records the acting user, the acting role and both the prior and the new status; that the history entry is appended before the event is published; that an illegal transition, a role not permitted to perform the move, and an actor outside the owning department each leave nothing written and nothing published; and that a failing subscriber leaves the transition and its history entry intact. Database-level enforcement of append-only storage requires a test cluster and is scheduled for M3. |
+
+**Verification of the enforcement decision.** `tests/authorisationGuard.test.js` walks
+the Express route table and fails the build if any non-public route is registered without
+the composed guard. This is the assertion DEC-012 relied on when it rejected the
+per-method guard-call alternative on detectability, and it is the evidence NFR-3.3 and
+CON-019 require: the control is shown to be present on every route rather than on the
+routes someone remembered to check. The assertion was itself verified by registering an
+unguarded route and confirming that the suite fails, so its ability to detect the
+condition it tests is established rather than assumed.
+
+**What changed between M1 and M2 for this requirement.** At M1 the trace ended at the
+acceptance criterion: the requirement was stated, sourced and made testable, and the
+remaining links were structurally present but empty. At M2 four further links carry
+evidence. The requirement now has an identified owning component, a persistence structure
+chosen to make immutability a property of the data rather than a promise of the code, a
+design decision that deliberately excludes it from the event mechanism the same transition
+uses for its other consequences, and a technology whose managed triggers move the audit
+obligation below the layer that could otherwise circumvent it.
+
+**What is honestly still absent.** The trace is complete for FR-6.7 at this milestone.
+Three related items remain open and are recorded rather than concealed. DEC-012's third
+enforcement point, the response serialiser, is not implemented because it depends on the
+CFL-002 resolution, which remains *Proposed*: baseline condition C-01 is open and the
+exposure is tracked as RSK-009. The Atlas trigger required by CON-015 is defined but not
+yet deployed, pending DEC-003. Database-level verification that no operation can modify an
+existing history entry requires a test cluster and is scheduled for M3; at this version the
+guarantee rests on the schema and on the absence of any mutating operation in the exposed
+interface.
+
+---
+
 # 8. Risk Management
 
 ## 8.1 Purpose
@@ -1066,7 +1120,11 @@ location states what a transition does, which works against the traceability exp
 RSK-012, and the subscriptions are therefore held in one registry so that the set remains
 enumerable.
 
-![Decision 11 Diagram](Media/dec011.png)
+![DEC-011 component diagram](Media/dec011.png)
+
+*Figure 1 — DEC-011: component diagram of the consequences of a request status
+transition. Solid edges are direct calls and writes; dashed edges are event flow. The
+Atlas database trigger attaches to the collections, not to the emitter.*
 
 **DEC-012 — where authorisation is enforced.** NFR-3.3 requires every authorisation rule to
 be enforced at the server on each request at every entry point, and CON-019 excludes the
@@ -1084,7 +1142,12 @@ distributed across three locations while the rule set is single, and that the fi
 rule rests on CFL-002, which remains *Proposed*; condition C-01 is open and the decision
 would require revision if STK-006 does not agree the resolution.
 
-![Decision  12 Diagram](Media/dec012.png)
+![DEC-012 sequence diagram](Media/dec012.png)
+
+*Figure 2 — DEC-012: sequence diagram of the three enforcement points. Path A is refused
+at the route boundary, Path B is permitted there and refused in the service once the
+document is loaded, and Path C is permitted at both points and restricted at the
+serialiser.*
 
 **Relationship to the Assignment 2 research.** Both problems were researched in the team's
 Assignment 2, which compared alternatives and recorded recommendations. The research is
