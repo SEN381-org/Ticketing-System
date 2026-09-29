@@ -1,0 +1,74 @@
+---
+title: "DEC-012 — Where a request is refused: the three enforcement points"
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "Helvetica, Arial, sans-serif"
+    primaryColor: "#eaf3fa"
+    primaryBorderColor: "#14304f"
+    primaryTextColor: "#14304f"
+    actorBkg: "#eaf3fa"
+    actorBorder: "#14304f"
+    actorTextColor: "#14304f"
+    actorLineColor: "#8aa4bd"
+    signalColor: "#22282e"
+    signalTextColor: "#22282e"
+    labelBoxBkgColor: "#f6f8fa"
+    labelBoxBorderColor: "#8aa4bd"
+    labelTextColor: "#14304f"
+    noteBkgColor: "#fdf3e3"
+    noteBorderColor: "#e0b350"
+    noteTextColor: "#22282e"
+    sequenceNumberColor: "#ffffff"
+    activationBkgColor: "#14304f"
+---
+sequenceDiagram
+
+  actor C as Client
+  participant G as Route guard<br/>composed middleware<br/>ENFORCEMENT POINT 1
+  participant H as Route handler
+  participant S as RequestService<br/>ENFORCEMENT POINT 2
+  participant DB as MongoDB Atlas<br/>DEC-002
+  participant Z as Response serialiser<br/>ENFORCEMENT POINT 3
+  participant R as Authorisation rule set<br/>single documented source
+
+  Note over G,R: All three enforcement points evaluate the same rule set.<br/>The rule set is single — the enforcement is distributed — DEC-012.
+
+  alt Path A — refused at the route boundary (function-level access, FR-1.3 / FR-6.4)
+    C->>G: PUT /requests/:id/status
+    G->>R: may this role perform this operation?
+    R-->>G: no
+    G-->>C: 403 Forbidden
+    Note over H,DB: The handler, the service and the database are never reached.<br/>A route registered without its guard is the failure mode —<br/>an automated assertion over the route table is the NFR-3.3 evidence.
+
+  else Path B — permitted at the boundary, refused in the service (object-level access, FR-3.6 / FR-4.1)
+    C->>G: GET /requests/:id
+    G->>R: may this role perform this operation?
+    R-->>G: yes
+    G->>H: next()
+    H->>S: getRequest(id, actor)
+    S->>DB: findOne({ _id: id })
+    DB-->>S: request document
+    S->>R: may this actor see THIS request?
+    R-->>S: no — not the owner, not the assigned department
+    S-->>H: AuthorisationError
+    H-->>C: 403 Forbidden
+    Note over G,S: The boundary could not have made this decision.<br/>The rule depends on the document, and the document<br/>is not loaded until after the middleware chain has run.
+
+  else Path C — permitted at both points, restricted at the serialiser (field-level access, FR-1.5 / FR-3.5 / NFR-4.4)
+    C->>G: GET /requests/:id
+    G->>R: may this role perform this operation?
+    R-->>G: yes
+    G->>H: next()
+    H->>S: getRequest(id, actor)
+    S->>DB: findOne({ _id: id })
+    DB-->>S: request document<br/>security category — CFL-002
+    S->>R: may this actor see THIS request?
+    R-->>S: yes
+    S-->>H: request document
+    H->>Z: serialise(document, actor)
+    Z->>R: which fields may this actor see?
+    R-->>Z: reporter identity withheld
+    Z-->>C: 200 OK — restricted projection
+    Note over S,R: The record is visible — the restricted fields are not.<br/>This rule rests on the CFL-002 resolution, which is still<br/>Proposed — condition C-01 is open, exposure tracked as RSK-009.
+  end
