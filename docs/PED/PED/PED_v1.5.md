@@ -77,6 +77,7 @@ change control process in Master Brief §14.
 4. Scope Baseline
 5. Constraints
 6. Requirements and Acceptance Criteria
+6A. Architecturally Significant Requirements and Architecture Baseline
 7. Traceability
 8. Risk Management
 9. Forward Engineering Considerations
@@ -153,6 +154,7 @@ marked superseded rather than being renumbered.
 | NFR-n.n | Non-functional requirement |
 | AC-FR-n.n / AC-NFR-n.n | Acceptance criterion |
 | DEC-nnn | Engineering decision |
+| ASR-nn | Architecturally significant requirement |
 | RSK-nnn | Risk (engineering register) |
 | RK-nn | Risk (Project Charter quantified register) |
 | FEC-nnn | Forward engineering consideration |
@@ -719,6 +721,93 @@ written until DEC-005 closes. This is disclosed consistently across the requirem
 register, the RTM and the open items file. Sixty-eight of seventy-nine RTM rows are
 fully baselined; the remainder carry an explicit qualifier naming the assumption or
 decision they depend on.
+
+---
+
+# 6A. Architecturally Significant Requirements and Architecture Baseline
+
+## 6A.1 Purpose
+
+This section records which requirements and constraints materially shape the structure of
+CivicConnect, the architecture chosen in response, the alternatives rejected and the
+consequences accepted. It is new at v2.0; nothing in it existed at the M1 baseline.
+
+The architectural *style* is not decided here. CON-012 is a client directive requiring a
+layered architecture, and NFR-1.7 converts it into a testable property. What remains the
+team's engineering judgement — and what this section defends — is where the layer
+boundaries fall, what each layer is responsible for, how the application is divided into
+business modules, which dependencies are permitted, and how the logical structure maps onto
+physical runtime tiers.
+
+Architecture is kept distinct from technology throughout. The stack selected under DEC-002
+and the platform selected under DEC-003 appear only where they change a structural
+consequence; their selection is recorded in the technology and deployment sections.
+
+The Assignment 2 research did not include an architecture task. The decisions in this
+section therefore rest on Week 2 teaching, the published sources cited, and the project's
+own requirement, constraint and risk evidence rather than on an Assignment 2
+recommendation.
+
+## 6A.2 How architecturally significant requirements were identified
+
+A requirement is treated as architecturally significant when changing it would force a
+structural change — to boundaries, dependencies, data placement or runtime arrangement —
+rather than a local change inside one component (Chen, Ali Babar and Nuseibeh, 2013; Bass,
+Clements and Kazman, 2021).
+
+All 30 non-functional requirements and 19 constraints were screened against that test.
+Six drivers were selected. Each is stated as a quality-attribute scenario with a
+measurable response so that it can later be verified under CON-005, rather than as a
+quality label (Bass, Clements and Kazman, 2021). Several requirements were deliberately
+*not* treated as architectural; they are listed in §6A.3.2 with the reason, so that their
+absence is not read as an omission.
+
+## 6A.3 Architecturally significant requirements
+
+### 6A.3.1 Selected drivers
+
+| ID | Quality attribute | Source evidence | Scenario and measurable response | Architectural consequence |
+|---|---|---|---|---|
+| ASR-01 | Security — consistent authorisation | NFR-3.3, NFR-4.4, CON-019, CON-006, DEC-004, CFL-002, STK-006, RSK-009 | Any caller, including one bypassing the interface, requests a function, a request record or a restricted field. The server refuses every unauthorised call at every entry point; no route exists without its guard (automated assertion over the route table); zero successful bypasses under the adversarial probing CON-019 announces. | All access to request data passes through the application layer. The presentation layer never reaches data access. One authorisation rule set lives in the application layer and is evaluated at the three enforcement points of DEC-012. |
+| ASR-02 | Integrity and auditability of the request lifecycle | NFR-1.9, NFR-1.10, NFR-3.6, NFR-1.4, CON-015, CON-017, SCP-008, FR-6.3, FR-6.7 | A status transition or assignment fails part-way. No partial change is committed; every committed transition produces a history entry and an audit entry recording actor, action and timestamp; the audit entry is written by the data store, not by application code. | Transitions are executed only by one application service inside one transaction boundary. The audit write is deliberately placed *below* the application, in database triggers, so no application path can skip it. |
+| ASR-03 | Personal-information protection | NFR-4.1, NFR-4.2, NFR-3.7, NFR-1.11, CON-007, DEC-005, STK-009, RSK-002 | Identifiable request data reaches the one-month retention period set by DEC-005. It becomes removable without destroying the aggregated statistics that NFR-4.2 requires to survive; no personal information appears in performance logs (verifiable by log scan). | Identifiable request data and aggregated reporting data are held separately, so retention can act on one without the other. Logging is a single infrastructure component that excludes personal information by construction. |
+| ASR-04 | Scalability headroom | NFR-2.4, NFR-2.7, NFR-2.1, NFR-2.6, CON-010, CON-018 | Load rises from the client-stated 100 concurrent users toward the 1 000 CON-010 asks the team to reason about. At 100 users, 95% of submissions confirm within 3 s with no failed request; capacity can be raised by adding an application instance without redesign. | The application tier holds no session or user state in process memory, so it can be replicated behind a load balancer later. Every query is issued from the data access layer, where each index is justified against a named query. |
+| ASR-05 | Maintainability for a three-person, part-time team | CON-004, CON-012, NFR-1.7, CON-002, RSK-013, RSK-014 | A member changes one capability (e.g. reporting) without understanding the rest. The change touches one module and at most the layers it spans; no presentation component imports a data-access component; every dependency crosses one layer boundary in one direction (checkable automatically in CI). | One deployable application divided into business modules, each spanning the layers. Modules interact only through another module's application-service interface or through the domain events of DEC-011, never through another module's data access. |
+| ASR-06 | Deployability within the cost constraint | CON-003, CON-016, NFR-1.8, NFR-3.5, NFR-2.5, NFR-1.5, DEC-003, DEC-010, RSK-008 | The same build is promoted from development through test and staging to production. Only external configuration changes between environments; each environment uses its own database; no secret exists at any commit; the service is available for 99% of the 07:00–18:00 weekday window. | Configuration and secrets are externalised from the code. The system runs as one application unit plus one managed data service, which keeps the operational surface within what three part-time members can support. |
+
+### 6A.3.2 Requirements screened and not treated as architectural
+
+| Requirement | Why it is not an architectural driver |
+|---|---|
+| NFR-1.2 (360 px responsive views) | Satisfied inside the presentation layer. It has no effect on boundaries, data placement or runtime arrangement once CON-011 fixes a single web client. |
+| NFR-3.1 (credential hashing) | A local property of one component in the identity module. Changing the algorithm changes one function. |
+| NFR-2.3 (management view within 5 s) | Real, but served by the structural response to ASR-04 and by the reporting projection in DEC-011. It adds no further structural decision. |
+| NFR-4.3 (privacy notice at submission) | A presentation-layer obligation with no structural consequence. |
+| NFR-1.6 (health endpoint) | Held at Low priority as a forward-engineering hook for M3 observability. It is compatible with the architecture but does not shape it. |
+
+### 6A.3.3 The driver that most influenced the architecture
+
+**ASR-01** had the greatest structural effect. Three pieces of project evidence support
+that judgement rather than a preference for security:
+
+- **Assessment method.** CON-019 states that controls will be actively probed during
+  assessment. Authorisation that is merely present in the interface will be defeated, so
+  it had to be placed server-side at every entry point.
+- **Varied rule granularity.** The requirement set spans function-level, object-level and
+  field-level access (see DEC-012), so no single layer can enforce every rule. That fixed
+  what the application layer must own.
+- **Cost of retrofitting.** DEC-004 recorded at M1 that authorisation cannot be added
+  cleanly later.
+
+The closed dependency rule in §6A.4 exists chiefly to protect this driver.
+
+### 6A.3.4 Where the drivers pull against each other
+
+| Tension | How it is handled |
+|---|---|
+| ASR-02 against ASR-04 — trigger-based audit and justified indexes both add write cost at every status change (§5.4) | Accepted. At the CON-010 load the cost is not expected to bind. NFR-1.11 performance logging supplies the evidence to detect it if it does. |
+| ASR-01 against ASR-05 — three enforcement points are more to understand and review than one | Accepted and mitigated by DEC-012's single documented rule set: the *rules* are in one place even though the *checks* are in three. |
+| ASR-06 against NFR-2.5 availability — one application instance on one host is a single point of failure | Accepted at this load and recorded as RSK-017. ASR-04 keeps the application stateless, so a second instance remains an option rather than a redesign. |
 
 ---
 
@@ -1335,8 +1424,14 @@ Apple Inc. (2026) *Human Interface Guidelines: Layout.* Available at:
 https://developer.apple.com/design/human-interface-guidelines/layout (Accessed: 9
 September 2026).
 
+Bass, L., Clements, P. and Kazman, R. (2021) *Software Architecture in Practice.* 4th
+edn. Boston, MA: Addison-Wesley.
+
 Boehm, B.W. (1981) *Software Engineering Economics.* Englewood Cliffs, NJ:
 Prentice-Hall.
+
+Chen, L., Ali Babar, M. and Nuseibeh, B. (2013) 'Characterizing architecturally
+significant requirements', *IEEE Software*, 30(2), pp. 38–45. doi:10.1109/MS.2012.174.
 
 International Organization for Standardization (2023) *ISO/IEC 25010:2023 Systems and
 software engineering — Systems and software Quality Requirements and Evaluation
