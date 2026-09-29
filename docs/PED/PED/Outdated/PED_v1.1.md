@@ -10,9 +10,9 @@
 | **Module** | Software Engineering 381 (SEN381), NQF Level 8 |
 | **Institution** | Belgium Campus ITversity |
 | **Document** | Project Engineering Document (PED) |
-| **Version** | 2.0 |
-| **Status** | Baselined |
-| **Date** | [submission date] |
+| **Version** | 1.1 |
+| **Status** | Draft |
+| **Date** | 29 September 2026 |
 | **Supersedes** | PED v1.0 — Milestone 1 Engineering Baseline, 9 September 2026 |
 | **Governing document** | SEN381 CivicConnect Master Project Brief v1.1 |
 
