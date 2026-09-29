@@ -77,7 +77,7 @@ change control process in Master Brief §14.
 4. Scope Baseline
 5. Constraints
 6. Requirements and Acceptance Criteria
-6A. Architecturally Significant Requirements and Architecture Baseline
+   - 6A. Architecturally Significant Requirements and Architecture Baseline
 7. Traceability
 8. Risk Management
 9. Forward Engineering Considerations
@@ -809,6 +809,131 @@ The closed dependency rule in §6A.4 exists chiefly to protect this driver.
 | ASR-01 against ASR-05 — three enforcement points are more to understand and review than one | Accepted and mitigated by DEC-012's single documented rule set: the *rules* are in one place even though the *checks* are in three. |
 | ASR-06 against NFR-2.5 availability — one application instance on one host is a single point of failure | Accepted at this load and recorded as RSK-017. ASR-04 keeps the application stateless, so a second instance remains an option rather than a redesign. |
 
+## 6A.4 Architecture alternatives considered
+
+Because CON-012 fixes the layered style, the alternatives compared are the realistic *forms*
+of layering open to the team, together with one distributed option. The distributed option
+is included to show that the prescribed style is also the proportionate one on the
+project's own evidence.
+
+| Option | Description | Assessment against the drivers | Outcome |
+|---|---|---|---|
+| A. Layered monolith, technical layers only | One application organised solely by technical role (routes, services, data access) with no business modules | Satisfies ASR-01 and ASR-02. Weak on ASR-05: every capability is spread across shared folders, so a change to reporting touches the same files as a change to assignment, and part-time members collide in the same service layer. | Rejected |
+| B. Open or selectively open layering | Layers may be bypassed, typically so that read-only reporting queries reach data access directly (Richards and Ford, 2020) | The usual motivation is to avoid pass-through code on read paths. Rejected on two grounds: NFR-1.7, a client-mandated requirement under CON-012, requires every dependency to cross *exactly one* boundary; and a bypassed read path would skip the object- and field-level checks ASR-01 depends on. The reporting performance need is met instead by the pre-computed projection in DEC-011, so the bypass is unnecessary. | Rejected |
+| **C. Closed, layered modular monolith** | One deployable application, closed layers, divided internally into business-capability modules that each span the layers | Satisfies ASR-01 and ASR-02 through the closed path; ASR-05 through module boundaries; ASR-06 through a single deployable unit; ASR-04 through a stateless application tier. | **Selected** |
+| D. Service-based or microservices | Capabilities deployed as separate services communicating over the network | Independent scaling and deployment are not required at 100–1 000 users. It would multiply deployable units against CON-003 and CON-004, and it would turn the single-transaction transition of ASR-02 (CON-017) into a distributed consistency problem. Complexity is not justified by any recorded requirement (Newman, 2021). | Rejected |
+
+**Cost accepted with Option C.** Closed layering creates some pass-through code, where a layer
+forwards a call without adding behaviour — the "architecture sinkhole" (Richards and Ford,
+2020). The team accepts this deliberately. The protection it buys for ASR-01 and ASR-02 is
+worth more on this project than the code it saves. The reporting projection keeps the worst
+case — heavy read-only aggregation — out of the sinkhole.
+
+**Future evidence that would reopen the decision.** The notifications module is the most
+likely candidate for later extraction if SCP-014 returns to scope with external delivery
+channels and a different load profile. Extraction would need evidence of independent change
+rate or load, not anticipation.
+
+## 6A.5 Logical architecture — layers and responsibilities
+
+The layered structure applies the Layers pattern (Buschmann *et al.*, 1996). Dependencies
+point downward only, and each crosses exactly one boundary (NFR-1.7).
+
+| Layer | Responsibility | Must not |
+|---|---|---|
+| **Presentation** | Browser client (responsive views, input capture) and the HTTP interface: routes, request-shape validation, the route guard (DEC-012 point 1) and the response serialiser (DEC-012 point 3) | Hold business or authorisation rules (CON-019: a hidden control is not a restriction); reference data access (NFR-1.7) |
+| **Application** | Use-case services for each module; the single authorisation rule set; the request lifecycle rules (which transitions are valid, FR group 6); transaction boundaries (NFR-1.10); the domain-event registry (DEC-011) | Know how or where data is stored; depend on HTTP or on the client |
+| **Data access** | Repositories — the only components that query the data store; versioned migration scripts (NFR-1.9); the performance logger that excludes personal information (NFR-1.11); environment configuration loading | Make authorisation or lifecycle decisions |
+
+The data store sits beneath the data access layer. It is not an application layer, but it
+carries one deliberate responsibility of its own: the audit triggers required by CON-015,
+placed there precisely so that no application path can bypass them (ASR-02).
+
+**A boundary decision the team made.** Lifecycle and business rules are held as a
+framework-independent module *inside* the application layer rather than as a separate domain
+layer. Most CivicConnect operations are record-keeping workflows whose only substantial
+business logic is the status lifecycle. A separate domain layer would therefore add a
+pass-through step to nearly every operation — the sinkhole cost above, doubled. Keeping the
+lifecycle rules free of framework and database imports preserves the benefit that matters,
+which is that they can be unit-tested in isolation.
+
+The DEC-011 component diagram in §10.6 omits the data access layer for readability; the
+repository components shown here sit between the application services and the collections in
+both views.
+
+![Logical architecture](Media/architecture-logical.png)
+
+*Figure 3 — Logical architecture: the three layers, their responsibilities and the permitted
+dependency rule. Solid edges are permitted calls; the crossed edge is the dependency NFR-1.7
+forbids. Source: `docs/architecture/architecture-logical.mmd`.*
+
+## 6A.6 Module view — business capabilities
+
+Modules are derived from the nine functional-requirement feature groups (§6.2), not from
+technical folders. Each module spans the three layers and owns its own data. The final
+allocation of collections to modules is recorded in the data and persistence baseline.
+
+| Module | Feature groups | Owns (indicative) | May depend on |
+|---|---|---|---|
+| Identity & Access | 1 | Users, roles, sessions | — |
+| Reference Data | 9 | Categories, locations | Identity & Access |
+| Requests | 2, 3, 4 | Requests (identifiable data) | Identity & Access, Reference Data |
+| Assignment | 5 | Assignment records | Requests, Identity & Access |
+| Lifecycle & Work Record | 6, 7 | Request history (append-only) | Requests, Identity & Access |
+| Reporting | 8 | Aggregated counts (non-identifying) | Identity & Access; fed by events |
+| Notifications | SCP-004 (SCP-014 deferred) | In-application notifications | Fed by events |
+
+Modules interact through another module's application-service interface or by subscribing
+to the domain events of DEC-011. They never read or write another module's collections.
+Holding identifiable request data (Requests) apart from non-identifying aggregates
+(Reporting) is the structural response to ASR-03.
+
+![Module view](Media/architecture-modules.png)
+
+*Figure 4 — Module view: the seven business-capability modules and their permitted
+interactions. Solid edges are service-interface calls; dashed edges are the domain events of
+DEC-011. Source: `docs/architecture/architecture-modules.mmd`.*
+
+## 6A.7 Physical view — runtime tiers
+
+A layer is a logical separation of responsibility; a tier is a physical runtime separation
+(Kruchten, 1995). They do not map one-to-one. The presentation layer spans two tiers — the
+client runs in the browser and the HTTP interface runs on the server — while the
+application and data access layers share one server process. The detail of the platform
+configuration is recorded in the deployment section; this view shows only the structural
+consequence.
+
+| Tier | Runs | Structural point |
+|---|---|---|
+| 1 — User device | Browser client (NFR-1.1: no installation) | Untrusted. Nothing here is relied on for access control (CON-019). |
+| 2 — Application host (DEC-003) | One Node.js process: HTTP interface, application and data access layers | Stateless (ASR-04, NFR-2.7). A single instance is the current single point of failure (RSK-017). Configuration and secrets are supplied by the environment (NFR-3.5). |
+| 3 — Managed database service (DEC-002) | Replica set; separate database per environment (CON-016); audit triggers | Data redundancy is provided by the service. The backup mechanism behind NFR-1.5 remains open under DEC-010. |
+
+![Physical view](Media/architecture-physical.png)
+
+*Figure 5 — Physical view: the three runtime tiers. Logical layers are not tiers — the
+presentation layer spans tiers 1 and 2, and three layers share one process on tier 2. Source:
+`docs/architecture/architecture-physical.mmd`.*
+
+## 6A.8 Architecture decision record — DEC-014
+
+| Field | Entry |
+|---|---|
+| **ID** | DEC-014 |
+| **Date** | 29/09/2026 |
+| **Decision** | Adopt a closed, layered modular monolith: three layers (presentation, application, data access) with downward single-boundary dependencies, divided into seven business-capability modules; lifecycle rules held as a framework-independent module inside the application layer; audit writes placed in the data store. |
+| **Context** | CON-012 prescribes a layered style, and NFR-1.7 makes it testable. The team must decide boundaries, module decomposition and permitted dependencies before substantial construction under CON-013. |
+| **Drivers** | ASR-01 to ASR-06 (§6A.3). ASR-01 is the most influential. |
+| **Constraints** | CON-012, CON-004, CON-003, CON-010, CON-015, CON-017, CON-019 |
+| **Alternatives considered** | Layered monolith with technical layers only; open or selectively open layering; service-based or microservices (§6A.4) |
+| **Rationale** | The closed path protects authorisation and lifecycle integrity, the two drivers with the heaviest consequence of failure. Modules reduce collision between three part-time members. One deployable unit fits the cost and capability constraints. The reporting performance need is met by the DEC-011 projection without opening a bypass. |
+| **Trade-offs** | Pass-through code on simple reads (the sinkhole cost). No separate domain layer, so lifecycle rules depend on discipline to stay framework-free. One application instance is a single point of failure. |
+| **Risks** | RSK-016 (layer and module erosion under schedule pressure), RSK-017 (single application instance against NFR-2.5), RSK-009 (field-level rule rests on the unconfirmed CFL-002 resolution) |
+| **Evidence** | Week 2 teaching (SO6, SO7); Chen, Ali Babar and Nuseibeh (2013); Bass, Clements and Kazman (2021); Richards and Ford (2020); Buschmann *et al.* (1996); Newman (2021). No Assignment 2 task covered architecture. |
+| **Later consequence** | The repository structure mirrors the modules and layers. The dependency rule is checked automatically in CI (Criterion F). A second application instance can be added without redesign. The notifications module is the first candidate for extraction if SCP-014 evidence justifies it. The initial `src/` layout is organised by layer only; realignment to module folders is tracked as issue #51. |
+| **Owner** | Christiaan |
+| **Status** | Decided at M2 |
+
 ---
 
 # 7. Traceability
@@ -1092,11 +1217,12 @@ states what would close it.
 
 ## 10.2 Decisions recorded
 
-Thirteen entries: eleven decided, one deferred, one superseded. The three deferments
+Fourteen entries: twelve decided, one deferred, one superseded. The three deferments
 carried from Milestone 1 — DEC-002, DEC-003 and DEC-005 — closed at this milestone; one new
 deferment was recorded as DEC-010; and the two initial design decisions required at this
 checkpoint were recorded as DEC-011 and DEC-012. The disposition of each M1 deferment is
-stated in §1.7.2, and the design decisions are described in §10.6.
+stated in §1.7.2, and the design decisions are described in §10.6. 
+The architecture decision DEC-014 is described in §6A.8.
 
 **Supersession and identifier stability.** DEC-007 is retained with its original identifier
 and marked superseded, as §1.4 requires: a retired item is never renumbered or removed, so
@@ -1121,6 +1247,7 @@ are updated to cite DEC-013.
 | DEC-011 | Publish a domain event from the status-transition service; consequences subscribe to it | Decided at M2 |
 | DEC-012 | Enforce authorisation at the route boundary, in the service layer and in the response serialiser, against one documented rule set | Decided at M2 |
 | DEC-013 | Exclude a native mobile application; mobile access delivered through responsive web — client directive under CON-011 | Decided |
+| DEC-014 | Adopt a closed, layered modular monolith with seven business-capability modules (§6A.8) | Decided at M2 |
 
 ## 10.3 Decision defended: DEC-001
 
@@ -1430,6 +1557,10 @@ edn. Boston, MA: Addison-Wesley.
 Boehm, B.W. (1981) *Software Engineering Economics.* Englewood Cliffs, NJ:
 Prentice-Hall.
 
+Buschmann, F., Meunier, R., Rohnert, H., Sommerlad, P. and Stal, M. (1996)
+*Pattern-Oriented Software Architecture, Volume 1: A System of Patterns.* Chichester:
+John Wiley & Sons.
+
 Chen, L., Ali Babar, M. and Nuseibeh, B. (2013) 'Characterizing architecturally
 significant requirements', *IEEE Software*, 30(2), pp. 38–45. doi:10.1109/MS.2012.174.
 
@@ -1438,6 +1569,12 @@ software engineering — Systems and software Quality Requirements and Evaluatio
 (SQuaRE) — Product quality model.* 2nd edn. Geneva: ISO. Available at:
 https://www.iso.org/standard/78176.html (Accessed: 9 September 2026).
 
+Kruchten, P.B. (1995) 'The 4+1 view model of architecture', *IEEE Software*, 12(6),
+pp. 42–50. doi:10.1109/52.469759.
+
+Newman, S. (2021) *Building Microservices: Designing Fine-Grained Systems.* 2nd edn.
+Sebastopol, CA: O'Reilly Media.
+
 Project Management Institute (2021) *A Guide to the Project Management Body of
 Knowledge (PMBOK Guide).* 7th edn. Newtown Square, PA: Project Management Institute.
 
@@ -1445,6 +1582,9 @@ Republic of South Africa (2013) *Protection of Personal Information Act 4 of 201
 Government Gazette No. 37067, 26 November 2013. Pretoria: Government Printer. Available
 at: https://www.gov.za/documents/protection-personal-information-act (Accessed: 9
 September 2026).
+
+Richards, M. and Ford, N. (2020) *Fundamentals of Software Architecture: An Engineering
+Approach.* Sebastopol, CA: O'Reilly Media.
 
 World Wide Web Consortium (2023) *Web Content Accessibility Guidelines (WCAG) 2.2.* W3C
 Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Accessed:
@@ -1467,6 +1607,7 @@ Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Acc
 | Traced Example | v0.2 | `docs/requirements/Traced Example` |
 | Open Items | v0.3 | `docs/requirements/Open Items` |
 | Engineering Decision Log | v0.3 | `docs/decisions/Decision Log` |
+| Architecture diagrams | v1.0 | `docs/architecture` |
 | Risk Register | v0.4 | `docs/risk/Risk Register` |
 | Forward Engineering Considerations Register | v0.2 | `docs/risk/FEC Register` |
 | AI Usage Register | v0.1 | `docs/AI-Usage/AI Usage Register` |
