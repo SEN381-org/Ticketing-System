@@ -2,7 +2,7 @@
 
 ## CivicConnect — Campus Service Request Management Platform
 
-**Version 2.0 — Architecture, Technology & Initial Design Baseline**
+**Version 1.5 — working draft toward the Architecture, Technology & Initial Design Baseline (v2.0)**
 
 | | |
 |---|---|
@@ -10,10 +10,10 @@
 | **Module** | Software Engineering 381 (SEN381), NQF Level 8 |
 | **Institution** | Belgium Campus ITversity |
 | **Document** | Project Engineering Document (PED) |
-| **Version** | 2.0 |
-| **Status** | Baselined |
-| **Date** | [submission date] |
-| **Supersedes** | PED v1.0 — Milestone 1 Engineering Baseline, 9 September 2026 |
+| **Version** | 1.5 |
+| **Status** | Draft |
+| **Date** | 29 September 2026 |
+| **Supersedes** | PED v1.4 |
 | **Governing document** | SEN381 CivicConnect Master Project Brief v1.1 |
 
 ---
@@ -59,7 +59,7 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 1.2 | | C. Burger | Architecturally significant requirements identified and linked to stakeholder, constraint and risk evidence; architecture baseline and diagrams recorded | E. Lindsay, R. van der Merwe |
 | 1.3 | | R. van der Merwe | Data and persistence baseline: entities, ownership, lifecycle and initial data model recorded with supporting decisions | E. Lindsay, C. Burger |
 | 1.4 | | R. van der Merwe | Technology stack selected and DEC-002 closed; deployment direction recorded against DEC-003; versions, compatibility assumptions and dependencies recorded | E. Lindsay, C. Burger |
-| 1.5 | | E. Lindsay | Initial design decisions recorded as architecture decision records; requirements traceability matrix extended with the M2 evidence columns | R. van der Merwe, C. Burger |
+| 1.5 | 29/09/2026 | E. Lindsay | Initial design decisions recorded as architecture decision records (DEC-011, DEC-012) with supporting component and sequence diagrams; requirements traceability matrix extended from nine columns to fourteen (v0.4); end-to-end trace for FR-6.7 recorded at §7.5 and completed into implementation and initial verification evidence | R. van der Merwe, C. Burger |
 | 1.6 | | C. Burger | Repository structure aligned to the architecture; continuous integration controls adopted; application and technical documentation recorded | E. Lindsay, R. van der Merwe |
 | 1.7 | | E. Lindsay, R. van der Merwe, C. Burger | Risk register, assumptions, dependencies and forward engineering considerations updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone | Reviewed by the two members other than each author |
 | 2.0 | | E. Lindsay | Integration of all M2 artefacts into this document; Architecture, Technology & Initial Design Baseline identified, approved and signed off; M1 baseline conditions reviewed and their status recorded | R. van der Merwe, C. Burger |
@@ -736,14 +736,31 @@ that produced it.
 
 ## 7.2 Structure
 
-The RTM holds 79 rows, one per functional and non-functional requirement, with the
-columns: requirement ID, source, requirement, priority, acceptance criteria, design
-reference, test reference, release reference, status.
+The RTM holds 79 rows, one per functional and non-functional requirement.
 
-The design, test and release columns are empty at M1 by design. Their presence in the
-baselined structure is deliberate: the matrix is built for the lifecycle evidence that
-M2, M3 and M4 will add, so later evidence extends the existing trace rather than
-requiring a new artefact.
+At v1.0 it carried nine columns: requirement ID, source, requirement, priority, acceptance
+criteria, design reference, test reference, release reference and status. The design, test
+and release columns were deliberately empty, present so that later evidence would extend
+the existing trace rather than require a new artefact.
+
+At v2.0 the matrix carries fourteen columns. The three placeholder columns are replaced by
+the evidence the later lifecycle stages actually produce:
+
+| Column | State at v2.0 |
+|---|---|
+| Requirement ID, source, requirement, priority, acceptance criteria | Carried forward from v1.0 |
+| ASR / quality-driver link | Populated where a requirement is traceable to a recorded architectural driver; otherwise carried as pending against the architecture baseline |
+| Architecture / module / component | Module identified for every requirement; component allocation pending the architecture baseline |
+| Data / persistence impact | Populated where the requirement determines a persistence consequence; otherwise pending the data model |
+| Design / interface decision | Populated where DEC-011 or DEC-012 applies; otherwise pending |
+| Technology decision | Populated for every row from DEC-002, with the specific mechanism named where the technology determines the approach |
+| Implementation evidence | *Planned / Not Yet Implemented* |
+| Verification evidence | *Planned* |
+| Status | Carried forward, revised where a requirement changed under control |
+| ADR / change / risk reference | Populated from the decision log, conflict register, risk register and open items |
+
+A column that has no evidence yet carries a controlled status rather than a blank, so that
+the absence is a recorded position rather than an omission.
 
 ## 7.3 Expected final chain
 
@@ -752,7 +769,10 @@ Consistent with Master Brief §11.1:
 **Stakeholder / source → Requirement → Design / Architecture → Issue / PR →
 Implementation → Test → Acceptance / Release evidence**
 
-At M1 the first two links and the acceptance criteria are populated.
+At M1 the first two links and the acceptance criteria were populated. At v2.0 the design
+and architecture link is populated where a decision has been taken, and the technology
+decision is recorded against every requirement. The implementation, test and release links
+remain unpopulated and carry a controlled status.
 
 ## 7.4 Worked trace
 
@@ -773,6 +793,60 @@ A second trace is maintained separately as a controlled artefact — the Traced 
 AC-FR-3.5, NFR-3.3 and NFR-4.4. It records honestly that CFL-002 remains Proposed
 rather than agreed, so the chain rests on a resolution not yet confirmed with the
 stakeholder.
+
+---
+
+## 7.5 End-to-end trace at this milestone
+
+§7.4 records the Milestone 1 trace for FR-6.7. That trace is retained unchanged. This
+section carries the same requirement forward across the full chain required at this
+milestone, so that the evolution of the engineering evidence for one requirement is
+visible rather than asserted.
+
+FR-6.7 was chosen because it is the requirement on which the largest number of this
+milestone's decisions converge: it is constrained by a client instruction, it determines a
+persistence structure, it is the reason one consequence of a status transition is
+deliberately handled differently from the others, and the technology selected under
+DEC-002 changes where part of it is enforced.
+
+| Link | Evidence at v2.0 |
+|---|---|
+| **Requirement** | FR-6.7 — the system shall maintain an immutable history of status, assignment and comment changes. Acceptance criterion AC-FR-6.7. Sourced from STK-005 and committed in scope as SCP-008. |
+| **ASR / Constraint** | The quality driver is auditability: a record of who changed what, when, that cannot be altered after the fact. CON-015 requires database changes to be auditable through triggers and logging. CON-007 requires auditable handling of personal information. NFR-1.9 states the audit obligation as a measurable property. The architecturally significant requirement identifier assigned to this driver is recorded in the architecture baseline. |
+| **Architecture Responsibility** | Request lifecycle management. `StatusTransitionService` owns the transition and is the only component permitted to write a history entry. The audit record is not owned by the application layer at all; responsibility for it sits in the data tier, which is what CON-015 requires and what makes the record unfalsifiable by application code. |
+| **Data Decision** | `requestHistory` is append-only: no update or delete operation is exposed on it, and the collection is never written except by the transition that caused the change. `auditLog` is written below the application layer. The retention period applying to these records is affected by the conflict recorded as OI-06 between NFR-1.4 and DEC-005, which is escalated and not closed at this version. |
+| **Design / Interface Decision** | DEC-011. The history append is a **direct write inside the transition**, not a subscriber to the published event. This is the point at which DEC-011 draws a line: the event mechanism carries consequences that may fail independently of the transition — notification, projection — whereas FR-6.7 must not be capable of succeeding or failing separately from the status change it records. A history entry that can be lost while the status change commits would not satisfy AC-FR-6.7. The distinction is visible in the component diagram at §10.6: steps 1 and 2 are solid, step 3 is dashed. |
+| **Technology / ADR** | DEC-002 — MongoDB Atlas, Express, React, Node.js. Atlas managed database triggers provide the mechanism CON-015 requires, attached to the collection rather than to application code, so the audit write cannot be bypassed by any route. DEC-010 remains open against this link: the cluster tier is deferred, and the free tier does not support automated backup, so the durability of the history is an accepted exposure recorded rather than resolved at this version. |
+| **Application Artefact** | `src/services/statusTransitionService.js` performs the transition in a fixed order: the status change is committed, the history entry is appended, and the event is published last. `src/models/RequestHistory.js` enforces append-only storage at the schema, refusing every mutating operation Mongoose exposes, and `src/repositories/historyRepository.js` offers callers no mutating method at all. Immutability is therefore a property of the record rather than a discipline of the caller, which is what AC-FR-6.7 requires. The Atlas trigger writing `auditLog` under CON-015 is held as repository configuration and is added with the deployment work under DEC-003. |
+| **Initial Verification** | `tests/statusTransitionService.test.js`, eight assertions executed by `npm test`. The suite asserts that a permitted transition writes exactly one history entry; that the entry records the acting user, the acting role and both the prior and the new status; that the history entry is appended before the event is published; that an illegal transition, a role not permitted to perform the move, and an actor outside the owning department each leave nothing written and nothing published; and that a failing subscriber leaves the transition and its history entry intact. Database-level enforcement of append-only storage requires a test cluster and is scheduled for M3. |
+
+**Verification of the enforcement decision.** `tests/authorisationGuard.test.js` walks
+the Express route table and fails the build if any non-public route is registered without
+the composed guard. This is the assertion DEC-012 relied on when it rejected the
+per-method guard-call alternative on detectability, and it is the evidence NFR-3.3 and
+CON-019 require: the control is shown to be present on every route rather than on the
+routes someone remembered to check. The assertion was itself verified by registering an
+unguarded route and confirming that the suite fails, so its ability to detect the
+condition it tests is established rather than assumed.
+
+**What changed between M1 and M2 for this requirement.** At M1 the trace ended at the
+acceptance criterion: the requirement was stated, sourced and made testable, and the
+remaining links were structurally present but empty. At M2 four further links carry
+evidence. The requirement now has an identified owning component, a persistence structure
+chosen to make immutability a property of the data rather than a promise of the code, a
+design decision that deliberately excludes it from the event mechanism the same transition
+uses for its other consequences, and a technology whose managed triggers move the audit
+obligation below the layer that could otherwise circumvent it.
+
+**What is honestly still absent.** The trace is complete for FR-6.7 at this milestone.
+Three related items remain open and are recorded rather than concealed. DEC-012's third
+enforcement point, the response serialiser, is not implemented because it depends on the
+CFL-002 resolution, which remains *Proposed*: baseline condition C-01 is open and the
+exposure is tracked as RSK-009. The Atlas trigger required by CON-015 is defined but not
+yet deployed, pending DEC-003. Database-level verification that no operation can modify an
+existing history entry requires a test cluster and is scheduled for M3; at this version the
+guarantee rests on the schema and on the absence of any mutating operation in the exposed
+interface.
 
 ---
 
@@ -929,13 +1003,19 @@ states what would close it.
 
 ## 10.2 Decisions recorded
 
-Eleven entries: ten decided, one deferred. The three deferments carried from Milestone 1
-— DEC-002, DEC-003 and DEC-005 — closed at this milestone, and one new deferment was
-recorded. The disposition of each M1 deferment is stated in §1.7.2.
+Thirteen entries: eleven decided, one deferred, one superseded. The three deferments
+carried from Milestone 1 — DEC-002, DEC-003 and DEC-005 — closed at this milestone; one new
+deferment was recorded as DEC-010; and the two initial design decisions required at this
+checkpoint were recorded as DEC-011 and DEC-012. The disposition of each M1 deferment is
+stated in §1.7.2, and the design decisions are described in §10.6.
 
-DEC-007 appears twice in the log. The original entry is retained and marked superseded
-rather than renumbered or deleted, in accordance with the identifier rule in §1.4; the
-revision and its changed basis are described in §10.5.
+**Supersession and identifier stability.** DEC-007 is retained with its original identifier
+and marked superseded, as §1.4 requires: a retired item is never renumbered or removed, so
+any earlier document citing DEC-007 still resolves to the entry it cited. The revised
+decision carries a new identifier, DEC-013, because an identifier names one recorded
+position and the revision is a second position taken on different grounds. The relationship
+between the two is described in §10.5. Artefacts that cited DEC-007 for the revised basis
+are updated to cite DEC-013.
 
 | ID | Decision | Status |
 |---|---|---|
@@ -945,10 +1025,13 @@ revision and its changed basis are described in §10.5.
 | DEC-004 | Treat role-based access control as an architecturally significant requirement | Decided |
 | DEC-005 | Set the personal-information retention period at one month | Decided at M2 |
 | DEC-006 | Limit mandatory capture fields to category, location and description | Decided |
-| DEC-007 | Exclude a native mobile application; revised 09/09/2026 | Decided |
+| DEC-007 | Exclude a native mobile application — original team judgement | Superseded by DEC-013 |
 | DEC-008 | Adopt a two-stage protected branching model | Decided |
 | DEC-009 | Adopt a controlled process for capturing verbally-issued client requirements | Decided |
 | DEC-010 | Defer the Atlas cluster tier, and the mechanism by which the NFR-1.5 recovery point is met | Deferred at M2 |
+| DEC-011 | Publish a domain event from the status-transition service; consequences subscribe to it | Decided at M2 |
+| DEC-012 | Enforce authorisation at the route boundary, in the service layer and in the response serialiser, against one documented rule set | Decided at M2 |
+| DEC-013 | Exclude a native mobile application; mobile access delivered through responsive web — client directive under CON-011 | Decided |
 
 ## 10.3 Decision defended: DEC-001
 
@@ -988,21 +1071,96 @@ committed deployment target, which places a working deadline of 22 September on 
 deferment. The exposure is tracked as RSK-008 and RSK-015, and the evidence-gathering is
 a named ask under FEC-005.
 
-## 10.5 A decision revised before baseline
+## 10.5 A decision revised before baseline, and how the revision is recorded
 
 DEC-007 excluded a native mobile application on 06/09/2026 as a team judgement. On
-09/09/2026 the client confirmed verbally that the solution is to be a web application
-with mobile access through responsive web (CON-011).
+09/09/2026 the client confirmed verbally that the solution is to be a web application with
+mobile access through responsive web (CON-011).
 
-The decision did not reverse; its basis changed. The log records the original rationale
-alongside the revision rather than overwriting it, because the change in basis carries a
-consequence: the exclusion is now a client directive and cannot be revisited without a
-change request under Master Brief §14, where previously it was a team position open to
-reconsideration.
+The decision did not reverse; its basis changed. That change carries a consequence worth
+recording: the exclusion is now a client directive and cannot be revisited without a change
+request under Master Brief §14, where previously it was a team position open to
+reconsideration. A team may change its own mind; it may not silently change the client's.
 
-This revision was made before baseline. After the baseline recorded in Appendix B, an
-equivalent change would require a change request and impact analysis rather than an
-edit.
+**How the log records it.** The original entry is retained under DEC-007 and marked
+superseded. The revised decision is recorded separately as DEC-013. Two identifiers are used
+rather than one because each names a distinct recorded position: DEC-007 states what the
+team decided and on what ground, and DEC-013 states what is now binding and on whose
+authority. Overwriting DEC-007 would have destroyed the evidence that the basis changed,
+which is the part with downstream consequence; renumbering it would have broken the
+identifier rule in §1.4 and orphaned every prior citation.
+
+The practical effect is that DEC-007 remains resolvable for anything that cited it before
+09/09/2026, while artefacts that depend on the current basis — NFR-1.2 and its measurement
+basis among them — cite DEC-013.
+
+This revision was made before the M1 baseline. After that baseline, an equivalent change
+requires a change request and impact analysis rather than an edit, and the same
+retain-and-supersede treatment applies.
+
+## 10.6 Initial design decisions recorded at this milestone
+
+Two genuine CivicConnect design problems were identified and a final project-specific
+decision was made for each. Both are recorded as full decision records in the controlled
+log; what follows states the problem, the judgement and the cost accepted, and identifies
+where the research that informed each one is held.
+
+**DEC-011 — the consequences of a status transition.** A transition produces several
+outcomes belonging to different parts of the system: the validated status change (FR-6.2,
+FR-6.4), the immutable history entry (FR-6.3, FR-6.7), in-application feedback to the
+requester (FR-3.4, SCP-004) and the counts the management view reads. The audit write is
+not among them, because CON-015 and NFR-1.9 place it below the application layer through
+the managed database triggers committed under DEC-002. The remaining set is known to be
+incomplete: SCP-014 is deferred rather than excluded, and its blocking decision has closed.
+The decision is in-process event publication — the transition publishes a domain event and
+the consequences subscribe — rather than direct invocation of each consequence in turn.
+The benefit is that an anticipated consequence attaches without editing transition code
+already reviewed and verified. The cost is recorded rather than absorbed: no single
+location states what a transition does, which works against the traceability exposure in
+RSK-012, and the subscriptions are therefore held in one registry so that the set remains
+enumerable.
+
+![DEC-011 component diagram](Media/dec011.png)
+
+*Figure 1 — DEC-011: component diagram of the consequences of a request status
+transition. Solid edges are direct calls and writes; dashed edges are event flow. The
+Atlas database trigger attaches to the collections, not to the emitter.*
+
+**DEC-012 — where authorisation is enforced.** NFR-3.3 requires every authorisation rule to
+be enforced at the server on each request at every entry point, and CON-019 excludes the
+absence of an interface control as a restriction. The requirement set is not uniform: it
+spans function-level access (FR-1.3, FR-6.4), object-level access that depends on the
+request rather than the caller (FR-3.6, FR-4.1), and field-level access for
+security-category requests (FR-1.5, FR-3.5, FR-8.6, NFR-4.4). The decision enforces at
+three points against a single documented rule set: composed middleware at the route
+boundary, the service layer once the request document is loaded, and the response
+serialiser. The alternative of an explicit guard call at each service method was rejected
+on detectability — a missing call is invisible, whereas a route registered without its
+guard is visible in the route table and can be asserted against automatically, which is
+what the adversarial testing required by CON-019 needs. The cost is that enforcement is
+distributed across three locations while the rule set is single, and that the field-level
+rule rests on CFL-002, which remains *Proposed*; condition C-01 is open and the decision
+would require revision if STK-006 does not agree the resolution.
+
+![DEC-012 sequence diagram](Media/dec012.png)
+
+*Figure 2 — DEC-012: sequence diagram of the three enforcement points. Path A is refused
+at the route boundary, Path B is permitted there and refused in the service once the
+document is loaded, and Path C is permitted at both points and restricted at the
+serialiser.*
+
+**Relationship to the Assignment 2 research.** Both problems were researched in the team's
+Assignment 2, which compared alternatives and recorded recommendations. The research is
+referenced from each decision record rather than reproduced here. DEC-011 adopts the
+approach that research recommended. DEC-012 differs in form: Assignment 2 held its
+recommendation open and did not research a hybrid, and the three-granularity structure of
+the requirement set together with the technology committed under DEC-002 produced a
+different final judgement. That difference is recorded in the decision entry with the
+project-specific evidence that caused it.
+
+**Application evidence.** Both decisions carry a status of *Planned / Not Yet Implemented*
+against the affected requirements in the traceability matrix. Neither is claimed as
+implemented, and the RTM records that position rather than leaving the columns blank.
 
 ---
 
@@ -1100,19 +1258,33 @@ rather than obscured:
 
 ## 12.1 What is baselined
 
-This document, at version 1.0, together with the controlled artefacts indexed in
-Appendix A, constitutes the CivicConnect M1 engineering baseline:
+**Carried forward from v1.0.** The Milestone 1 engineering baseline remains in force
+except where this document records a controlled change:
 
 - The stakeholder register and conflict analysis
 - The scope baseline: 13 in scope, 4 deferred, 4 out of scope
 - 19 constraints across scope, schedule, cost and resources, quality and security
 - 49 functional and 30 non-functional requirements with 80 acceptance criteria
-- The requirements traceability matrix, 79 rows
-- The risk register, 15 entries
 - The forward engineering considerations register, 7 entries
-- The engineering decision log, 10 entries
-- The AI usage register
 - The repository governance controls described in §11
+
+**Added or revised at v2.0.** This document, at version 2.0, together with the controlled
+artefacts indexed in Appendix A, constitutes the CivicConnect Architecture, Technology and
+Initial Design Baseline:
+
+- The engineering decision log, extended from 10 entries to 13: DEC-002, DEC-003 and
+  DEC-005 closed; DEC-010 recorded as a new deferment; DEC-011 and DEC-012 recorded as the
+  initial design decisions
+- The technology-stack and deployment decisions, with their evidence and consequences
+- The requirements traceability matrix, extended from nine columns to fourteen
+- The scope baseline, with the bases of SCP-014, SCP-015 and SCP-020 revised under control
+- NFR-4.2, released from its dependency on DEC-005
+- The open items register, with OI-05 closed, OI-06 escalated and OI-12 raised
+- The risk register and the AI usage register, updated for this milestone
+
+The architecture baseline, the data and persistence baseline and the application evidence
+are recorded in the sections and artefacts they belong to, and are approved as part of this
+baseline in Appendix B.
 
 ## 12.2 What is deliberately not decided
 
@@ -1191,15 +1363,15 @@ Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Acc
 |---|---|---|
 | Stakeholder Register | v0.2 | `docs/requirements/Stakeholder Register` |
 | Stakeholder Conflicts | v0.1 | `docs/requirements/Stakeholder Conflicts` |
-| Scope Baseline | v0.2 | `docs/requirements/Scope Baseline` |
+| Scope Baseline | v0.3 | `docs/requirements/Scope Baseline` |
 | Constraints | v0.2 | `docs/requirements/Constraints` |
 | Functional Requirements | v0.2 | `docs/requirements/Functional Requirements` |
-| Non-Functional Requirements | v0.2 | `docs/requirements/Non-Functional Requirements` |
-| Acceptance Criteria | v0.2 | `docs/requirements/Acceptance Criteria` |
-| Requirements Traceability Matrix | v0.2 | `docs/requirements/Requirements Traceability Matrix` |
+| Non-Functional Requirements | v0.3 | `docs/requirements/Non-Functional Requirements` |
+| Acceptance Criteria | v0.3 | `docs/requirements/Acceptance Criteria` |
+| Requirements Traceability Matrix | v0.4 | `docs/requirements/Requirements Traceability Matrix` |
 | Traced Example | v0.2 | `docs/requirements/Traced Example` |
-| Open Items | v0.2 | `docs/requirements/Open Items` |
-| Engineering Decision Log | v0.2 | `docs/decisions/Decision Log` |
+| Open Items | v0.3 | `docs/requirements/Open Items` |
+| Engineering Decision Log | v0.3 | `docs/decisions/Decision Log` |
 | Risk Register | v0.4 | `docs/risk/Risk Register` |
 | Forward Engineering Considerations Register | v0.2 | `docs/risk/FEC Register` |
 | AI Usage Register | v0.1 | `docs/AI-Usage/AI Usage Register` |
