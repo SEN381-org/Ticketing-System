@@ -934,6 +934,59 @@ presentation layer spans tiers 1 and 2, and three layers share one process on ti
 | **Owner** | Christiaan |
 | **Status** | Decided at M2 |
 
+## 6A.9 Risks raised by the architecture
+
+| ID | Risk | Cause | Early-warning indicator | P | I | Mitigation | Owner |
+|---|---|---|---|---|---|---|---|
+| RSK-016 | Layer or module boundaries erode, e.g. a route queries the database directly or one module reads another's collection, and ASR-01 protection is lost silently | Schedule pressure (RSK-014) makes a shortcut attractive, and a bypass works functionally | A pull request introducing an import from data access into the presentation layer, or a cross-module collection read | M | H | An automated dependency-rule check in CI; a boundary item in the pull-request template; reviewers check boundary compliance as part of meaningful review | Member C |
+| RSK-017 | One application instance on one host misses the 99% operating-window availability in NFR-2.5 | ASR-06 favours one deployable unit within CON-003 | Any unplanned outage during 07:00–18:00 on a weekday | M | M | Stateless application tier (ASR-04) keeps a second instance available as a configuration change; the health endpoint (NFR-1.6) gives early detection | Member C |
+
+## 6A.10 Traceability contribution
+
+This section populates two RTM columns introduced at v2.0.
+
+- **ASR / quality-driver link:** every requirement listed in the source-evidence column of
+  §6A.3.1 carries the corresponding ASR-nn.
+- **Architecture / module / component:** every functional requirement carries its module
+  from §6A.6, determined by feature group.
+
+Requirements not linked to an ASR are marked "No architectural driver" rather than left
+blank.
+
+## 6A.11 Architecture baseline
+
+**Included in this baseline:** ASR-01 to ASR-06 and the screening record in §6A.3.2; the
+selected architecture and rejected alternatives (§6A.4); the layer responsibilities and
+dependency rule (§6A.5); the module decomposition (§6A.6); the physical tier view (§6A.7);
+DEC-014; RSK-016 and RSK-017.
+
+**Version and date:** introduced at PED v1.2 (29/09/2026, issues #48–#50), baselined as part of PED v2.0.
+
+**Open decisions and deferred concerns, recorded separately rather than resolved here:**
+
+| Item | Why it is open | Evidence required to close |
+|---|---|---|
+| DEC-010 — backup mechanism for NFR-1.5 | Free managed-database clusters provide no managed backup | Cost of the lowest tier with backup, or evidence that a scheduled export meets 24 h |
+| C-01 / CFL-002 — field-level restriction on security requests | Resolution still *Proposed*; the serialiser rule rests on it | Confirmation from STK-006 |
+| Horizontal scaling | Not required at the stated load; only kept possible | M3 load-test evidence against NFR-2.1 and NFR-2.4 |
+| Realignment of `src/` to module folders | The initial application slice is organised by layer only (§6A.8) | Issue #51 merged with the test suite still passing |
+| Extraction of the notifications module | SCP-014 remains deferred | Evidence of independent change rate or load if SCP-014 returns |
+
+**Sign-off (Master Brief Appendix D):**
+
+| Field | Entry |
+|---|---|
+| Project | CivicConnect |
+| Baseline type | M2 Architecture baseline (component of the Architecture, Technology & Initial Design Baseline) |
+| Version | PED v2.0 |
+| Date | |
+| ASRs traced to stakeholder, constraint and risk evidence | YES / NO |
+| Alternatives and trade-offs recorded | YES / NO |
+| Diagrams distinguish logical layers from physical tiers | YES / NO |
+| Open decisions recorded separately | YES / NO |
+| Outcome | ACCEPTED / CONDITIONALLY ACCEPTED / REVISION REQUIRED |
+| Approved by | E. Lindsay · R. van der Merwe (via PR approval) |
+
 ---
 
 # 7. Traceability
