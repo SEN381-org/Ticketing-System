@@ -2,10 +2,10 @@
  * Shared model definitions. Authoritative source: docs/architecture/data/
  * Data_and_Persistence_Baseline_v0.1.md §3.1.
  *
- * NOTE: src/domain/requestStatus.js still carries pre-baseline status and role
- * values (review comments R-04 and R-07 in docs/M2_BACKEND_CORRECTIONS.md). Until
- * that correction lands, the domain and these model enums disagree; the model
- * follows the baselined requirements.
+ * src/domain/requestStatus.js and src/domain/accessRules.js import STATUS and
+ * ROLE from here rather than declaring their own, so the domain and the
+ * persistence layer cannot drift apart. That was the cause of review comments
+ * R-04 and R-07, and it is closed.
  */
 
 import mongoose from 'mongoose';

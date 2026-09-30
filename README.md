@@ -3,10 +3,16 @@
 Campus Service Request Management Platform. SEN381, Belgium Campus ITversity.
 
 This repository holds the first implemented slice of the system. The slice was
-chosen to complete the end-to-end trace recorded in PED §7.5 rather than to
-cover breadth: it implements the request status transition and the immutable
-history that FR-6.7 requires, together with the two design decisions recorded as
-DEC-011 and DEC-012.
+chosen to complete the end-to-end trace recorded in PED §7.5 rather than to cover
+breadth: it implements the request status transition and the immutable history
+FR-6.7 requires, together with the design decisions recorded as DEC-011 and
+DEC-012 and the data, API and transaction decisions in DEC-014, DEC-015 and
+DEC-016.
+
+**Authoritative references.** Where this code disagrees with
+[`docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`](docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md),
+the code is wrong. Status and role values come from FR-6.1 and FR-1.2 through
+`src/models/_shared.js` and are never redeclared.
 
 ## Running
 
@@ -15,89 +21,95 @@ npm install
 npm test
 ```
 
-Node >=22.0.0 (Node 22 is the minimum; Node 20 reached end-of-life on 30 April 2026). The test suite requires no database connection.
+Node 22 or later (`.nvmrc`). The test suite needs no database connection.
 
 ## What is implemented
 
 | Requirement | Where | Verified by |
 |---|---|---|
-| FR-6.1 — status values | `src/domain/requestStatus.js` (pre-baseline values, correction R-07 pending); `src/models/_shared.js` (baseline values) | `statusTransitionService.test.js`; `models.test.js` |
-| FR-6.2 — controlled transitions | `src/domain/requestStatus.js`, `src/services/statusTransitionService.js` | `statusTransitionService.test.js` |
+| FR-6.1 — status values | `src/models/_shared.js` | `requestStatus.test.js`, `models.test.js` |
+| FR-6.2 — controlled transitions | `src/domain/requestStatus.js` | `requestStatus.test.js` |
 | FR-6.3 — a history entry per change | `src/services/statusTransitionService.js` | `statusTransitionService.test.js` |
-| FR-6.4 — the acting role is validated | `src/domain/requestStatus.js` | `statusTransitionService.test.js` |
-| FR-6.7 — immutable history | `src/models/RequestHistory.js`, `src/repositories/historyRepository.js` | `statusTransitionService.test.js`; `models.test.js` (six mutation paths refused, incl. `bulkWrite`); database-level enforcement (Atlas role) verified at M3 |
-| FR-2.2, FR-1.2, SCP-019 — mandatory fields, role set, campus scoping | `src/models/Request.js`, `src/models/User.js`, `src/models/_shared.js` | `models.test.js` |
-| FR-1.3, NFR-3.3 — server-side authorisation at every entry point | `src/middleware/authorise.js`, `src/routes/requestRoutes.js` | `authorisationGuard.test.js` |
+| FR-6.4 — the acting role is validated | `src/domain/requestStatus.js` | `requestStatus.test.js` |
+| FR-6.5 — resolution before Resolved | `src/domain/requestStatus.js` | `requestStatus.test.js` |
+| FR-6.6 — reason on close or reject | `src/domain/requestStatus.js` | `requestStatus.test.js` |
+| FR-6.7 — immutable history | `src/models/RequestHistory.js`, `src/repositories/historyRepository.js` | `models.test.js`; layer 3 at M3 |
+| FR-1.2 — controlled role set | `src/models/_shared.js` | `requestStatus.test.js` |
+| FR-1.3, NFR-3.3 — server-side authorisation at every entry point | `src/domain/accessRules.js`, `src/middleware/authorise.js` | `authorisationGuard.test.js` |
+| FR-1.5, FR-3.5 — security-category restriction | `src/domain/accessRules.js` | `authorisationGuard.test.js` |
+| FR-4.1, FR-5.2 — category authorisation | `src/domain/accessRules.js` | `statusTransitionService.test.js` |
+| NFR-1.10, CON-017 — no partial commit | `src/infrastructure/unitOfWork.js` | `statusTransitionService.test.js`; rollback at M3 |
 
-## How the design decisions appear in the code
+Collections written by this slice: `requests`, `requestHistory` (inside one
+transaction), then `notifications` and `reportingCounts` from the DEC-011
+subscribers, and `auditLog` from the Atlas trigger after commit.
 
-**DEC-011 — in-process event publication.** `StatusTransitionService.transition()`
-performs three steps in a fixed order: it commits the status change, it appends
-the history entry, and only then does it publish `request.status.changed`.
+## How the decisions appear in the code
 
-The first two are direct writes. They are deliberately *not* subscribers,
-because FR-6.7 must not be capable of succeeding or failing separately from the
-status change it records. The event mechanism carries only those consequences
-that may fail independently — notification and the reporting projection.
+**DEC-015 — the transaction boundary.** `StatusTransitionService.transition()`
+commits the `requests` update and the `requestHistory` insert inside one unit of
+work. FR-6.7 must not be capable of succeeding or failing separately from the
+status change it records, so the two are one unit. The `unitOfWork` port is
+injected exactly as the repositories are, which keeps the suite database-free;
+rollback itself is a database guarantee and is verified at M3 by fault injection
+(AC-NFR-1.10 v0.3, CR-001).
+
+**DEC-011 — in-process event publication.** Publication happens *after* the unit
+of work resolves and outside its callback. `withTransaction` re-runs its callback
+on a transient error, so publishing inside it would emit duplicate events or an
+event for a transaction that then aborted. DEC-011's line sits between the
+history append and the publication, and that is unchanged by DEC-015.
 
 DEC-011 accepted, as a recorded cost, that no single location states what a
 transition does. `src/events/subscribers/index.js` is the mitigation: every
-subscription in the system is registered there, so the set of consequences is
-enumerable by reading one file. `listSubscriptions()` exposes the same set to
-tests. Adding SCP-014 later means adding a line to that file and a module beside
-it; it does not mean editing the transition service.
+subscription passes through it, so the consequence set is enumerable by reading
+one file, and `listSubscriptions()` exposes the same set to tests. Registration
+is idempotent. Adding SCP-014 means adding a line there, not editing the service.
 
-Subscribers are dispatched synchronously by `EventEmitter`, so each is wrapped:
-a throwing subscriber is logged and contained rather than propagated back into
-the transition. The transition and its consequences are not atomic with one
-another, and the test suite asserts that a failing subscriber leaves the
-transition and its history entry intact.
+**DEC-012 — three enforcement points, one rule set.**
+`src/domain/accessRules.js` *is* the rule set. The three enforcement points are
+the same rules asked a different question, because each point knows different
+things: the route boundary knows the role, the service knows the role and the
+document, the serialiser knows the role, the document and the field.
 
-**DEC-012 — three enforcement points, one rule set.** `requireOperation()`
-composes authentication and function-level authorisation into a single named
-middleware. Composing them removes the ordering decision from the call site;
-DEC-012 records that middleware ordering is load-bearing and fails silently when
-wrong.
+The guard carries `guardName`, so `authorisationGuard.test.js` walks the Express
+route table and fails the build if any non-public route is registered without it.
+That assertion was itself verified by registering an unguarded route and
+confirming the suite fails — see `docs/evidence/R-01_negative_verification.txt`.
 
-The guard carries `guardName`, which makes it visible in the Express route
-table. `authorisationGuard.test.js` walks that table and fails the build if any
-non-public route is registered without it. This is the detectability argument on
-which DEC-012 rejected the per-method guard-call alternative, and it is the
-evidence NFR-3.3 and CON-019 require. Routes intended to be reachable without
-authentication must be listed explicitly in `PUBLIC_ROUTES`; the list is
-currently empty.
+`req.actor` is set **only** by the session middleware from the server-side store,
+never from a header or body. The guard refuses any request carrying an
+identity-shaped header, and that refusal is asserted by test.
 
-Object-level access is enforced in the service, after the request document is
-loaded, because the route boundary cannot make that decision — the document
-does not exist yet at that point in the chain.
+**DEC-014 — the transition is a resource.**
+`POST /api/v1/requests/:id/transitions` with `If-Match` (412/428) and
+`Idempotency-Key`. `requestHistory` is append-only, so a duplicate entry written
+by a client retry could never be removed; replay detection runs before any write.
 
 ## Not yet implemented
 
-- The response serialiser, DEC-012's third enforcement point. It depends on the
-  CFL-002 resolution, which remains *Proposed*; baseline condition C-01 is open
-  and the exposure is tracked as RSK-009.
-- `SCP-014` notification delivery. Deferred, not excluded; it attaches as a
-  subscriber in `src/events/subscribers/index.js` when admitted.
-- The Atlas database trigger writing `auditLog`, required by CON-015 and
-  NFR-1.9. It is held as configuration in the repository rather than as console
-  state; the definition is added with the deployment work under DEC-003.
-- Database-level verification of append-only storage, which requires a test
-  cluster and is scheduled for M3.
+- The response serialiser as an HTTP concern. The field-level rule exists in
+  `accessRules.js` and is enforced for notifications; the serialiser depends on
+  the CFL-002 resolution, which remains *Proposed* (condition C-01, RSK-009).
+- `SCP-014` notification delivery. Deferred, not excluded.
+- The reconciliation job rebuilding `reportingCounts` from `requests` (OI-14, M3).
+- Database-level verification of append-only storage and of transaction rollback,
+  both of which need a test cluster (M3).
+- The transition model's role mapping is a design proposal, not a baselined
+  requirement — FR-6.2 requires the model to exist without stating its contents.
+  Recorded as OI-13 for confirmation.
 
 ## Structure
 
 ```
 src/
-  domain/          business rules with no infrastructure dependency
-  models/          Mongoose schemas
-  repositories/    persistence access
+  domain/          business rules and the authorisation rule set; no infrastructure
+  models/          Mongoose schemas (data baseline §3)
+  repositories/    persistence access; the only update path for requests
   services/        application services
   events/          domain event publication and subscribers (DEC-011)
-  middleware/      authorisation guard (DEC-012)
-  routes/          Express routes
+  infrastructure/  unit of work (DEC-015)
+  middleware/      authorisation guard (DEC-012) and problem-details handler
+  routes/          Express routes (DEC-014)
 tests/             verification evidence referenced from the RTM
-scripts/           backup/restore, PROC-001 anonymisation, Atlas trigger configuration (see scripts/README.md)
 ```
-
-The data model is defined in `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`; `src/models/` implements it.
-Known backend corrections are tracked in `docs/M2_BACKEND_CORRECTIONS.md`.

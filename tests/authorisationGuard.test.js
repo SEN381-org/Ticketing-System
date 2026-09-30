@@ -1,87 +1,92 @@
 /**
- * Initial verification evidence for DEC-012 and NFR-3.3.
- *
- * Referenced from the RTM verification column for FR-1.3, FR-6.4 and NFR-3.3.
+ * Verification evidence for DEC-012, NFR-3.3 and CON-019.
+ * Referenced from the RTM verification column for FR-1.3, FR-6.4, NFR-3.3.
  *
  * The route-table assertion is the substance of this file. DEC-012 rejected the
  * per-method guard-call alternative on detectability: a missing guard call is
  * invisible, whereas a route registered without its guard is visible here and
- * fails the build. CON-019 requires that the absence of an interface control
- * not be treated as an access restriction; this test is how that is shown for
- * every route rather than for the ones someone remembered to check.
+ * fails the build.
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createRequestRouter } from '../src/routes/requestRoutes.js';
-import { GUARD_NAME, OPERATION_RULES, mayPerform, requireOperation }
+import { GUARD_NAME, requireOperation, assertActorNotClientSupplied }
   from '../src/middleware/authorise.js';
+import { OPERATION_RULES, mayPerformOperation, mayActOnRequest, visibleStatusFor }
+  from '../src/domain/accessRules.js';
+import { ROLE, STATUS } from '../src/models/_shared.js';
+import { AuthenticationError, AuthorisationError } from '../src/errors.js';
 
-/** Routes deliberately reachable without authentication. Must be stated, not assumed. */
-const PUBLIC_ROUTES = [];
+const PUBLIC_ROUTES = [];   // stated, not assumed
 
 function routeTable(router) {
-  return router.stack
-    .filter((layer) => layer.route)
-    .flatMap((layer) =>
-      Object.keys(layer.route.methods).map((method) => ({
-        method: method.toUpperCase(),
-        path: layer.route.path,
-        handlers: layer.route.stack.map((h) => h.handle),
-      })),
-    );
+  return router.stack.filter((l) => l.route).flatMap((l) =>
+    Object.keys(l.route.methods).map((m) => ({
+      method: m.toUpperCase(), path: l.route.path,
+      handlers: l.route.stack.map((h) => h.handle),
+    })));
+}
+
+function run(guard, req) {
+  let passed = false; let error = null;
+  guard(req, {}, (e) => { if (e) error = e; else passed = true; });
+  return { passed, error };
 }
 
 test('every non-public route carries the composed guard — NFR-3.3, CON-019', () => {
-  const router = createRequestRouter({ statusTransitionService: {} });
-  const routes = routeTable(router);
-
+  const routes = routeTable(createRequestRouter({ statusTransitionService: {} }));
   assert.ok(routes.length > 0, 'the route table must not be empty');
 
   for (const route of routes) {
     const signature = `${route.method} ${route.path}`;
     if (PUBLIC_ROUTES.includes(signature)) continue;
+    assert.ok(route.handlers.some((h) => h.guardName === GUARD_NAME),
+      `${signature} is registered without the authorisation guard`);
+  }
+});
 
-    const guarded = route.handlers.some((h) => h.guardName === GUARD_NAME);
-    assert.ok(guarded, `${signature} is registered without the authorisation guard`);
+test('the transition route is the DEC-014 resource, not a field update — R-03', () => {
+  const routes = routeTable(createRequestRouter({ statusTransitionService: {} }));
+  assert.deepEqual(routes.map((r) => `${r.method} ${r.path}`), ['POST /:id/transitions']);
+});
+
+test('every role named in the rule set exists in FR-1.2', () => {
+  const declared = new Set(Object.values(ROLE));
+  for (const [operation, roles] of Object.entries(OPERATION_RULES)) {
+    assert.ok(roles.length > 0, `${operation} names no role`);
+    for (const role of roles) {
+      assert.ok(declared.has(role), `'${role}' in ${operation} is not an FR-1.2 role`);
+    }
   }
 });
 
 test('the guard refuses before the handler runs — DEC-012 path A', () => {
-  const guard = requireOperation('request:transition');
-  let handlerRan = false;
-  const next = () => { handlerRan = true; };
-
-  const captured = {};
-  const res = {
-    status(code) { captured.code = code; return this; },
-    json(body)   { captured.body = body; return this; },
-  };
-
-  guard({ actor: { id: 'u1', role: 'Requester' } }, res, next);
-
-  assert.equal(captured.code, 403);
-  assert.equal(handlerRan, false, 'the handler must not be reached');
+  const { passed, error } = run(requireOperation('request:transition'),
+    { headers: {}, actor: { id: 'u1', roles: [ROLE.REQUESTER] } });
+  assert.equal(passed, false, 'the handler must not be reached');
+  assert.ok(error instanceof AuthorisationError);
+  assert.equal(error.status, 403);
 });
 
 test('an unauthenticated request is refused by the same guard', () => {
-  const guard = requireOperation('request:transition');
-  const captured = {};
-  const res = {
-    status(code) { captured.code = code; return this; },
-    json(body)   { captured.body = body; return this; },
-  };
-
-  guard({}, res, () => assert.fail('next() must not be called'));
-  assert.equal(captured.code, 401);
+  const { error } = run(requireOperation('request:transition'), { headers: {} });
+  assert.ok(error instanceof AuthenticationError);
+  assert.equal(error.status, 401);
 });
 
 test('a permitted role passes the guard', () => {
-  const guard = requireOperation('request:transition');
-  let passed = false;
-  guard({ actor: { id: 'u1', role: 'Administrator' } }, null, () => { passed = true; });
+  const { passed } = run(requireOperation('request:transition'),
+    { headers: {}, actor: { id: 'u1', roles: [ROLE.COORDINATOR] } });
   assert.equal(passed, true);
+});
+
+test('an identity supplied by the client is refused — R-06, CON-019', () => {
+  const { error } = run(requireOperation('request:transition'),
+    { headers: { 'x-actor-role': 'Administrator' }, actor: { id: 'u', roles: [ROLE.MANAGER] } });
+  assert.ok(error instanceof AuthorisationError);
+  assert.throws(() => assertActorNotClientSupplied({ headers: { 'x-roles': 'Manager' } }));
 });
 
 test('an operation with no documented rule cannot be guarded', () => {
@@ -89,11 +94,26 @@ test('an operation with no documented rule cannot be guarded', () => {
 });
 
 test('an unknown operation is refused rather than permitted by default', () => {
-  assert.equal(mayPerform('request:undocumented', 'Administrator'), false);
+  assert.equal(mayPerformOperation('request:undocumented', { roles: [ROLE.ADMINISTRATOR] }), false);
 });
 
-test('every documented operation names at least one role', () => {
-  for (const [operation, roles] of Object.entries(OPERATION_RULES)) {
-    assert.ok(Array.isArray(roles) && roles.length > 0, `${operation} names no role`);
+test('the boundary cannot decide object-level access — DEC-012 path B', () => {
+  const actor = { id: 'u', roles: [ROLE.TECHNICIAN], categoryAuthorisations: ['cat-1'] };
+  assert.equal(mayPerformOperation('request:transition', actor), true, 'permitted at the boundary');
+  assert.equal(mayActOnRequest({ categoryId: 'cat-2', securityCategory: false }, actor), false,
+    'refused in the service, once the document is loaded');
+});
+
+test('a requester never sees a restricted status on a security request — FR-3.5, DEC-012 point 3', () => {
+  const requester = { id: 'u', roles: [ROLE.REQUESTER] };
+  const permitted = [STATUS.RECEIVED, STATUS.IN_PROGRESS, STATUS.CLOSED];
+
+  for (const status of Object.values(STATUS)) {
+    const shown = visibleStatusFor(status, true, requester);
+    assert.ok(permitted.includes(shown),
+      `'${status}' was shown to a requester as '${shown}', outside FR-3.5's three values`);
   }
+  assert.equal(visibleStatusFor(STATUS.ON_HOLD, false, requester), STATUS.ON_HOLD,
+    'a non-security request is not restricted');
+  assert.equal(visibleStatusFor(STATUS.ON_HOLD, true, { roles: [ROLE.SECURITY_OFFICER] }), STATUS.ON_HOLD);
 });
