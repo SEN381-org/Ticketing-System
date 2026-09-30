@@ -1,6 +1,6 @@
 /**
  * Verification that src/models implements the data baseline
- * (docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md).
+ * (docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md).
  *
  * Runs without a database: validation is synchronous, and the append-only middleware
  * refuses a mutation before any driver call is made. Database-level enforcement of

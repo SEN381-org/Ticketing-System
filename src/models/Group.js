@@ -1,6 +1,6 @@
 /**
  * User group with authorisation (FR-1.6, CON-019 user grouping).
- * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.7.
+ * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md §3.7.
  */
 
 import mongoose from 'mongoose';

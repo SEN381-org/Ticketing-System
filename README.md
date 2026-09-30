@@ -10,7 +10,7 @@ DEC-012 and the data, API and transaction decisions in DEC-015, DEC-016 and
 DEC-017.
 
 **Authoritative references.** Where this code disagrees with
-[`docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`](docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md),
+[`docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md`](docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md),
 the code is wrong. Status and role values come from FR-6.1 and FR-1.2 through
 `src/models/_shared.js` and are never redeclared.
 

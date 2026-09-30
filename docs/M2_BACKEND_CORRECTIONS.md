@@ -6,7 +6,7 @@
 | **From** | Robert van der Merwe (reviewer; data, persistence, technology and interface owner) |
 | **Date** | 29/09/2026 |
 | **Code reviewed** | `origin/dev` @ `7cfa94b` (merges of #57, #58, #60, each approved by both reviewers) |
-| **Authoritative references** | `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`, `docs/decisions/ADR/DEC-015_API_Semantics_v0.1.md`, `docs/decisions/ADR/DEC-016_Transaction_Boundary_v0.1.md`, `docs/decisions/ADR/DEC-017_Retention_Purposes_v0.1.md`, PED v1.9 §6B |
+| **Authoritative references** | `docs/architecture/data/Outdated/Data_and_Persistence_Baseline_v0.1.md`, `docs/decisions/ADR/DEC-015_API_Semantics_v0.1.md`, `docs/decisions/ADR/DEC-016_Transaction_Boundary_v0.1.md`, `docs/decisions/ADR/DEC-017_Retention_Purposes_v0.1.md`, PED v1.9 §6B |
 
 This is the post-merge review record for the slice, in the Master Brief §9.1 form (comment →
 response → correction → re-review). Each item has a stable ID (R-01 to R-22). **Please
@@ -142,7 +142,7 @@ Line numbers refer to `7cfa94b`. After the R-01 move, `tests/routes/requestRoute
 ## PR #57 — `feat/request-status-domain`
 
 **R-07 [BLOCKER-traceability] `src/domain/requestStatus.js:11-18` — status values ≠ FR-6.1**
-> FR-6.1 / AC-FR-6.1 (baselined): *"exactly Received, Assigned, In Progress, On Hold, Resolved, Closed and Rejected."* The code has Submitted and Acknowledged, and is missing Assigned and **Rejected** (FR-6.6 needs Rejected). `tests/requestStatus.test.js` then asserts *"a new request begins at Submitted — FR-6.1"*, a test that cites a requirement it contradicts. This matters for the defence: an assessor following the RTM from FR-6.1 lands on a test asserting a different value. Please align the enum, table and tests to FR-6.1. The data baseline (`docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md` §3.1) has the constants.
+> FR-6.1 / AC-FR-6.1 (baselined): *"exactly Received, Assigned, In Progress, On Hold, Resolved, Closed and Rejected."* The code has Submitted and Acknowledged, and is missing Assigned and **Rejected** (FR-6.6 needs Rejected). `tests/requestStatus.test.js` then asserts *"a new request begins at Submitted — FR-6.1"*, a test that cites a requirement it contradicts. This matters for the defence: an assessor following the RTM from FR-6.1 lands on a test asserting a different value. Please align the enum, table and tests to FR-6.1. The data baseline (`docs/architecture/data/Outdated/Data_and_Persistence_Baseline_v0.1.md` §3.1) has the constants.
 
 **R-08 [BLOCKER-traceability] `src/models/Request.js:11-13` — mandatory fields ≠ FR-2.2 / DEC-006**
 > `title` is `required: true`, and there's no `location` field. FR-2.2 requires *exactly* category, location and description and *"will treat no other field as mandatory"* (resolution of CFL-001). As written, the schema would reject a compliant submission (no title) and accept a non-compliant one (no location). Suggest removing `title` (it also has no purpose under NFR-4.1's minimisation) and adding `location` as required.
@@ -198,7 +198,7 @@ Line numbers refer to `7cfa94b`. After the R-01 move, `tests/routes/requestRoute
 > Node 20 reached end-of-life on 30 April 2026. Suggest pinning the LTS line we deploy on (DEC-003: Node >=22.0.0), plus an `.nvmrc`, so CI, dev machines and the VPS agree (A2 §5.6 repeatable-build property "pinned dependencies/toolchain"). I ran the suite on Node 26 locally.
 
 **R-21 [MINOR] `README.md` — documentation disagrees with the repository**. *Status: partly fixed: the `src/` paths are now true and the Node line reads >=22.0.0.*
-> The README says `npm test` gives the implemented table with `src/middleware/authorise.js` and `src/routes/requestRoutes.js`, and the handover says 23 passing. Neither is true of the pushed tree (R-01). M2 brief §8: application docs and PED "are both required and must agree". Please re-check after the fix and add the collection names and data-baseline link (`docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`).
+> The README says `npm test` gives the implemented table with `src/middleware/authorise.js` and `src/routes/requestRoutes.js`, and the handover says 23 passing. Neither is true of the pushed tree (R-01). M2 brief §8: application docs and PED "are both required and must agree". Please re-check after the fix and add the collection names and data-baseline link (`docs/architecture/data/Outdated/Data_and_Persistence_Baseline_v0.1.md`).
 
 **R-22 [Q] `statusTransitionService.js:99-105` — `mayActOn` and requesters**
 > `mayActOn` returns `false` for every non-staff role, which is right for transitions. If it becomes the shared object-level rule for reads (DEC-012 point 2), FR-3.6 needs a `Requester && request.requesterId === actor.id` branch. Is the intent one function per operation, or one shared rule set? DEC-012 says "one documented rule set".
