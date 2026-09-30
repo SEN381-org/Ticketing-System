@@ -1,0 +1,229 @@
+openapi: 3.1.0
+info:
+  title: CivicConnect API
+  version: 0.1.0
+  summary: Browser-to-backend contract for the CivicConnect request lifecycle.
+  description: |
+    Contract referenced by DEC-015 (API semantics). Version 0.1 covers the one
+    state-changing operation implemented in the M2 application slice: the status
+    transition. It describes the code in `src/routes/requestRoutes.js`,
+    `src/services/statusTransitionService.js`, `src/errors.js` and
+    `src/middleware/errorHandler.js`.
+
+    The remaining DEC-015 endpoints are not listed here, because they are not yet
+    implemented: submission, read, list, search, assignments, comments, history,
+    notifications and health. Each is added when its route exists (M3), so this
+    file never describes an endpoint the application does not serve.
+
+    Traces to: FR-6.2 to FR-6.6, FR-1.3, NFR-3.3, CON-019, DEC-012, DEC-015, DEC-016.
+servers:
+  - url: /api/v1
+    description: Versioned base path (DEC-015). Breaking changes go to /api/v2.
+tags:
+  - name: requests
+    description: Service request lifecycle
+security:
+  - session: []
+paths:
+  /requests/{id}/transitions:
+    post:
+      tags: [requests]
+      operationId: transitionRequest
+      summary: Move a request to a new status
+      description: |
+        A status change is modelled as a sub-resource, not as a PATCH of a status
+        field (DEC-015, review comment R-03). The transition and its immutable
+        history entry are written in one unit of work (DEC-016). Allowed moves,
+        and the roles that may make them, follow the transition model in
+        `src/domain/requestStatus.js`, which is a design proposal pending
+        confirmation under OI-15.
+
+        Authorisation is checked in two places. The route guard checks the role
+        (`request:transition`, FR-1.3). The service then checks object-level
+        access and category authorisation (DEC-012). Only a Security Officer may
+        act on a security-category request (FR-1.5 and CFL-002, recorded under
+        OI-15).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Request identifier (MongoDB ObjectId).
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        - name: If-Match
+          in: header
+          required: true
+          description: |
+            Strong ETag of the version the client last read, in the form "v<n>".
+            If it is missing or malformed the response is 428; if it is stale
+            the response is 412 (optimistic concurrency, DEC-015 §2 and DEC-016).
+          schema:
+            type: string
+            pattern: '^"v[0-9]+"$'
+          example: '"v3"'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: |
+            A key generated per logical user action and reused unchanged on every
+            retry of that action (UUID v4 recommended). A missing or blank key
+            returns 400. A key reused with a different request body returns 422.
+            A replayed key with the same body returns the original result with
+            200 and writes nothing (DEC-015 §3).
+          schema:
+            type: string
+            minLength: 1
+          example: 3f0c9a1e-2b7d-4c55-9a51-0d8e7c1b2f64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionCommand'
+            examples:
+              resolve:
+                summary: Resolve with resolution information (FR-6.5)
+                value: { toStatus: Resolved, resolution: Replaced the faulty breaker in block C }
+              close:
+                summary: Close with a recorded reason (FR-6.6)
+                value: { toStatus: Closed, reason: Confirmed fixed with the requester }
+      responses:
+        '201':
+          description: Transition committed; one history entry written.
+          headers:
+            ETag:
+              description: The new version, e.g. "v4".
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransitionResult'
+        '200':
+          description: Idempotent replay of a previously committed transition. Nothing is written.
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransitionReplay'
+        '400':
+          description: Idempotency-Key missing or blank (IDEMPOTENCY_KEY_REQUIRED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: |
+            The role may not perform the operation (route guard), or the actor may
+            not act on this request (category authorisation, or a security-category
+            request without the Security Officer role) (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404':
+          description: Request not found (NOT_FOUND).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '412':
+          description: If-Match does not match the current version (PRECONDITION_FAILED). Re-read and retry deliberately.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: |
+            One of the following:
+            - a transition the model does not allow;
+            - a role that may not make this move;
+            - no resolution before Resolved (FR-6.5);
+            - no reason for Closed or Rejected (FR-6.6).
+            These return INVALID_TRANSITION. An Idempotency-Key reused with a
+            different body returns IDEMPOTENCY_CONFLICT.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '428':
+          description: If-Match missing or malformed (PRECONDITION_REQUIRED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '500':
+          description: Unexpected error. The body is generic; the detail is logged, never sent (R-05, CON-019).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: |
+        The session establishes `req.actor` server-side. Identity is never taken
+        from a header, query parameter or request body (review comment R-06).
+        The cookie name is a placeholder until authentication is implemented.
+  schemas:
+    Status:
+      type: string
+      description: The controlled status set (FR-6.1).
+      enum: [Received, Assigned, In Progress, On Hold, Resolved, Closed, Rejected]
+    TransitionCommand:
+      type: object
+      required: [toStatus]
+      properties:
+        toStatus:
+          $ref: '#/components/schemas/Status'
+        reason:
+          type: string
+          maxLength: 1000
+          description: Required when toStatus is Closed or Rejected (FR-6.6). Recorded as closure.reason and as the history entry body.
+        resolution:
+          type: string
+          maxLength: 2000
+          description: Resolution information for In Progress → Resolved (FR-6.5). Recorded as resolution.summary.
+    TransitionResult:
+      type: object
+      required: [requestId, fromStatus, toStatus, occurredAt, version, historyId]
+      properties:
+        requestId: { type: string }
+        fromStatus: { $ref: '#/components/schemas/Status' }
+        toStatus: { $ref: '#/components/schemas/Status' }
+        occurredAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1, description: The new version; also returned as the ETag. }
+        historyId: { type: string, description: The requestHistory entry written (FR-6.3). }
+        reporterId: { type: string }
+        categoryId: { type: string }
+        campusId: { type: string }
+        reference: { type: string, pattern: '^CC-\d{4}-\d{6}$' }
+        securityCategory: { type: boolean }
+    TransitionReplay:
+      type: object
+      required: [requestId, fromStatus, toStatus, occurredAt, version, historyId, replayed]
+      properties:
+        requestId: { type: string }
+        fromStatus: { $ref: '#/components/schemas/Status' }
+        toStatus: { $ref: '#/components/schemas/Status' }
+        occurredAt: { type: string, format: date-time }
+        version: { type: integer }
+        historyId: { type: string }
+        replayed: { type: boolean, const: true }
+    Problem:
+      type: object
+      description: RFC 9457 problem details.
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code:
+          type: string
+          enum: [IDEMPOTENCY_KEY_REQUIRED, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, PRECONDITION_FAILED,
+                 INVALID_TRANSITION, IDEMPOTENCY_CONFLICT, PRECONDITION_REQUIRED]
+        instance: { type: string }

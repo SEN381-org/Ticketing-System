@@ -1,0 +1,22 @@
+---
+title: "Module view — business capabilities and permitted interactions"
+---
+flowchart LR
+  IAM["Identity & Access<br/>FR group 1"]
+  REF["Reference Data<br/>FR group 9"]
+  REQ["Requests<br/>FR groups 2, 3, 4<br/>identifiable data — ASR-03"]
+  ASG["Assignment<br/>FR group 5"]
+  LC["Lifecycle & Work Record<br/>FR groups 6, 7"]
+  RPT["Reporting<br/>FR group 8<br/>aggregates only — ASR-03"]
+  NOT["Notifications<br/>SCP-004 · SCP-014 deferred"]
+
+  REF --> IAM
+  REQ --> IAM
+  REQ --> REF
+  ASG --> REQ
+  ASG --> IAM
+  LC --> REQ
+  LC --> IAM
+  RPT --> IAM
+  LC -.->|"request.status.changed — DEC-011"| RPT
+  LC -.->|"request.status.changed — DEC-011"| NOT

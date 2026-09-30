@@ -1,0 +1,68 @@
+# CivicConnect — continuous integration (issue #52)
+#
+# Runs on every pull request into dev or main, and on every push to dev.
+# Two jobs, both blocking a merge once set as required status checks:
+#   1. build-and-test — installs from the lockfile and runs the test suite on
+#      the runtime in package.json "engines" (Node 22). Makes the
+#      authorisation-guard route-table test (NFR-3.3, CON-019, DEC-012) a
+#      build gate rather than a test someone might remember to run. Also
+#      fails if a route or middleware file imports a model or repository
+#      directly (NFR-1.7, DEC-014, RSK-016).
+#   2. secret-scan — scans the full git history for committed credentials
+#      (NFR-3.5, Master Brief §9, CON-006).
+# A mature CI/CD pipeline is not an M2 requirement; this is stage 1 of the
+# staged adoption recorded in the team's Assignment 2 research.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test (Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 (matches package.json engines)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies from the lockfile
+        run: npm ci
+
+      - name: Run the test suite
+        run: npm test
+
+      - name: Layer boundary check — presentation must not import data access (NFR-1.7, RSK-016)
+        run: |
+          if grep -rnE "from ['\"](\.\./)+(models|repositories)/" src/routes src/middleware; then
+            echo "::error::A route or middleware file imports a model or repository directly. NFR-1.7 requires every dependency to cross exactly one layer boundary (PED §6A.5)."
+            exit 1
+          fi
+          echo "No presentation-to-data-access imports found."
+
+  secret-scan:
+    name: Secret scan (full history)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for committed secrets with Gitleaks
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:v8.18.4 \
+            detect --source /repo --redact --verbose

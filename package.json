@@ -1,0 +1,16 @@
+{
+  "name": "civicconnect",
+  "version": "0.1.0",
+  "description": "CivicConnect — Campus Service Request Management Platform",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.22.3",
+    "mongoose": "^8.24.4"
+  }
+}

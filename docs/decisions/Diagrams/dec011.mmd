@@ -1,0 +1,56 @@
+---
+title: "DEC-011 — Consequences of a request status transition"
+---
+flowchart TB
+
+  subgraph PRES["Presentation layer"]
+    CTRL["POST /api/v1/requests/{id}/transitions<br/>guard: requireOperation('request:transition')<br/>DEC-012 point 1 · DEC-015"]
+  end
+
+  subgraph APP["Application / service layer"]
+    SVC["StatusTransitionService<br/>before any write:<br/>idempotency replay check — DEC-015<br/>mayActOnRequest — DEC-012 point 2 (OI-15)<br/>version check — DEC-015 · DEC-016<br/>checkTransition — FR-6.2 · FR-6.4"]
+    EMIT(["requestEvents<br/>EventEmitter and the single<br/>subscription registry"])
+    NSUB["NotificationSubscriber<br/>status mapped through visibleStatusFor<br/>FR-3.4 · FR-3.5 · SCP-004"]
+    RSUB["ReportingProjectionSubscriber<br/>counts keyed by campus · category · status<br/>FR-8.1 · FR-8.2"]
+    FUT["NotificationDeliverySubscriber<br/>SCP-014 — deferred, not excluded"]
+  end
+
+  subgraph DATA["Data layer — MongoDB Atlas (DEC-002)"]
+    subgraph TX["DEC-016 — ONE TRANSACTION: both commit, or neither"]
+      REQ[("requests")]
+      HIST[("requestHistory<br/>append only — FR-6.7")]
+    end
+    NOTIF[("notifications")]
+    COUNTS[("reportingCounts")]
+    TRIG{{"Atlas database triggers<br/>auditRequests · auditHistory<br/>fire after commit, from the change stream<br/>NFR-1.9 · CON-015<br/>DEFINED in scripts/atlas/app — NOT YET DEPLOYED"}}
+    AUD[("auditLog<br/>eventually consistent — target ≤ 60 s")]
+  end
+
+  CTRL --> SVC
+  SVC -->|"1 · conditional update: status and version"| REQ
+  SVC -->|"2 · insert history entry — FR-6.3<br/>same transaction as step 1"| HIST
+  SVC -.->|"3 · publish request.status.changed<br/>after unitOfWork.run() resolves, outside its callback"| EMIT
+  EMIT -.-> NSUB
+  EMIT -.-> RSUB
+  EMIT -.-> FUT
+  NSUB --> NOTIF
+  RSUB --> COUNTS
+  TX -.->|"after commit"| TRIG
+  TRIG --> AUD
+
+  classDef future stroke-dasharray: 6 4,stroke:#8a94a0,color:#6b7280,fill:#fbfcfd
+  classDef trigger fill:#fdf3e3,stroke:#e0b350,stroke-width:2px,color:#22282e
+  classDef store fill:#edf2f7,stroke:#8aa4bd,color:#22282e
+  classDef svc fill:#ffffff,stroke:#14304f,stroke-width:1.5px,color:#14304f
+  classDef emitter fill:#eaf3fa,stroke:#1f6fb2,stroke-width:2px,color:#14304f
+
+  class FUT future
+  class TRIG trigger
+  class NOTIF,COUNTS,REQ,HIST,AUD store
+  class SVC,NSUB,RSUB,CTRL svc
+  class EMIT emitter
+
+  style PRES fill:#ffffff,stroke:#c7d3df,color:#5a6672
+  style APP fill:#fafcfe,stroke:#c7d3df,color:#5a6672
+  style DATA fill:#f6f8fa,stroke:#c7d3df,color:#5a6672
+  style TX fill:#eef6ee,stroke:#2f7d32,stroke-width:2px,color:#1d4d20
