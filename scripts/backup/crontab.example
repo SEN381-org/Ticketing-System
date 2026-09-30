@@ -1,0 +1,2 @@
+MAILTO=robertvdm13@gmail.com
+0 2,14 * * *  . /etc/civicconnect/backup.env && /opt/civicconnect/scripts/backup/civicconnect-backup.sh

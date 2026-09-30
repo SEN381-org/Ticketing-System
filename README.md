@@ -15,7 +15,7 @@ npm install
 npm test
 ```
 
-Node 20 or later. The test suite requires no database connection.
+Node >=22.0.0 (Node 22 is the minimum; Node 20 reached end-of-life on 30 April 2026). The test suite requires no database connection.
 
 ## What is implemented
 

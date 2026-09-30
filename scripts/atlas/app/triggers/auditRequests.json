@@ -1,0 +1,17 @@
+{
+  "type": "DATABASE",
+  "name": "auditRequests",
+  "function_name": "writeAuditLog",
+  "config": {
+    "service_name": "mongodb-atlas",
+    "database": "civicconnect",
+    "collection": "requests",
+    "operation_types": ["INSERT", "UPDATE", "REPLACE", "DELETE"],
+    "full_document": false,
+    "full_document_before_change": false,
+    "unordered": false,
+    "skip_catchup_events": false,
+    "match": {}
+  },
+  "disabled": false
+}
