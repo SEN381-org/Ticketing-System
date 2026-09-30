@@ -1003,7 +1003,7 @@ DEC-014; RSK-016 and RSK-017.
 | Project | CivicConnect |
 | Baseline type | M2 Architecture baseline (component of the Architecture, Technology & Initial Design Baseline) |
 | Version | PED v2.0 |
-| Date | |
+| Date | 30 September 2026 |
 | ASRs traced to stakeholder, constraint and risk evidence | <mark>YES</mark> / NO |
 | Alternatives and trade-offs recorded | <mark>YES</mark> / NO |
 | Diagrams distinguish logical layers from physical tiers | <mark>YES</mark> / NO |
