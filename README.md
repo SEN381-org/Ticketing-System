@@ -22,6 +22,8 @@ npm test
 ```
 
 Node 22 or later (`.nvmrc`). The test suite needs no database connection.
+CI installs with `npm ci` from `package-lock.json`, so commit the lockfile whenever a
+dependency changes.
 
 ## What is implemented
 
@@ -123,6 +125,18 @@ the system. That is a CON-007 exposure, not only an FR-6.6 gap.
 ## Structure
 
 ```
+.github/
+  workflows/ci.yml           CI: tests, layer boundary check, secret scan
+  pull_request_template.md   pre-filled pull request description
+docs/                        controlled artefacts (PED, registers, ADRs, API contract)
+  PED/PED/                   Project Engineering Document; older versions in Outdated/
+  architecture/              architecture diagrams (Mermaid) and the data baseline
+  decisions/                 Decision Log, ADRs, design diagrams
+  Requirements/              requirements registers and the RTM
+  risk/                      Risk Register and FEC Register
+  AI-Usage/                  AI Usage Register
+  api/openapi.yaml           API contract (DEC-015)
+scripts/                     operational scripts (backup, restore test, PROC-001, audit trigger)
 src/
   domain/          business rules and the authorisation rule set; no infrastructure
   models/          Mongoose schemas (data baseline §3)
@@ -134,3 +148,42 @@ src/
   routes/          Express routes (DEC-015)
 tests/             verification evidence referenced from the RTM
 ```
+
+`src/` is organised by layer. The architecture (PED §6A, DEC-014) divides the application
+into seven business modules that each span the layers; moving the files into module folders
+is tracked as issue #51. Until then, the layer rule below still applies.
+
+**Layer rule (PED §6A.5, NFR-1.7).** Dependencies point one way only:
+`routes/` and `middleware/` → `services/` → `repositories/` → `models/`. A route or middleware
+file never imports a model or repository directly. CI checks this on every pull request.
+
+## Contributing
+
+**Branches (DEC-008).** Create a branch from `dev` for each issue
+(for example `task/<name>-<issue>`). Open the pull request into `dev`. `dev` is merged into
+`main` only at a milestone baseline.
+
+**Pull requests.** The description is pre-filled from `.github/pull_request_template.md`.
+Fill in the traceability block (issue, requirement or scope IDs, decisions, risks, artefacts
+changed) and tick the checklist. Two approvals from members other than the author are
+required, and reviewers should say what they checked.
+
+**CI (`.github/workflows/ci.yml`).** Runs on every pull request into `dev` or `main` and on
+every push to `dev`. Both jobs are required status checks, so a red check blocks the merge.
+
+| Job | Checks | Why |
+|---|---|---|
+| Build and test (Node 22) | `npm ci`, `npm test`, then the layer boundary check | Keeps the authorisation and lifecycle tests passing (NFR-3.3, DEC-012) and the closed layers intact (NFR-1.7, DEC-014, RSK-016) |
+| Secret scan (full history) | Gitleaks over every commit | No credential is ever committed (NFR-3.5) |
+
+If the secret scan fails, do not just delete the file in a new commit: the secret is still
+in the history. Rotate the secret and ask the team how to clean the history.
+
+**Controlled documents.** Never edit a controlled document in place. Save a new version
+(for example `PED_v1.10.md`), move the previous one into that folder's `Outdated` folder, and
+add a row to the PED version history. `.0` versions are reserved for milestone baselines.
+
+**Secrets and local files.** Keep credentials in `.env`, which is git-ignored. Close Excel
+before committing so its `~$` lock files are not picked up.
+
+**AI use.** Record any AI assistance in the AI Usage Register (Master Brief §10).
