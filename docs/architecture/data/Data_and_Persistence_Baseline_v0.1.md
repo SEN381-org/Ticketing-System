@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Artefact** | Data and Persistence Baseline (PED §6B — introduced in the working draft PED v1.7 (`docs/PED/PED/PED_v1.7.md`) toward the v2.0 baseline) |
+| **Artefact** | Data and Persistence Baseline (PED §6B — introduced in the working draft PED v1.7 (now `docs/PED/PED/PED_v1.8.md`) toward the v2.0 baseline) |
 | **Version** | 0.1 (draft for review) |
 | **Author** | Robert van der Merwe (Member B) |
 | **Date** | 29 September 2026 |
