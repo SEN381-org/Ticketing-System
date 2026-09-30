@@ -1,0 +1,34 @@
+Negative verification of the route-table assertion
+Review comments R-01 (original) and N-5 (re-capture on the corrected tree)
+
+Run on : 2026-09-30 13:43 UTC
+Node   : v22.22.2
+Branch : fix/slice-review-corrections
+
+SCOPE OF THE COUNTS BELOW
+  This run covers the six test files authored in PRs #60 and #62:
+    requestStatus, statusTransitionService, authorisationGuard,
+    errorHandler, requestRepository, requestRoutes.
+  tests/models.test.js (16 tests, PR #61) is Robert's and is not in this
+  tree, so the totals here are lower than a run on the merged branch.
+
+1. An UNGUARDED route was registered in src/routes/requestRoutes.js:
+     router.get('/:id/history', async (req, res) => res.json([]));
+
+2. Result of `node --test tests/authorisationGuard.test.js`:
+
+     not ok 1 - every non-public route carries the composed guard — NFR-3.3, CON-019
+       error: 'GET /:id/history is registered without the authorisation guard'
+     not ok 2 - the transition route is the DEC-015 resource, not a field update — R-03
+     # tests 11
+     # pass 9
+     # fail 2
+
+3. The unguarded route was removed and the full suite re-run:
+
+     # tests 64
+     # pass 64
+     # fail 0
+
+The assertion detects the condition it tests. The claim in PED 7.5 is
+therefore backed by evidence rather than assumed.
