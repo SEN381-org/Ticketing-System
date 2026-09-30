@@ -1,5 +1,5 @@
 /**
- * Verification evidence for FR-6.7, DEC-011, DEC-014 and DEC-015.
+ * Verification evidence for FR-6.7, DEC-011, DEC-015 and DEC-016.
  * Referenced from PED §7.5 and the RTM verification column for FR-6.2, FR-6.3,
  * FR-6.4, FR-6.7, NFR-1.10.
  *
@@ -69,7 +69,7 @@ test('a permitted transition writes exactly one history entry', async () => {
 
 test('the entry records the acting user, both statuses and the version it produced — AC-FR-6.7', async () => {
   const { service, appended } = harness();
-  await service.transition('req-1', STATUS.IN_PROGRESS, ACTOR, { expectedVersion: 3, note: 'starting' });
+  await service.transition('req-1', STATUS.IN_PROGRESS, ACTOR, { expectedVersion: 3, reason: 'starting' });
 
   const e = appended[0];
   assert.equal(e.changeType, 'status');
@@ -82,7 +82,7 @@ test('the entry records the acting user, both statuses and the version it produc
   assert.equal(e.occurredAt, AT);
 });
 
-test('the status change and the history entry are one unit of work — DEC-015', async () => {
+test('the status change and the history entry are one unit of work — DEC-016', async () => {
   const { service, calls } = harness();
   let published = false;
   subscribe(EVENTS.REQUEST_STATUS_CHANGED, 'probe', 'test', () => { published = true; });
@@ -123,7 +123,7 @@ test('a failed history append publishes nothing — R-15', async () => {
   assert.equal(published, false, 'no event may be published for a transition that did not commit');
 });
 
-test('a stale version is refused before any write — DEC-014 / 412', async () => {
+test('a stale version is refused before any write — DEC-015 / 412', async () => {
   const { service, calls } = harness({ version: 5 });
   await assert.rejects(
     () => service.transition('req-1', STATUS.IN_PROGRESS, ACTOR, { expectedVersion: 3 }),
@@ -163,7 +163,7 @@ test('a security-category request is refused to a non Security Officer — FR-1.
   assert.equal(result.toStatus, STATUS.IN_PROGRESS);
 });
 
-test('a replayed idempotency key returns the original result and writes nothing — DEC-014', async () => {
+test('a replayed idempotency key returns the original result and writes nothing — DEC-015', async () => {
   const prior = { _id: 'hist-1', requestId: 'req-1', fromStatus: STATUS.ASSIGNED,
                   toStatus: STATUS.IN_PROGRESS, occurredAt: AT, requestVersion: 4,
                   idempotencyFingerprint: 'fp-1' };
@@ -176,7 +176,7 @@ test('a replayed idempotency key returns the original result and writes nothing 
   assert.deepEqual(calls, [], 'a retry must not write a second immutable history entry');
 });
 
-test('the same key with a different body is refused — DEC-014 / 422', async () => {
+test('the same key with a different body is refused — DEC-015 / 422', async () => {
   const prior = { idempotencyFingerprint: 'fp-1' };
   const { service } = harness({ prior });
   await assert.rejects(
@@ -211,6 +211,51 @@ test('the event payload carries what the subscribers need — FR-3.5, FR-8.2', a
   for (const field of ['campusId', 'categoryId', 'securityCategory', 'reference', 'historyId']) {
     assert.ok(field in payload, `the payload must carry '${field}'`);
   }
+});
+
+test('a Security Officer can close a resolved security-category request — B-1', async () => {
+  const { service, appended } = harness({ status: STATUS.RESOLVED, securityCategory: true });
+  const officer = { id: 'so-1', roles: [ROLE.SECURITY_OFFICER], categoryAuthorisations: [CAT] };
+
+  const result = await service.transition('req-1', STATUS.CLOSED, officer,
+    { expectedVersion: 3, reason: 'Investigation complete' });
+
+  assert.equal(result.toStatus, STATUS.CLOSED);
+  assert.equal(appended[0].body, 'Investigation complete');
+  assert.equal(appended[0].actorRole, ROLE.SECURITY_OFFICER);
+});
+
+test('a Coordinator cannot close a security-category request — B-1, FR-1.5', async () => {
+  const { service, calls } = harness({ status: STATUS.RESOLVED, securityCategory: true });
+  const coordinator = { id: 'c-1', roles: [ROLE.COORDINATOR], categoryAuthorisations: [CAT] };
+
+  await assert.rejects(
+    () => service.transition('req-1', STATUS.CLOSED, coordinator,
+      { expectedVersion: 3, reason: 'closing' }),
+    AuthorisationError,
+  );
+  assert.deepEqual(calls, []);
+});
+
+test('closing records the reason and the closure clock — FR-6.6, NFR-4.2', async () => {
+  const setSeen = [];
+  const requests = {
+    findById: async () => ({ _id: 'r', status: STATUS.RESOLVED, version: 1, categoryId: CAT,
+                             campusId: 'c', requesterId: 'u', reference: 'CC-2026-000001',
+                             securityCategory: false, resolution: { summary: 'fixed' } }),
+    applyChange: async (_id, _v, $set) => { setSeen.push($set); return { version: 2 }; },
+  };
+  const history = { append: async () => ({ _id: 'h' }), findByIdempotencyKey: async () => null };
+  const service = createStatusTransitionService({
+    requests, history, unitOfWork: { run: (w) => w('s') }, clock: () => AT,
+  });
+
+  await service.transition('r', STATUS.CLOSED, { id: 'm', roles: [ROLE.MANAGER],
+    categoryAuthorisations: [CAT] }, { expectedVersion: 1, reason: 'Resolved to satisfaction' });
+
+  assert.equal(setSeen[0]['closure.reason'], 'Resolved to satisfaction');
+  assert.equal(setSeen[0]['closure.closedAt'], AT,
+    'closure.closedAt starts the NFR-4.2 retention clock PROC-001 selects on');
 });
 
 test('the consequences of an event are enumerable from one registry — DEC-011', async () => {

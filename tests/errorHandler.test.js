@@ -1,5 +1,5 @@
 /**
- * Verification evidence for DEC-014 problem details and the CON-019 leak.
+ * Verification evidence for DEC-015 problem details and the CON-019 leak.
  * Referenced from the RTM verification column for NFR-3.3, CON-019.
  *
  * Review comment R-05: an unrecognised error previously fell through to
@@ -25,7 +25,7 @@ function capture(error, { originalUrl = '/api/v1/requests/1/transitions' } = {})
   return { ...out, logged };
 }
 
-test('a known error becomes RFC 9457 problem details — DEC-014', () => {
+test('a known error becomes RFC 9457 problem details — DEC-015', () => {
   const r = capture(new AuthorisationError());
   assert.equal(r.status, 403);
   assert.equal(r.contentType, 'application/problem+json');
@@ -34,7 +34,7 @@ test('a known error becomes RFC 9457 problem details — DEC-014', () => {
   assert.equal(r.body.instance, '/api/v1/requests/1/transitions');
 });
 
-test('a precondition failure maps to 412 — DEC-014 / DEC-015', () => {
+test('a precondition failure maps to 412 — DEC-015 / DEC-016', () => {
   assert.equal(capture(new PreconditionFailedError('req-1', 3)).status, 412);
 });
 

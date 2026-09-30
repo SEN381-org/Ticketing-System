@@ -1,7 +1,7 @@
 /**
  * Persistence access for request history.
  *
- * Traces to: FR-3.3, FR-6.3, FR-6.7, FR-7.4, AC-FR-6.7, DEC-014, DEC-015,
+ * Traces to: FR-3.3, FR-6.3, FR-6.7, FR-7.4, AC-FR-6.7, DEC-015, DEC-016,
  *            constraint DB-01.
  *
  * This is layer 1 of the three-layer append-only enforcement in the data
@@ -31,7 +31,7 @@ export const historyRepository = {
       .session(session ?? null)
       .lean(),
 
-  /** DEC-014 — replay detection before any write is attempted. */
+  /** DEC-015 — replay detection before any write is attempted. */
   findByIdempotencyKey: (actorId, idempotencyKey) =>
     RequestHistory.findOne({ actorId, idempotencyKey }).lean(),
 };

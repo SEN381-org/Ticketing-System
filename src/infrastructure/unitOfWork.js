@@ -1,5 +1,5 @@
 /**
- * Unit of work — DEC-015 transaction boundary.
+ * Unit of work — DEC-016 transaction boundary.
  *
  * Traces to: CON-017, NFR-1.10, AC-NFR-1.10 v0.3 (CR-001), FR-6.3, FR-6.7.
  *

@@ -47,7 +47,7 @@ test('every non-public route carries the composed guard — NFR-3.3, CON-019', (
   }
 });
 
-test('the transition route is the DEC-014 resource, not a field update — R-03', () => {
+test('the transition route is the DEC-015 resource, not a field update — R-03', () => {
   const routes = routeTable(createRequestRouter({ statusTransitionService: {} }));
   assert.deepEqual(routes.map((r) => `${r.method} ${r.path}`), ['POST /:id/transitions']);
 });

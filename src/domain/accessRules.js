@@ -69,7 +69,7 @@ function categoryAuthorised(request, actor) {
  * Security-category requests are restricted to the Security Officer role. FR-1.5
  * restricts the description, comment history and action history of such a
  * request to that role, and a staff member who may not read the description
- * cannot meaningfully act on the request. That inference is recorded as OI-13
+ * cannot meaningfully act on the request. That inference is recorded as OI-15
  * for confirmation rather than assumed silently.
  */
 export function mayActOnRequest(request, actor) {
@@ -123,3 +123,18 @@ export function visibleStatusFor(status, securityCategory, actor) {
 }
 
 export const STAFF_ROLES = STAFF;
+
+/**
+ * The role recorded against a write. FR-1.2 permits a user to hold several, and
+ * the audit record carries one.
+ *
+ * Review comment B-2: `actor.role` (singular) was read in the repository and is
+ * always undefined, so Mongoose stripped `lastActorRole` from the update and
+ * every audit row written by the Atlas trigger carried `actorRole: null`. The
+ * CON-015 / NFR-1.9 attribution the trigger exists for was silently absent.
+ */
+export function primaryRole(actor) {
+  const roles = held(actor);
+  if (roles.length === 0) throw new Error('An actor must hold at least one role (FR-1.2)');
+  return roles[0];
+}

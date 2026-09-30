@@ -3,11 +3,11 @@
  * status or write a history entry.
  *
  * Traces to: FR-6.2, FR-6.3, FR-6.4, FR-6.5, FR-6.6, FR-6.7, AC-FR-6.7,
- *            SCP-008, DEC-011, DEC-012 (enforcement point 2), DEC-014, DEC-015.
+ *            SCP-008, DEC-011, DEC-012 (enforcement point 2), DEC-015, DEC-016.
  *
  * Ordering, and where DEC-011 draws its line:
  *
- *   inside the transaction (DEC-015)
+ *   inside the transaction (DEC-016)
  *     1. commit the status change, conditional on the version
  *     2. append the history entry, carrying the version it produced
  *   after commit (DEC-011)
@@ -29,7 +29,7 @@
  */
 
 import { checkTransition, STATUS } from '../domain/requestStatus.js';
-import { mayActOnRequest } from '../domain/accessRules.js';
+import { mayActOnRequest, primaryRole } from '../domain/accessRules.js';
 import { EVENTS, publish } from '../events/requestEvents.js';
 import {
   AuthorisationError, NotFoundError, PreconditionFailedError,
@@ -41,14 +41,14 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
    * @param {string} requestId
    * @param {string} toStatus
    * @param {{id: string, roles: string[], categoryAuthorisations?: string[]}} actor
-   * @param {{expectedVersion: number, note?: string, resolutionSummary?: string,
-   *          idempotencyKey?: string, fingerprint?: string}} command
+   * @param {{expectedVersion: number, reason?: string, resolutionSummary?: string,
+   *          idempotencyKey: string, fingerprint: string}} command
    */
   async function transition(requestId, toStatus, actor, command = {}) {
-    const { expectedVersion, note = null, resolutionSummary = null,
+    const { expectedVersion, reason = null, resolutionSummary = null,
             idempotencyKey = null, fingerprint = null } = command;
 
-    // DEC-014 — replay detection before anything is attempted. A client retry
+    // DEC-015 — replay detection before anything is attempted. A client retry
     // after a timeout must not write a second immutable history entry.
     if (idempotencyKey) {
       const prior = await history.findByIdempotencyKey(actor.id, idempotencyKey);
@@ -70,14 +70,20 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
         throw new AuthorisationError('Actor may not act on this request');
       }
 
-      // DEC-014 / DEC-015 — optimistic concurrency, before any validation work.
+      // DEC-015 / DEC-016 — optimistic concurrency, before any validation work.
       if (request.version !== expectedVersion) {
         throw new PreconditionFailedError(requestId, expectedVersion);
       }
 
       const verdict = checkTransition(request.status, toStatus, actor.roles, {
-        hasResolution: Boolean(resolutionSummary) || Boolean(request.resolution?.summary),
-        hasReason:     Boolean(note),
+        hasResolution:    Boolean(resolutionSummary) || Boolean(request.resolution?.summary),
+        hasReason:        Boolean(reason),
+        // FR-6.6 disposition depends on the request, not only on the role (B-1):
+        // only a Security Officer may act on a security-category request, so
+        // only a Security Officer can close or reject one. Without this, no role
+        // could dispose of a security request, it would never reach
+        // closure.closedAt, and PROC-001 would never anonymise it (CON-007).
+        securityCategory: Boolean(request.securityCategory),
       });
       if (!verdict.allowed) throw new TransitionError(verdict.reason);
 
@@ -88,7 +94,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
       const { version } = await requests.applyChange(
         requestId, expectedVersion,
         { status: toStatus, statusChangedAt: occurredAt,
-          ...fieldsFor(toStatus, actor, occurredAt, note, resolutionSummary) },
+          ...fieldsFor(toStatus, actor, occurredAt, reason, resolutionSummary) },
         actor, { session },
       );
 
@@ -100,7 +106,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
         changeType:     'status',
         fromStatus,
         toStatus,
-        body:           note,
+        body:           reason,
         actorId:        actor.id,
         actorRole:      primaryRole(actor),
         occurredAt,
@@ -128,21 +134,16 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
 }
 
 /** FR-6.5 resolution fields and FR-6.6 closure fields, set by the transition that needs them. */
-function fieldsFor(toStatus, actor, at, note, resolutionSummary) {
+function fieldsFor(toStatus, actor, at, reason, resolutionSummary) {
   if (toStatus === STATUS.RESOLVED && resolutionSummary) {
     return { 'resolution.summary': resolutionSummary,
              'resolution.recordedAt': at,
              'resolution.recordedById': actor.id };
   }
   if (toStatus === STATUS.CLOSED || toStatus === STATUS.REJECTED) {
-    return { 'closure.reason': note, 'closure.closedAt': at, 'closure.closedById': actor.id };
+    return { 'closure.reason': reason, 'closure.closedAt': at, 'closure.closedById': actor.id };
   }
   return {};
-}
-
-/** The role recorded against the entry. FR-1.2 permits more than one. */
-function primaryRole(actor) {
-  return Array.isArray(actor.roles) ? actor.roles[0] : actor.roles;
 }
 
 function replayOf(entry) {

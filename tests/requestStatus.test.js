@@ -11,7 +11,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { STATUS, ROLE, TRANSITIONS, checkTransition, TRANSITION_ROLES }
+import { STATUS, ROLE, TRANSITIONS, checkTransition, TRANSITION_ROLES, dispositionRolesFor }
   from '../src/domain/requestStatus.js';
 
 const REASON = { hasReason: true };
@@ -44,11 +44,27 @@ test('every status in the transition model is a baselined status value', () => {
   }
 });
 
-test('every status is reachable or is the entry point — FR-6.2', () => {
-  const reachable = new Set([STATUS.RECEIVED]);
+test('every status is reachable, or reached through another resource — FR-6.2', () => {
+  // Assigned is reached through POST /requests/{id}/assignments (DEC-015), not
+  // through /transitions, so that a request can never be Assigned with no
+  // assignee (review comment N-1). It is excluded here deliberately and by name,
+  // not by loosening the assertion.
+  const REACHED_ELSEWHERE = [STATUS.ASSIGNED];
+
+  const reachable = new Set([STATUS.RECEIVED, ...REACHED_ELSEWHERE]);
   for (const moves of Object.values(TRANSITIONS)) for (const m of moves) reachable.add(m.to);
+
   for (const status of Object.values(STATUS)) {
-    assert.ok(reachable.has(status), `'${status}' is in FR-6.1 but unreachable in the model`);
+    assert.ok(reachable.has(status), `'${status}' is in FR-6.1 but unreachable`);
+  }
+});
+
+test('Assigned is not reachable through the transition model — N-1', () => {
+  for (const moves of Object.values(TRANSITIONS)) {
+    for (const move of moves) {
+      assert.notEqual(move.to, STATUS.ASSIGNED,
+        'Assigned must be set by the assignment sub-resource, which records the assignee');
+    }
   }
 });
 
@@ -58,7 +74,40 @@ test('Closed and Rejected are terminal', () => {
 });
 
 test('a permitted move by a permitted role is allowed — FR-6.2', () => {
-  const v = checkTransition(STATUS.RECEIVED, STATUS.ASSIGNED, [ROLE.COORDINATOR]);
+  const v = checkTransition(STATUS.ASSIGNED, STATUS.IN_PROGRESS, [ROLE.TECHNICIAN]);
+  assert.equal(v.allowed, true);
+});
+
+test('a Security Officer may close a resolved security-category request — B-1, FR-6.6', () => {
+  const v = checkTransition(STATUS.RESOLVED, STATUS.CLOSED, [ROLE.SECURITY_OFFICER],
+    { hasReason: true, securityCategory: true });
+  assert.equal(v.allowed, true,
+    'without this no role could dispose of a security request, so it would never '
+    + 'reach closure.closedAt and PROC-001 would never anonymise it (CON-007)');
+});
+
+test('a Security Officer is not a general disposition role — B-1', () => {
+  const v = checkTransition(STATUS.RESOLVED, STATUS.CLOSED, [ROLE.SECURITY_OFFICER],
+    { hasReason: true, securityCategory: false });
+  assert.equal(v.allowed, false, 'the widening applies only to security-category requests');
+});
+
+test('every security-category disposition has a role that can perform it — B-1', () => {
+  const roles = dispositionRolesFor({ securityCategory: true });
+  assert.ok(roles.includes(ROLE.SECURITY_OFFICER));
+
+  for (const to of [STATUS.CLOSED, STATUS.REJECTED]) {
+    const from = Object.entries(TRANSITIONS)
+      .find(([, moves]) => moves.some((m) => m.to === to))[0];
+    const v = checkTransition(from, to, [ROLE.SECURITY_OFFICER],
+      { hasReason: true, hasResolution: true, securityCategory: true });
+    assert.equal(v.allowed, true, `no role could move a security request to '${to}'`);
+  }
+});
+
+test('In Progress may be rejected directly — N-2', () => {
+  const v = checkTransition(STATUS.IN_PROGRESS, STATUS.REJECTED, [ROLE.COORDINATOR],
+    { hasReason: true });
   assert.equal(v.allowed, true);
 });
 

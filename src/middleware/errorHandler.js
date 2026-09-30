@@ -1,7 +1,7 @@
 /**
- * RFC 9457 problem-details error handler — DEC-014.
+ * RFC 9457 problem-details error handler — DEC-015.
  *
- * Traces to: NFR-3.3, CON-019, DEC-014.
+ * Traces to: NFR-3.3, CON-019, DEC-015.
  *
  * Review comment R-05: previously the route returned `{ error: message }` and
  * passed anything unrecognised to Express's default handler, which serves an
