@@ -20,15 +20,15 @@ and reply per item: *fixed in <commit>*, *disagree because …*, or *raised as C
 | R-01 | BLOCKER | Router and guard committed under `tests/` | **Fixed on `task/M2-PersonB`**: moved to `src/routes/` and `src/middleware/`; `npm test` 23/23 pass |
 | R-02 | MAJOR | No CI check to stop a red merge | Open (Christiaan's CI work) |
 | R-03 | MAJOR | `PATCH /:id/status` vs DEC-014 | Open: Ethan |
-| R-04 | BLOCKER-traceability | Roles ≠ FR-1.2 | Open: Ethan |
+| R-04 | BLOCKER-traceability | Roles ≠ FR-1.2 | **Partly fixed (models)**: `ROLE` in `src/models/_shared.js`, `User`/`Role` models use FR-1.2. Remaining for Ethan: `authorise.js`, `requestStatus.js`, `statusTransitionService.js`, tests |
 | R-05 | MINOR | Error body / default Express error handler | Open: Ethan |
 | R-06 | Q | Source of `req.actor` | Open: Ethan to answer |
-| R-07 | BLOCKER-traceability | Status values ≠ FR-6.1 | Open: Ethan |
-| R-08 | BLOCKER-traceability | Mandatory fields ≠ FR-2.2 | Open: Ethan |
-| R-09 | MAJOR | No version field / optimistic concurrency | Open: Ethan |
-| R-10 | MAJOR | Missing baseline fields (reference, campusId, closedAt; departmentId) | Open: Ethan |
-| R-11 | MAJOR | Append-only guard bypass (`bulkWrite`, `Model.collection`) | Open: Ethan (hook); Robert (Atlas role) |
-| R-12 | MINOR | History index / fields | Open: Ethan |
+| R-07 | BLOCKER-traceability | Status values ≠ FR-6.1 | **Partly fixed (models)**: `Request`/`RequestHistory` enums use FR-6.1 via `src/models/_shared.js`. Remaining for Ethan: `src/domain/requestStatus.js`, transition table, `tests/requestStatus.test.js`. **Until then, the domain and the model disagree: merge dependency** |
+| R-08 | BLOCKER-traceability | Mandatory fields ≠ FR-2.2 | **Fixed (model)**: `title` removed, `location` required, `categoryId` reference; verified by `tests/models.test.js` |
+| R-09 | MAJOR | No version field / optimistic concurrency | **Model field added** (`version`, ETag). The conditional update is R-13 (Ethan) |
+| R-10 | MAJOR | Missing baseline fields (reference, campusId, closedAt; departmentId) | **Fixed in model**: `reference`, `campusId`, `closure.closedAt`, `immutable` fields added; `departmentId` removed. Remaining for Ethan: `statusTransitionService.mayActOn` and the event payload still use `departmentId`. **Against a real database, every non-admin transition would be refused until they move to category authorisation: merge dependency** |
+| R-11 | MAJOR | Append-only guard bypass (`bulkWrite`, `Model.collection`) | **Layer 2 fixed**: `pre('bulkWrite')` hook added; six mutation paths asserted in `tests/models.test.js`. Layer 3 (Atlas role against `Model.collection`): Robert, verified at M3 |
+| R-12 | MINOR | History index / fields | **Fixed (model)**: `requestVersion`, unique `{requestId, requestVersion}`, idempotency fields, full `changeType` set, `campusId`. Remaining for Ethan: `historyRepository.listForRequest` should sort by `requestVersion` |
 | R-13 | MAJOR | Unconditional update, result ignored | Open: Ethan |
 | R-14 | MINOR | Repositories cannot join a transaction | Open: Ethan |
 | R-15 | MAJOR | Status change + history not atomic | Open: Ethan (DEC-015) |
@@ -41,6 +41,8 @@ and reply per item: *fixed in <commit>*, *disagree because …*, or *raised as C
 | R-22 | Q | `mayActOn` and requesters | Open: Ethan to answer |
 
 ---
+
+> **Update 30/09/2026:** `src/models/` has been aligned to the data baseline by Robert (the model side of R-04, R-07 to R-12), with `tests/models.test.js` as evidence (suite 39/39). The remaining work is in the domain, service, repositories and routes; see the status table.
 
 ## A. Code that contradicts baselined requirements (fix first)
 

@@ -46,7 +46,7 @@ early enough that the *next* run always falls inside R:
 | Collection | Nulled (personal, purpose A) | Kept (non-identifying, aggregates) |
 |---|---|---|
 | `requests` | `description`, `location`, `requesterId`, `submittedById`, `assigneeId`, `resolution.summary`, `resolution.recordedById`, `closure.reason`, `closure.closedById` (the single list `REQUEST_PERSONAL_FIELDS`) | `_id`, `reference`, `campusId`, `categoryId`, `securityCategory`, `status`, `submittedAt`, `assignedAt`, `statusChangedAt`, `closure.closedAt`, `dueAt`, `version` (+1), `anonymisedAt` |
-| `requestHistory` | `body`, `actorId` (`HISTORY_PERSONAL_FIELDS`) | `changeType`, `fromStatus`, `toStatus`, `actorRole`, `occurredAt`, `requestVersion`, `idempotencyKey` |
+| `requestHistory` | `body`, `actorId`, `fromAssigneeId`, `toAssigneeId` (`HISTORY_PERSONAL_FIELDS`) | `changeType`, `fromStatus`, `toStatus`, `actorRole`, `occurredAt`, `requestVersion`, `idempotencyKey` |
 | `notifications` | whole documents deleted (normally already removed by the 30-day TTL) | – |
 | `auditLog` | untouched: purpose B, 90 days, contains no purpose-A values (DEC-016 M-1) | – |
 

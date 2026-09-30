@@ -21,11 +21,12 @@ Node >=22.0.0 (Node 22 is the minimum; Node 20 reached end-of-life on 30 April 2
 
 | Requirement | Where | Verified by |
 |---|---|---|
-| FR-6.1 — status values | `src/domain/requestStatus.js` | `statusTransitionService.test.js` |
+| FR-6.1 — status values | `src/domain/requestStatus.js` (pre-baseline values, correction R-07 pending); `src/models/_shared.js` (baseline values) | `statusTransitionService.test.js`; `models.test.js` |
 | FR-6.2 — controlled transitions | `src/domain/requestStatus.js`, `src/services/statusTransitionService.js` | `statusTransitionService.test.js` |
 | FR-6.3 — a history entry per change | `src/services/statusTransitionService.js` | `statusTransitionService.test.js` |
 | FR-6.4 — the acting role is validated | `src/domain/requestStatus.js` | `statusTransitionService.test.js` |
-| FR-6.7 — immutable history | `src/models/RequestHistory.js`, `src/repositories/historyRepository.js` | `statusTransitionService.test.js`; database-level enforcement verified at M3 |
+| FR-6.7 — immutable history | `src/models/RequestHistory.js`, `src/repositories/historyRepository.js` | `statusTransitionService.test.js`; `models.test.js` (six mutation paths refused, incl. `bulkWrite`); database-level enforcement (Atlas role) verified at M3 |
+| FR-2.2, FR-1.2, SCP-019 — mandatory fields, role set, campus scoping | `src/models/Request.js`, `src/models/User.js`, `src/models/_shared.js` | `models.test.js` |
 | FR-1.3, NFR-3.3 — server-side authorisation at every entry point | `src/middleware/authorise.js`, `src/routes/requestRoutes.js` | `authorisationGuard.test.js` |
 
 ## How the design decisions appear in the code
@@ -95,4 +96,8 @@ src/
   middleware/      authorisation guard (DEC-012)
   routes/          Express routes
 tests/             verification evidence referenced from the RTM
+scripts/           backup/restore, PROC-001 anonymisation, Atlas trigger configuration (see scripts/README.md)
 ```
+
+The data model is defined in `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`; `src/models/` implements it.
+Known backend corrections are tracked in `docs/M2_BACKEND_CORRECTIONS.md`.

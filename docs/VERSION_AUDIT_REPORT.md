@@ -83,12 +83,19 @@ working tree or the git history.*
 | ADRs DEC-003, DEC-010, DEC-014, DEC-015, DEC-016 | `docs/decisions/ADR/DEC-0xx_*_v0.1.md` | – (new) | ✔ |
 | Change requests CR-001 to CR-004 | `docs/change/CR-00x_*_v0.1.md` | – (new) | ✔ |
 | PROC-001 | `docs/operations/PROC-001_Manual_Anonymisation_v0.1.md` | – (new) | ✔ |
+| AI Usage Register | `docs/AI-Usage/AI Usage Register/AI Usage Register v0.5.xlsx` | v0.4 → `AI Usage Register/Oudated/` | ✔ ("Issues found" column added per Master Brief s.10.1) |
+| Mongoose models | `src/models/*.js` (code; versioned by git) | – | n/a; aligned to Data Baseline v0.1, evidenced by `tests/models.test.js` |
 | Scripts | `scripts/` (unversioned code; versioned by git) | – (new) | n/a |
 
 The outdated-directory spelling follows each folder's existing convention (`Outdated` or
 `Oudated`). No second, differently spelled directory was created.
 
 ## 4. Pre-existing inconsistencies found, not changed
+
+*Also noted:* the Excel owner-lock file `docs/AI-Usage/AI Usage Register/~$AI Usage Register v0.4.xlsx` is tracked in git.
+It is a temporary file created by Excel, not an artefact. It was left in place by this change set and should be removed with
+`git rm --cached` plus a `.gitignore` entry for `~$*` in a housekeeping change.
+
 
 Recorded for configuration status accounting only. These are archived files, and editing
 them would break Rule 3.

@@ -101,15 +101,15 @@ export const ROLE = Object.freeze({
 });
 
 /** SCP-019 — every collection is campus-scoped from the first document. */
-export const campusRef = {
-  type: Schema.Types.ObjectId, ref: 'Campus', required: true, immutable: true, index: false,
-};
+export const campusRef = () => ({
+  type: Schema.Types.ObjectId, ref: 'Campus', required: true, immutable: true,
+});   // a function, so each schema gets its own definition object
 
 /** Actor recorded on every write so the Atlas trigger can attribute it (CON-015, SCP-008). */
-export const lastActor = {
+export const lastActor = () => ({
   lastActorId:   { type: Schema.Types.ObjectId, ref: 'User', default: null },
   lastActorRole: { type: String, default: null },
-};
+});
 ```
 
 ### 3.2 `requests` — `src/models/Request.js`
@@ -129,7 +129,7 @@ const notAnonymised = function () { return this.anonymisedAt == null; };
 
 const requestSchema = new Schema(
   {
-    campusId:    campusRef,
+    campusId:    campusRef(),
     // FR-2.6 — unique, immutable, displayed on submission. Format CC-<yyyy>-<6-digit seq>.
     reference:   { type: String, required: true, immutable: true, match: /^CC-\d{4}-\d{6}$/ },
 
@@ -176,7 +176,7 @@ const requestSchema = new Schema(
     // NFR-4.2 / PROC-001
     anonymisedAt: { type: Date, default: null },
 
-    ...lastActor,
+    ...lastActor(),
   },
   { collection: 'requests', versionKey: false, strict: 'throw', timestamps: { createdAt: false, updatedAt: 'updatedAt' } },
 );
@@ -217,11 +217,11 @@ import mongoose from 'mongoose';
 import { STATUS, campusRef } from './_shared.js';
 const { Schema } = mongoose;
 
-export const HISTORY_PERSONAL_FIELDS = Object.freeze(['body', 'actorId']);   // nulled only by PROC-001
+export const HISTORY_PERSONAL_FIELDS = Object.freeze(['body', 'actorId', 'fromAssigneeId', 'toAssigneeId']);   // nulled only by PROC-001
 
 const requestHistorySchema = new Schema(
   {
-    campusId:  campusRef,                                                               // SCP-019 (required by this baseline)
+    campusId:  campusRef(),                                                               // SCP-019 (required by this baseline)
     requestId: { type: Schema.Types.ObjectId, ref: 'Request', required: true, immutable: true },
 
     // The request version this entry PRODUCED. Unique per request, so the database itself
@@ -237,8 +237,8 @@ const requestHistorySchema = new Schema(
     },
     fromStatus:     { type: String, enum: [...Object.values(STATUS), null], default: null, immutable: true },
     toStatus:       { type: String, enum: [...Object.values(STATUS), null], default: null, immutable: true },
-    fromAssigneeId: { type: Schema.Types.ObjectId, ref: 'User', default: null, immutable: true },
-    toAssigneeId:   { type: Schema.Types.ObjectId, ref: 'User', default: null, immutable: true },
+    fromAssigneeId: { type: Schema.Types.ObjectId, ref: 'User', default: null },   // staff identifiers: nulled by PROC-001
+    toAssigneeId:   { type: Schema.Types.ObjectId, ref: 'User', default: null },
     body:           { type: String, maxlength: 5000, default: null },    // comment/action/detail/reason text
 
     actorId:    { type: Schema.Types.ObjectId, ref: 'User', default: null }, // required at insert (see pre-validate)
@@ -292,7 +292,7 @@ export default mongoose.models.RequestHistory || mongoose.model('RequestHistory'
 ```js
 const notificationSchema = new Schema(
   {
-    campusId:  campusRef,
+    campusId:  campusRef(),
     userId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
     requestId: { type: Schema.Types.ObjectId, ref: 'Request', required: true },
     requestReference: { type: String, required: true },          // FR-3.4 "identifying the request"
@@ -316,7 +316,7 @@ notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 
 ```js
 const reportingCountSchema = new Schema(
   {
-    campusId:   campusRef,
+    campusId:   campusRef(),
     categoryId: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
     status:     { type: String, required: true, enum: Object.values(STATUS) },
     count:      { type: Number, required: true, default: 0, min: 0 },
@@ -444,7 +444,7 @@ roleSchema.index({ code: 1 }, { unique: true });
 
 // Group.js — FR-1.6 / CON-019 user grouping
 const groupSchema = new Schema({
-  campusId:    campusRef,
+  campusId:    campusRef(),
   name:        { type: String, required: true, maxlength: 100 },
   permissions: { type: [String], default: [] },
   categoryAuthorisations: [{ type: Schema.Types.ObjectId, ref: 'Category' }],
@@ -454,11 +454,14 @@ groupSchema.index({ campusId: 1, name: 1 }, { unique: true });
 
 // User.js
 const userSchema = new Schema({
-  campusId:     campusRef,
+  campusId:     campusRef(),
   email:        { type: String, required: true, lowercase: true, trim: true, maxlength: 254 },
   displayName:  { type: String, required: true, maxlength: 100 },
   passwordHash: { type: String, required: true, select: false },  // NFR-3.1: argon2id/bcrypt encoded hash only
-  roles:        { type: [String], enum: Object.values(ROLE), validate: (v) => v.length >= 1 }, // FR-1.2, AC-FR-1.2
+  roles: {                                                                           // FR-1.2, AC-FR-1.2
+    type: [{ type: String, enum: Object.values(ROLE) }],   // enum applies per element
+    validate: { validator: (v) => Array.isArray(v) && v.length >= 1, message: 'A role is required' },
+  },
   groupIds:     [{ type: Schema.Types.ObjectId, ref: 'Group' }],                  // FR-1.6
   categoryAuthorisations: [{ type: Schema.Types.ObjectId, ref: 'Category' }],     // FR-4.6, FR-5.2
   status:       { type: String, enum: ['active', 'revoked'], default: 'active' }, // FR-1.4
@@ -478,7 +481,7 @@ authorisation = union(user, groups). Both are resolved by the guard (DEC-012) fr
 
 ```js
 const categorySchema = new Schema({
-  campusId: campusRef,
+  campusId: campusRef(),
   code:     { type: String, required: true, maxlength: 40 },
   name:     { type: String, required: true, maxlength: 100 },
   isSecurity: { type: Boolean, default: false },              // CFL-002 → FR-1.5, FR-3.5, FR-8.6
