@@ -1004,11 +1004,11 @@ DEC-014; RSK-016 and RSK-017.
 | Baseline type | M2 Architecture baseline (component of the Architecture, Technology & Initial Design Baseline) |
 | Version | PED v2.0 |
 | Date | |
-| ASRs traced to stakeholder, constraint and risk evidence | YES / NO |
-| Alternatives and trade-offs recorded | YES / NO |
-| Diagrams distinguish logical layers from physical tiers | YES / NO |
-| Open decisions recorded separately | YES / NO |
-| Outcome | ACCEPTED / CONDITIONALLY ACCEPTED / REVISION REQUIRED |
+| ASRs traced to stakeholder, constraint and risk evidence | <mark>YES</mark> / NO |
+| Alternatives and trade-offs recorded | <mark>YES</mark> / NO |
+| Diagrams distinguish logical layers from physical tiers | <mark>YES</mark> / NO |
+| Open decisions recorded separately | <mark>YES</mark> / NO |
+| Outcome | <mark>ACCEPTED</mark> / CONDITIONALLY ACCEPTED / REVISION REQUIRED |
 | Approved by | E. Lindsay · R. van der Merwe (via PR #59 approval) |
 
 ---
@@ -2234,12 +2234,12 @@ record and are preserved unaltered.
 | **Project** | CivicConnect |
 | **Baseline type** | M2 Architecture, Technology & Initial Design Baseline |
 | **Version** | PED v2.0 |
-| **Date** | |
-| **Scope reviewed** | YES / NO |
-| **Requirements and traceability checked** | YES / NO |
-| **Risk review completed** | YES / NO |
-| **Repository and governance controls checked** | YES / NO |
-| **Outcome** | ACCEPTED / CONDITIONALLY ACCEPTED / REVISION REQUIRED |
+| **Date** | 30 September 2026 |
+| **Scope reviewed** | <mark>YES</mark> / NO |
+| **Requirements and traceability checked** | <mark>YES</mark> / NO |
+| **Risk review completed** | <mark>YES</mark> / NO |
+| **Repository and governance controls checked** | <mark>YES</mark> / NO |
+| **Outcome** | ACCEPTED / <mark>CONDITIONALLY ACCEPTED</mark> / REVISION REQUIRED |
 
 **Conditions carried from M1:** C-01, C-02 and C-05 open; C-03 partially closed. Their status
 at this baseline is recorded in the table above. The exclusions from this baseline are listed in
@@ -2249,8 +2249,8 @@ at this baseline is recorded in the table above. The exclusions from this baseli
 
 | Name | Role | Signature | Date |
 |---|---|---|---|
-| Ethan Lindsay | Team Lead | | |
-| Robert van der Merwe | Project Manager | | |
-| Christiaan Burger | Developer | | |
+| Ethan Lindsay | Team Lead | EJL | 30 September 2026 |
+| Robert van der Merwe | Project Manager | RVDM | 30 September 2026 |
+| Christiaan Burger | Developer | CJB | 30 September 2026 |
 
 **Baseline tag:** `v2.0-M2-baseline` on `main`.
