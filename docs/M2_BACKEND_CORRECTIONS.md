@@ -6,7 +6,7 @@
 | **From** | Robert van der Merwe (reviewer; data, persistence, technology and interface owner) |
 | **Date** | 29/09/2026 |
 | **Code reviewed** | `origin/dev` @ `7cfa94b` (merges of #57, #58, #60, each approved by both reviewers) |
-| **Authoritative references** | `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`, `docs/decisions/ADR/DEC-015_API_Semantics_v0.1.md`, `docs/decisions/ADR/DEC-016_Transaction_Boundary_v0.1.md`, `docs/decisions/ADR/DEC-017_Retention_Purposes_v0.1.md`, PED v1.7 §6B |
+| **Authoritative references** | `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`, `docs/decisions/ADR/DEC-015_API_Semantics_v0.1.md`, `docs/decisions/ADR/DEC-016_Transaction_Boundary_v0.1.md`, `docs/decisions/ADR/DEC-017_Retention_Purposes_v0.1.md`, PED v1.9 §6B |
 
 This is the post-merge review record for the slice, in the Master Brief §9.1 form (comment →
 response → correction → re-review). Each item has a stable ID (R-01 to R-22). **Please
