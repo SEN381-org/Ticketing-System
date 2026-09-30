@@ -30,7 +30,7 @@ sha256sum "$OUT" > "${OUT}.sha256"
 SIZE=$(stat -c %s "$OUT")
 [ "$SIZE" -gt 1024 ] || { log "archive suspiciously small (${SIZE} B)"; exit 2; }
 
-# Retention: DEC-016 purpose C — archives contain personal data; keep 7 days only.
+# Retention: DEC-017 purpose C — archives contain personal data; keep 7 days only.
 find "$BACKUP_DIR" -name 'civicconnect-*.archive.gz.gpg*' -mtime +"$RETENTION_DAYS" -print -delete | sed 's/^/pruned /' >> "$LOG"
 
 log "OK size=${SIZE}B sha256=$(cut -d' ' -f1 "${OUT}.sha256")"

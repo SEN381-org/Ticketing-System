@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Artefact** | Data and Persistence Baseline (PED §6A — introduced in the working draft PED v1.6 (`docs/PED/PED/PED_v1.6.md`) toward the v2.0 baseline) |
+| **Artefact** | Data and Persistence Baseline (PED §6B — introduced in the working draft PED v1.7 (`docs/PED/PED/PED_v1.7.md`) toward the v2.0 baseline) |
 | **Version** | 0.1 (draft for review) |
 | **Author** | Robert van der Merwe (Member B) |
 | **Date** | 29 September 2026 |
 | **Status** | Draft. Enters the controlled baseline through a PR with two non-author approvals (DEC-008) |
 | **Governs** | `src/models/*`, `src/repositories/*`, the Atlas trigger configuration, the Atlas database-user roles |
-| **Decisions applied** | DEC-002, DEC-005, DEC-010 (closed here), DEC-011, DEC-012, DEC-014, DEC-015, DEC-016 |
+| **Decisions applied** | DEC-002, DEC-005, DEC-010 (closed here), DEC-011, DEC-012, DEC-015, DEC-016, DEC-017 |
 | **Research referenced** | Assignment 2 §3 (persistence and data integrity) and §4.6 (ETag / idempotency) |
 
 This document is the **authoritative data model**. Where application code disagrees with it,
@@ -22,10 +22,10 @@ goes through Master Brief §14 once v2.0 is baselined.
 | Collection | Aggregate / role | Written by (sole writer) | Read by | Lifecycle | Traces to |
 |---|---|---|---|---|---|
 | `requests` | **Aggregate root** of the request lifecycle | `StatusTransitionService`, `RequestSubmissionService`, `AssignmentService` (all via `requestRepository`), and PROC-001 (retention operator) | Staff/requester views, management aggregation | Created at submission → transitions → Closed/Rejected → **anonymised 14–30 days after closure** (PROC-001) → retained as a non-identifying record for aggregates | FR-2.x, FR-5.x, FR-6.x, SCP-001, SCP-008 |
-| `requestHistory` | Child of `requests`, **append-only** | The same services, **only inside the transaction that changes the parent** (DEC-015) | Timeline views, audit retrieval | Inserted, never updated. The only exception is the PROC-001 anonymisation of personal fields | FR-6.3, FR-6.7, FR-7.1–7.4, FR-2.4, AC-FR-6.7 |
+| `requestHistory` | Child of `requests`, **append-only** | The same services, **only inside the transaction that changes the parent** (DEC-016) | Timeline views, audit retrieval | Inserted, never updated. The only exception is the PROC-001 anonymisation of personal fields | FR-6.3, FR-6.7, FR-7.1–7.4, FR-2.4, AC-FR-6.7 |
 | `notifications` | Derived read model | `NotificationSubscriber` (DEC-011, after commit) | Requester | TTL: deleted 30 days after creation | FR-3.4, SCP-004 |
 | `reportingCounts` | Derived projection | `ReportingProjectionSubscriber` (DEC-011) plus the reconciliation job | Management dashboard (unfiltered totals only) | Rebuildable at any time from `requests` | FR-8.1, FR-8.2, feature group 8 |
-| `auditLog` | Accountability record, **separate purpose** (DEC-016) | Atlas Database Trigger (change events) and the auth service (auth/access events, insert-only) | Administrator, Information Officer | TTL: 92 days (satisfies the 90-day minimum, see §6) | CON-015, NFR-1.4, NFR-1.9, NFR-3.6, NFR-4.5 |
+| `auditLog` | Accountability record, **separate purpose** (DEC-017) | Atlas Database Trigger (change events) and the auth service (auth/access events, insert-only) | Administrator, Information Officer | TTL: 92 days (satisfies the 90-day minimum, see §6) | CON-015, NFR-1.4, NFR-1.9, NFR-3.6, NFR-4.5 |
 | `users` | Identity | `UserAdministrationService` | Auth, guard | Active → revoked (FR-1.4) | FR-1.1, FR-1.2, FR-1.4, NFR-3.1 |
 | `roles` | Reference data: the controlled role set and its permissions | Seed migration only | Guard (DEC-012) | Changed only by migration | FR-1.2, DEC-004, DEC-012 |
 | `groups` | User groups with authorisation | `UserAdministrationService` | Guard | Admin-managed | FR-1.6, CON-019 |
@@ -45,7 +45,7 @@ is mutated by `$push` on the parent, so append-only could not be enforced by dat
 privilege (§4, layer 3). (2) Unbounded arrays grow the parent document and every list query
 that reads it. (3) The auditLog trigger needs to observe history inserts as discrete events.
 The cost is that writing the parent and the child needs a multi-document transaction, which
-DEC-015 accepts and which the Atlas replica set supports.
+DEC-016 accepts and which the Atlas replica set supports.
 
 **SCP-019 (multi-campus, deferred).** Every collection carries `campusId`, and every
 compound index leads with it. Admitting multi-campus later therefore needs no migration of
@@ -68,7 +68,7 @@ into agreement. The corrections are listed as review comments in `docs/M2_BACKEN
 | Staff scoping | `departmentId` | **`categoryId` + user/group `categoryAuthorisations`** | FR-4.1, FR-4.6, FR-5.2 scope staff by *category authorisation*. No requirement mentions departments |
 | Mandatory fields | `title`, `description`, `category` | **`categoryId`, `location`, `description` only** | FR-2.2 / DEC-006: exactly three mandatory fields, no other |
 | Reference | none | `reference` unique + immutable | FR-2.6 |
-| Concurrency | `versionKey: false`, unconditional update | `version` field, conditional update, ETag | DEC-014 / DEC-015, A2 §3.4 |
+| Concurrency | `versionKey: false`, unconditional update | `version` field, conditional update, ETag | DEC-015 / DEC-016, A2 §3.4 |
 | Tenancy | none | `campusId` on every collection | SCP-019 |
 | History change types | status, assignment, comment | + action, detail, resolution | FR-7.2, FR-2.4, FR-7.5 all require immutable, attributed entries |
 | Collection names | `requests`, `requestHistory`, `notifications`, `reportingCounts`, `auditLog` | **Unchanged** | Answers handover §3.3: the component diagram in PED §10.6 needs no change |
@@ -170,7 +170,7 @@ const requestSchema = new Schema(
     statusChangedAt: { type: Date, required: true },
     dueAt:           { type: Date, default: null },  // FR-8.3; from category target at submission
 
-    // DEC-014 / DEC-015 — optimistic concurrency. Exposed as the ETag. Incremented by every write.
+    // DEC-015 / DEC-016 — optimistic concurrency. Exposed as the ETag. Incremented by every write.
     version: { type: Number, required: true, default: 0, min: 0 },
 
     // NFR-4.2 / PROC-001
@@ -206,7 +206,7 @@ applyChange: (id, expectedVersion, $set, actor, { session }) =>
     { $set: { ...$set, lastActorId: actor.id, lastActorRole: actor.role }, $inc: { version: 1 } },
     { session, runValidators: true },
   ).then(({ matchedCount }) => {
-    if (matchedCount === 0) throw new PreconditionFailedError(id, expectedVersion); // → HTTP 412 (DEC-014)
+    if (matchedCount === 0) throw new PreconditionFailedError(id, expectedVersion); // → HTTP 412 (DEC-015)
   }),
 ```
 
@@ -245,7 +245,7 @@ const requestHistorySchema = new Schema(
     actorRole:  { type: String, required: true, immutable: true },
     occurredAt: { type: Date, required: true, immutable: true },
 
-    // DEC-014 — idempotency. Key + fingerprint of the originating HTTP request.
+    // DEC-015 — idempotency. Key + fingerprint of the originating HTTP request.
     idempotencyKey:         { type: String, default: null, immutable: true, maxlength: 64 },
     idempotencyFingerprint: { type: String, default: null, immutable: true },
 
@@ -255,7 +255,7 @@ const requestHistorySchema = new Schema(
 );
 
 requestHistorySchema.index({ requestId: 1, requestVersion: 1 }, { unique: true });  // FR-3.3, FR-7.4 chronological timeline; integrity invariant
-requestHistorySchema.index(                                                          // DEC-014 idempotency invariant
+requestHistorySchema.index(                                                          // DEC-015 idempotency invariant
   { actorId: 1, idempotencyKey: 1 },
   { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } },
 );
@@ -308,7 +308,7 @@ const notificationSchema = new Schema(
 );
 notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });                        // FR-3.4 "available on next session"
 notificationSchema.index({ sourceHistoryId: 1, userId: 1 }, { unique: true });           // subscriber idempotency (DEC-011 at-least-once)
-notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 });      // derived copy; see DEC-016 purpose A
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 });      // derived copy; see DEC-017 purpose A
 ```
 
 ### 3.5 `reportingCounts` — `src/models/ReportingCount.js`
@@ -353,7 +353,7 @@ const auditLogSchema = new Schema(
     actorId:     { type: Schema.Types.ObjectId, default: null },
     actorRole:   { type: String, default: null },
     actorSource: { type: String, enum: ['document', 'unattributed', 'session'], required: true },
-    // DATA MINIMISATION (DEC-016): field NAMES only, plus status values. Never description,
+    // DATA MINIMISATION (DEC-017): field NAMES only, plus status values. Never description,
     // location, comment body or any other free text. No fullDocument copies.
     changedFields: { type: [String], default: [] },
     fromStatus: { type: String, default: null },
@@ -366,7 +366,7 @@ const auditLogSchema = new Schema(
 );
 auditLogSchema.index({ eventId: 1 }, { unique: true });                                 // trigger is at-least-once → idempotent insert
 auditLogSchema.index({ requestId: 1, occurredAt: 1 });                                   // NFR-3.6 audit retrieval, NFR-4.5 access record
-auditLogSchema.index({ recordedAt: 1 }, { expireAfterSeconds: 92 * 24 * 3600 });         // NFR-1.4 ≥ 90 days (DEC-016)
+auditLogSchema.index({ recordedAt: 1 }, { expireAfterSeconds: 92 * 24 * 3600 });         // NFR-1.4 ≥ 90 days (DEC-017)
 ```
 
 **Trigger definition (held in the repository, not console state — handover §2).**
@@ -428,7 +428,7 @@ exports = async function (event) {
 ```
 
 `full_document` is **false** on `requests` so that no description or location ever passes
-through the audit path (DEC-016 minimisation). History inserts arrive with the inserted
+through the audit path (DEC-017 minimisation). History inserts arrive with the inserted
 document by definition. The function copies only the listed fields and never `body`.
 
 ### 3.7 `users`, `roles`, `groups` — `src/models/User.js`, `Role.js`, `Group.js`
@@ -518,7 +518,7 @@ verification (attempting an update with the app credential and asserting
 
 ---
 
-## 5. Transaction boundary, concurrency and consistency (summary; full record in DEC-015)
+## 5. Transaction boundary, concurrency and consistency (summary; full record in DEC-016)
 
 | Write | Inside the multi-document transaction | Consistency |
 |---|---|---|
@@ -543,7 +543,7 @@ verification (attempting an update with the app credential and asserting
 
 ---
 
-## 6. Retention and lifecycle (DEC-016 resolves OI-06)
+## 6. Retention and lifecycle (DEC-017 resolves OI-06)
 
 | Data | Purpose | Retention | Mechanism |
 |---|---|---|---|
@@ -557,7 +557,7 @@ verification (attempting an update with the app credential and asserting
 TTL indexes on `notifications` and `auditLog` are **not** SCP-020. SCP-020 is automated
 enforcement of the *personal-data retention rule on request data*. That needs field-level
 anonymisation conditioned on closure, plus evidence that it ran, and a TTL index can only
-delete whole documents by age. See DEC-016 for the argument.
+delete whole documents by age. See DEC-017 for the argument.
 
 ---
 
@@ -585,7 +585,7 @@ notification insert and a counts upsert from the subscribers; and two trigger re
 into `auditLog`. That caps sustained transitions at about 11/s. NFR-2.4 (100 concurrent
 users, mostly reads, ~10 s think time) needs about 20–40 ops/s, which fits. The CON-010
 reasoning toward 1 000 users does not fit on M0. This is recorded as the upgrade trigger in
-DEC-010 and as RSK-017.
+DEC-010 and as RSK-019.
 
 **SPOFs.** The Atlas M0 cluster is a 3-node replica set, so a single node failure causes an
 election, not an outage. The M0 *service* has no SLA and is shared, which is an accepted

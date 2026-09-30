@@ -18,9 +18,9 @@ the baseline. `npm test`: **39/39 passing** (the 23 existing tests plus 16 new m
 - Node runtime: `engines` set to **`>=22.0.0`** (Node 20 reached end-of-life on 30/04/2026); `.nvmrc` = 22; lockfile synced; README updated.
 
 ### 2. Decisions (ADRs in `docs/decisions/ADR/`)
-- **DEC-014: API semantics.** `/api/v1`; transitions as a `POST` sub-resource; ETag/If-Match optimistic concurrency; Idempotency-Key on state-changing POSTs; RFC 9457 errors.
-- **DEC-015: transaction boundary.** `requests` + `requestHistory` in one multi-document transaction; `auditLog` eventually consistent via the Atlas trigger. Narrows AC-NFR-1.10 via **CR-001**.
-- **DEC-016: retention by purpose.** Request data ≤ 30 days after closure; audit log ≥ 90 days as a separate accountability purpose. Closes **OI-06** (via **CR-002**).
+- **DEC-015: API semantics.** `/api/v1`; transitions as a `POST` sub-resource; ETag/If-Match optimistic concurrency; Idempotency-Key on state-changing POSTs; RFC 9457 errors.
+- **DEC-016: transaction boundary.** `requests` + `requestHistory` in one multi-document transaction; `auditLog` eventually consistent via the Atlas trigger. Narrows AC-NFR-1.10 via **CR-001**.
+- **DEC-017: retention by purpose.** Request data ≤ 30 days after closure; audit log ≥ 90 days as a separate accountability purpose. Closes **OI-06** (via **CR-002**).
 - **DEC-003** (full deployment ADR) and **DEC-010** (closed: free cluster + 12-hourly encrypted `mongodump`).
 - **PROC-001:** twice-monthly manual anonymisation (14–30 days after closure); SCP-020 stays deferred. Raises **OI-13 / CR-003** (FR-6.7 vs anonymisation). **CR-004** covers NFR-2.6 index scope.
 
@@ -30,7 +30,7 @@ the baseline. `npm test`: **39/39 passing** (the 23 existing tests plus 16 new m
 - `tests/models.test.js`: 16 tests, no database required.
 
 ### 4. Controlled documents and registers
-- **PED v1.6** (working draft; v2.0 is reserved for the signed-off baseline): new §6A and §6B, §7.5 data link, §8.3.1 risks, §10.7/§10.8, Appendix A aligned to the register versions in the repo.
+- **PED v1.7** (working draft integrating PED v1.6 from dev; v2.0 is reserved for the signed-off baseline): new §6B and §6C, §7.5 data link, §8.3.1 risks, §10.7/§10.8, Appendix A aligned to the register versions in the repo.
 - **RTM v0.5** (xlsx + csv + change notes): data/persistence column 79/79.
 - Decision Log v0.5 · Risk Register V0.5 · Open Items v0.3 · Acceptance Criteria v0.3 (evaluable AC-NFR-4.2) · Non-Functional Requirements v0.3 (NFR-4.2) · AI Usage Register v0.5.
 - Superseded versions archived in each folder's outdated directory; PED v1.5 and RTM v0.4 in `docs/Outdated/`. See `docs/VERSION_AUDIT_REPORT.md`.
@@ -58,7 +58,7 @@ Per Master Brief §9 and DEC-008, this PR needs **two approvals from members oth
 author** before it merges into `dev`. **@Ethan Lindsay** and **@Christiaan Burger**, please
 review. Please leave written comments in the PR rather than approving off-platform, so the
 review record is inspectable (PED §11.4). Areas that would benefit from each reviewer:
-- **Ethan:** the DEC-015 transaction boundary and its effect on DEC-011; the corrections list; the domain/model dependency above.
+- **Ethan:** the DEC-016 transaction boundary and its effect on DEC-011; the corrections list; the domain/model dependency above.
 - **Christiaan:** the Risk Register V0.5 entries and the RSK-002/RSK-008 proposals; PED version-history renumbering (your planned row is now 1.7); the scripts and the CI gap.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

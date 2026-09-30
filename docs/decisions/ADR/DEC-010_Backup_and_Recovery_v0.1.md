@@ -6,7 +6,7 @@
 | **Date closed** | 29/09/2026 |
 | **Owner** | Robert van der Merwe |
 | **Status** | Decided. Two evidence items are dated below; the decision holds only while they hold |
-| **Affects** | NFR-1.5, AC-NFR-1.5, CON-003, CON-004, CON-005, CON-007, CON-008, NFR-4.2, DEC-003, DEC-005, OI-10, RSK-008, RSK-017 (new), RSK-018 (new) |
+| **Affects** | NFR-1.5, AC-NFR-1.5, CON-003, CON-004, CON-005, CON-007, CON-008, NFR-4.2, DEC-003, DEC-005, OI-10, RSK-008, RSK-019 (new), RSK-020 (new) |
 
 ## Decision
 
@@ -21,7 +21,7 @@
    worst case is about 12 h plus the dump duration, and **one missed run still stays within
    24 h**. The alert on a failed run gives the operator a full cycle to react.
 4. **Backup retention:** 7 days rolling (14 archives), bounded because the archives contain
-   personal information (DEC-016 purpose C).
+   personal information (DEC-017 purpose C).
 5. **Restore verification:** a weekly restore of the newest archive into the `civicconnect-test`
    project, followed by the consistency check below. The log of that restore is the evidence
    for AC-NFR-1.5.
@@ -122,7 +122,7 @@ sha256sum "$OUT" > "${OUT}.sha256"
 SIZE=$(stat -c %s "$OUT")
 [ "$SIZE" -gt 1024 ] || { log "archive suspiciously small (${SIZE} B)"; exit 2; }
 
-# Retention: DEC-016 purpose C — archives contain personal data; keep 7 days only.
+# Retention: DEC-017 purpose C — archives contain personal data; keep 7 days only.
 find "$BACKUP_DIR" -name 'civicconnect-*.archive.gz.gpg*' -mtime +"$RETENTION_DAYS" -print -delete | sed 's/^/pruned /' >> "$LOG"
 
 log "OK size=${SIZE}B sha256=$(cut -d' ' -f1 "${OUT}.sha256")"
@@ -178,7 +178,7 @@ if (bad.length) { printjson(bad.slice(0, 20)); quit(1); }
    `mongorestore` it.
 3. Run `consistency-check.js`, reconcile the mismatches, and rebuild `reportingCounts`.
 4. **Run PROC-001** before reopening. The archive may hold records that were anonymised
-   after it was taken (DEC-016).
+   after it was taken (DEC-017).
 5. Point the production env file at the new URI, restart, check health, and record the
    achieved recovery point (the timestamp of the archive) against NFR-1.5.
 
@@ -186,5 +186,5 @@ if (bad.length) { printjson(bad.slice(0, 20)); quit(1); }
 
 | ID | Risk | P | I | Band | Mitigation | Owner |
 |---|---|---|---|---|---|---|
-| RSK-017 | Free-cluster throughput (100 ops/s) or storage limit is reached, degrading NFR-2.1/2.4 | 2 | 2 | Medium (4) | Arithmetic in the data baseline §7; upgrade trigger above; measure in the M3 load test | Robert |
-| RSK-018 | Scheduled dump silently stops (server down, credential rotated, key expired), so NFR-1.5 is unmet without anyone knowing | 2 | 3 | High (6) | Non-zero exit + MAILTO alert; 12 h cadence tolerates one miss; weekly restore test; log reviewed at the team sync | Robert |
+| RSK-019 | Free-cluster throughput (100 ops/s) or storage limit is reached, degrading NFR-2.1/2.4 | 2 | 2 | Medium (4) | Arithmetic in the data baseline §7; upgrade trigger above; measure in the M3 load test | Robert |
+| RSK-020 | Scheduled dump silently stops (server down, credential rotated, key expired), so NFR-1.5 is unmet without anyone knowing | 2 | 3 | High (6) | Non-zero exit + MAILTO alert; 12 h cadence tolerates one miss; weekly restore test; log reviewed at the team sync | Robert |

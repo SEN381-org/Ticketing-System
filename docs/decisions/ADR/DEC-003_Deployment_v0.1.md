@@ -37,7 +37,7 @@ networking implications, and what is deliberately left for M3.
 | **Secrets** | `/etc/civicconnect/<env>.env`, mode 600, owned by the service user, loaded by `systemd EnvironmentFile`. Never in the repository (NFR-3.5); `.env*` in `.gitignore`; GitHub push protection / secret scanning enabled (A2 §5.8) |
 | **Sessions / state** | No state in process memory (NFR-2.7). Sessions are held in a MongoDB-backed store, so a restart or a second process loses nothing |
 | **Release & rollback** | Release = a signed/annotated git tag on `main` (DEC-008). Deploy = script on the VPS: fetch tag → `npm ci --omit=dev` → run migrations → `systemctl restart` → health check (`/api/v1/health`, NFR-1.6). Rollback = redeploy the previous tag. Migrations are forward-only and additive within a release, so the previous tag still runs against the new schema |
-| **Logs** | Structured JSON to journald (NFR-1.11, no personal information), rotated at 30 days (DEC-016 purpose D) |
+| **Logs** | Structured JSON to journald (NFR-1.11, no personal information), rotated at 30 days (DEC-017 purpose D) |
 
 ### Environment map (CON-016 / NFR-1.8)
 
@@ -70,7 +70,7 @@ differ is load: staging does not reproduce production concurrency.
   of the tag onto a new VPS plus the same env files, and must be rehearsed at M3.
 - **Free-cluster limits** (0.5 GB, 500 connections, 100 ops/s, 10 GB in/out per 7 days, no
   backups, auto-pause after 30 days idle): throughput is the binding one (data baseline §7).
-  Raised as **RSK-017**. The upgrade trigger is recorded in DEC-010.
+  Raised as **RSK-019**. The upgrade trigger is recorded in DEC-010.
 - **No private networking** on free clusters: mitigated by the IP allow-list, TLS and
   least-privilege users. Residual, recorded.
 - **Encryption at rest (NFR-3.7):** Atlas encrypts cluster storage at rest. Customer-managed

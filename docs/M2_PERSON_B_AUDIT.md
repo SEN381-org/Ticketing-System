@@ -12,12 +12,12 @@ Legend: **✔ Met** · **◐ Partly met** (the gap is named) · **✘ Not yet** 
 
 | # | Checklist item | Status | Evidence / gap |
 |---|---|---|---|
-| 2 | RTM has evolved with relevant evidence | **✔** (own columns) | RTM v0.5: data/persistence column **79/79** (62 filled, 10 corrected); DEC-014/015/016 design references on 18 rows. *Gap, not mine:* architecture 0/79 (Christiaan), implementation and verification columns (all, criterion F) |
-| 3 | Risk register, assumptions, FECs reflect new evidence | **◐** | Risk Register V0.5 (RSK-016–018); Open Items v0.3 (OI-06 closed, OI-10 reduced, OI-13 raised). *Gap:* the proposed RSK-002 re-score / RSK-008 closure need team agreement; the FEC register has not been reviewed for the data and technology decisions |
-| 6 | Data/persistence decisions documented and linked to correctness | **✔** | Data Baseline v0.1 (entities, ownership, DB-01 append-only, indexes, storage and throughput arithmetic); DEC-015 transaction boundary; DEC-016 retention; `src/models/` implements the baseline, verified by `tests/models.test.js`. *Open:* DB-level enforcement (Atlas role) is M3; the conditional update and transaction in the service are Ethan's R-13/R-15 |
-| 7 | Technology stack justified with evidence | **◐** | DEC-003 ADR; PED v1.6 §6B versions (Node ≥22, Express 4.22, Mongoose 8.24) with free-cluster limits sourced from MongoDB docs. *Gaps:* DEC-002 (closed by Ethan) lists alternatives in one line and has **no weighted comparison matrix**, which the brief's §5.5 and the Master Brief §18.1 expect; Hostinger plan and cost, BC server confirmation (DEC-010 E1), React version and NFR-3.7 sufficiency are open evidence items |
-| 9 | A2 research referenced, not copied | **✔** | Each ADR cites A2 sections (§3.x, §4.x); DEC-015 records where the M2 decision **differs** from A2 (SQL trigger premise) and why. That is the evidence for defence Q8 |
-| 10 | Initial interface/integration decisions documented | **◐** | DEC-014 (versioned REST, ETag/If-Match, Idempotency-Key, RFC 9457). *Gap:* the implemented route is still `PATCH /:id/status` (R-03, Ethan); `docs/api/openapi.yaml` not yet created |
+| 2 | RTM has evolved with relevant evidence | **✔** (own columns) | RTM v0.5: data/persistence column **79/79** (62 filled, 10 corrected); DEC-015/016/017 design references on 18 rows. *Gap, not mine:* architecture 0/79 (Christiaan), implementation and verification columns (all, criterion F) |
+| 3 | Risk register, assumptions, FECs reflect new evidence | **◐** | Risk Register V0.5 (RSK-018–020); Open Items v0.3 (OI-06 closed, OI-10 reduced, OI-13 raised). *Gap:* the proposed RSK-002 re-score / RSK-008 closure need team agreement; the FEC register has not been reviewed for the data and technology decisions |
+| 6 | Data/persistence decisions documented and linked to correctness | **✔** | Data Baseline v0.1 (entities, ownership, DB-01 append-only, indexes, storage and throughput arithmetic); DEC-016 transaction boundary; DEC-017 retention; `src/models/` implements the baseline, verified by `tests/models.test.js`. *Open:* DB-level enforcement (Atlas role) is M3; the conditional update and transaction in the service are Ethan's R-13/R-15 |
+| 7 | Technology stack justified with evidence | **◐** | DEC-003 ADR; PED v1.7 §6C versions (Node ≥22, Express 4.22, Mongoose 8.24) with free-cluster limits sourced from MongoDB docs. *Gaps:* DEC-002 (closed by Ethan) lists alternatives in one line and has **no weighted comparison matrix**, which the brief's §5.5 and the Master Brief §18.1 expect; Hostinger plan and cost, BC server confirmation (DEC-010 E1), React version and NFR-3.7 sufficiency are open evidence items |
+| 9 | A2 research referenced, not copied | **✔** | Each ADR cites A2 sections (§3.x, §4.x); DEC-016 records where the M2 decision **differs** from A2 (SQL trigger premise) and why. That is the evidence for defence Q8 |
+| 10 | Initial interface/integration decisions documented | **◐** | DEC-015 (versioned REST, ETag/If-Match, Idempotency-Key, RFC 9457). *Gap:* the implemented route is still `PATCH /:id/status` (R-03, Ethan); `docs/api/openapi.yaml` not yet created |
 | 14 | A requirement traces into implementation and initial verification | **✔** | FR-6.7 end to end (PED §7.5); FR-2.2 now traces to `Request.js` → `models.test.js` |
 | 17 | AI use recorded and verified | **✔** | AI Usage Register v0.5: six entries for this work (tool: Claude Code, Claude Opus 5.5) with verification, decisions and issues found; "Issues found" column added per Master Brief §10.1 |
 
@@ -45,11 +45,11 @@ Legend: **✔ Met** · **◐ Partly met** (the gap is named) · **✘ Not yet** 
 
 | Question | Where to point |
 |---|---|
-| Q4: a data decision that protects business correctness | DEC-015 (request + history atomic; version/ETag; unique `{requestId, requestVersion}`) and DB-01; show `models.test.js` refusing `bulkWrite` |
+| Q4: a data decision that protects business correctness | DEC-016 (request + history atomic; version/ETag; unique `{requestId, requestVersion}`) and DB-01; show `models.test.js` refusing `bulkWrite` |
 | Q5: evidence behind a technology choice | DEC-010: free-cluster limits from MongoDB docs; 12-hour dump cadence reasoning; upgrade triggers |
-| Q8: an M2 decision that differs from A2 | DEC-015: Atlas triggers run after commit via change streams, so the audit write left the transaction |
-| Q10: what else changes if an ADR changes | DEC-016 → NFR-1.4/1.9/4.2 bases, AC-NFR-4.2, PROC-001, auditLog TTL, trigger `full_document`, RTM rows |
-| Q11: which RTM columns progressed | Data/persistence 17 → 79 of 79; design column gained DEC-014/015/016 |
+| Q8: an M2 decision that differs from A2 | DEC-016: Atlas triggers run after commit via change streams, so the audit write left the transaction |
+| Q10: what else changes if an ADR changes | DEC-017 → NFR-1.4/1.9/4.2 bases, AC-NFR-4.2, PROC-001, auditLog TTL, trigger `full_document`, RTM rows |
+| Q11: which RTM columns progressed | Data/persistence 17 → 79 of 79; design column gained DEC-015/016/017 |
 | A decision deliberately deferred | SCP-020 (automated retention enforcement), with PROC-001 as the interim control and the argument for why a TTL index is not enough |
 
 ## Housekeeping found during the audit

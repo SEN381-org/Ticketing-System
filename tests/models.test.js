@@ -55,7 +55,7 @@ test('a request with only category, location and description as business input i
   const doc = new Request(validRequest());
   assert.deepEqual(errorsOf(doc), []);
   assert.equal(doc.status, STATUS.RECEIVED, 'new requests begin at Received (FR-6.1)');
-  assert.equal(doc.version, 0, 'ETag version starts at 0 (DEC-014)');
+  assert.equal(doc.version, 0, 'ETag version starts at 0 (DEC-015)');
 });
 
 test('each of the three FR-2.2 mandatory fields is required', () => {

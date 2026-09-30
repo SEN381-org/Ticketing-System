@@ -2,7 +2,7 @@
 
 ## CivicConnect — Campus Service Request Management Platform
 
-**Version 1.6 — working draft toward the Architecture, Technology & Initial Design Baseline (v2.0)**
+**Version 1.7 — working draft toward the Architecture, Technology & Initial Design Baseline (v2.0)**
 
 | | |
 |---|---|
@@ -10,10 +10,10 @@
 | **Module** | Software Engineering 381 (SEN381), NQF Level 8 |
 | **Institution** | Belgium Campus ITversity |
 | **Document** | Project Engineering Document (PED) |
-| **Version** | 1.6 |
+| **Version** | 1.7 |
 | **Status** | Draft — pending M2 baseline sign-off |
 | **Date** | 29 September 2026 |
-| **Supersedes** | PED v1.5 |
+| **Supersedes** | PED v1.6 |
 | **Governing document** | SEN381 CivicConnect Master Project Brief v1.1 |
 
 ---
@@ -57,12 +57,13 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 1.0 | 09/09/2026 | E. Lindsay | Integration of all M1 artefacts into a single controlled document; references added; Team Working Agreement drafted; baseline conditions recorded; baseline sign-off completed | R. van der Merwe, C. Burger |
 | 1.1 | | E. Lindsay | M1 baseline review: requirements, assumptions, constraints, acceptance criteria and forward engineering considerations reviewed against the evidence now available; changes recorded under controlled change and superseded content preserved | R. van der Merwe, C. Burger |
 | 1.2 | | C. Burger | Architecturally significant requirements identified and linked to stakeholder, constraint and risk evidence; architecture baseline and diagrams recorded | E. Lindsay, R. van der Merwe |
-| 1.3 | 29/09/2026 | R. van der Merwe | Data and persistence baseline (§6A): entities, aggregates, ownership and lifecycle; Mongoose schemas for `requests`, `requestHistory`, `notifications`, `reportingCounts`, `auditLog`, `users`/`roles`/`groups`; append-only constraint DB-01 stated at three layers; transaction boundary DEC-015 with CR-001 (AC-NFR-1.10); retention by purpose DEC-016 closing OI-06 with CR-002; PROC-001 manual anonymisation (interim control for NFR-4.2, SCP-020 deferred) with CR-003; CR-004 (NFR-2.6); RTM v0.5 data/persistence column completed (62 rows) and 10 populated cells corrected | E. Lindsay, C. Burger |
-| 1.4 | 29/09/2026 | R. van der Merwe | Technology and deployment (§6B): DEC-003 recorded as a full ADR (Hostinger VPS + one Atlas free cluster per environment); DEC-010 closed (free cluster in production; 12-hourly `mongodump` to an institutional server for NFR-1.5); DEC-014 API semantics (versioned REST, ETag/If-Match, Idempotency-Key, RFC 9457 errors); runtime minimum set to Node 22 (engines ">=22.0.0"); RSK-016 to RSK-018 raised. Application slice build fixed: router and guard moved from `tests/` to `src/` (23/23 tests pass) | E. Lindsay, C. Burger |
+| 1.3 | 29/09/2026 | R. van der Merwe | Data and persistence baseline (§6B): entities, aggregates, ownership and lifecycle; Mongoose schemas for `requests`, `requestHistory`, `notifications`, `reportingCounts`, `auditLog`, `users`/`roles`/`groups`; append-only constraint DB-01 stated at three layers; transaction boundary DEC-016 with CR-001 (AC-NFR-1.10); retention by purpose DEC-017 closing OI-06 with CR-002; PROC-001 manual anonymisation (interim control for NFR-4.2, SCP-020 deferred) with CR-003; CR-004 (NFR-2.6); RTM v0.5 data/persistence column completed (62 rows) and 10 populated cells corrected | E. Lindsay, C. Burger |
+| 1.4 | 29/09/2026 | R. van der Merwe | Technology and deployment (§6C): DEC-003 recorded as a full ADR (Hostinger VPS + one Atlas free cluster per environment); DEC-010 closed (free cluster in production; 12-hourly `mongodump` to an institutional server for NFR-1.5); DEC-015 API semantics (versioned REST, ETag/If-Match, Idempotency-Key, RFC 9457 errors); runtime minimum set to Node 22 (engines ">=22.0.0"); RSK-018 to RSK-020 raised. Application slice build fixed: router and guard moved from `tests/` to `src/` (23/23 tests pass) | E. Lindsay, C. Burger |
 | 1.5 | 29/09/2026 | E. Lindsay | Initial design decisions recorded as architecture decision records (DEC-011, DEC-012) with supporting component and sequence diagrams; requirements traceability matrix extended from nine columns to fourteen (v0.4); end-to-end trace for FR-6.7 recorded at §7.5 and completed into implementation and initial verification evidence | R. van der Merwe, C. Burger |
-| 1.6 | 29/09/2026 | R. van der Merwe | Working draft: Member B content (rows 1.3 and 1.4) integrated into this document; register references aligned to the versions held in the repository (Decision Log v0.5, Risk Register V0.5, Open Items v0.3, Acceptance Criteria v0.3, Non-Functional Requirements v0.3, RTM v0.5); PED v1.5 and RTM v0.4 archived in `docs/Outdated/`; `src/models/` aligned to the data baseline with `tests/models.test.js` (suite 39/39); AI Usage Register v0.5 records the Claude Code assistance for this work. Minor version used because .0 is reserved for the frozen milestone baseline | E. Lindsay, C. Burger |
-| 1.7 | | C. Burger | Repository structure aligned to the architecture; continuous integration controls adopted; application and technical documentation recorded *(planned; renumbered from 1.6 when the Member B integration took 1.6)* | E. Lindsay, R. van der Merwe |
-| 1.8 | | E. Lindsay, R. van der Merwe, C. Burger | Risk register, assumptions, dependencies and forward engineering considerations updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone *(planned; renumbered from 1.7)* | Reviewed by the two members other than each author |
+| 1.6 | 29/09/2026 | C. Burger | Architecturally significant requirements (ASR-01–06) and architecture baseline recorded as §6A: alternatives, layer responsibilities, business modules, physical tiers, DEC-014, Figures 3–5, RSK-016/017 and architecture sign-off | E. Lindsay, R. van der Merwe |
+| 1.7 | 29/09/2026 | R. van der Merwe | Working draft: Member B content (rows 1.3 and 1.4) integrated into this document and merged with v1.6 (C. Burger) from `dev`; Member B identifiers renumbered to follow the §6A content already merged — DEC-014–016 → DEC-015–017, RSK-016–018 → RSK-018–020, §6A/§6B → §6B/§6C; register references aligned to the versions held in the repository (Decision Log v0.5, Risk Register V0.5, Open Items v0.3, Acceptance Criteria v0.3, Non-Functional Requirements v0.3, RTM v0.5); PED v1.6 archived in `docs/PED/PED/Outdated/` and RTM v0.4 in `docs/Outdated/`; `src/models/` aligned to the data baseline with `tests/models.test.js` (suite 39/39); AI Usage Register v0.5 records the Claude Code assistance for this work. Minor version used because .0 is reserved for the frozen milestone baseline | E. Lindsay, C. Burger |
+| 1.8 | | C. Burger | Repository structure aligned to the architecture; continuous integration controls adopted; application and technical documentation recorded *(planned; renumbered from 1.6 when the delivered revisions 1.6 and 1.7 took those numbers)* | E. Lindsay, R. van der Merwe |
+| 1.9 | | E. Lindsay, R. van der Merwe, C. Burger | Risk register, assumptions, dependencies and forward engineering considerations updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone *(planned; renumbered from 1.7)* | Reviewed by the two members other than each author |
 | 2.0 | | E. Lindsay | Integration of all M2 artefacts into this document; Architecture, Technology & Initial Design Baseline identified, approved and signed off; M1 baseline conditions reviewed and their status recorded. Reserved for the frozen milestone baseline | R. van der Merwe, C. Burger |
 
 Baselined content is not silently overwritten. Changes after this baseline follow the
@@ -78,8 +79,9 @@ change control process in Master Brief §14.
 4. Scope Baseline
 5. Constraints
 6. Requirements and Acceptance Criteria
-6A. Data and Persistence Baseline
-6B. Technology Stack, Versions and Deployment Compatibility
+   - 6A. Architecturally Significant Requirements and Architecture Baseline
+   - 6B. Data and Persistence Baseline
+   - 6C. Technology Stack, Versions and Deployment Compatibility
 7. Traceability
 8. Risk Management
 9. Forward Engineering Considerations
@@ -156,6 +158,7 @@ marked superseded rather than being renumbered.
 | NFR-n.n | Non-functional requirement |
 | AC-FR-n.n / AC-NFR-n.n | Acceptance criterion |
 | DEC-nnn | Engineering decision |
+| ASR-nn | Architecturally significant requirement |
 | RSK-nnn | Risk (engineering register) |
 | RK-nn | Risk (Project Charter quantified register) |
 | FEC-nnn | Forward engineering consideration |
@@ -219,7 +222,7 @@ change are preserved in the affected artefact.
 | Scope Baseline | v0.2 | Changed under control. SCP-014 and SCP-015 are released from their dependency on DEC-003, and SCP-020 from its dependency on DEC-005, both decisions having closed at this milestone. |
 | Constraints | v0.2 | Carried forward unchanged. CON-015 interacts directly with the technology selected under DEC-002 and was examined against it; the constraint is satisfiable as written and required no amendment. See §1.7.2. |
 | Functional Requirements | v0.2 | Carried forward. FR-4.2, FR-8.4 and FR-9.1 remain *Proposed* against open items OI-01 to OI-03. |
-| Non-Functional Requirements | v0.2 | Changed under control. NFR-4.2 is released from OI-05 by the closure of DEC-005 and now states the agreed retention period. The measurement bases of NFR-1.4, NFR-1.9 and NFR-4.2 are amended under CR-002 (DEC-016), and those of NFR-2.6 and FR-6.7 under CR-004 and CR-003. |
+| Non-Functional Requirements | v0.2 | Changed under control. NFR-4.2 is released from OI-05 by the closure of DEC-005 and now states the agreed retention period. The measurement bases of NFR-1.4, NFR-1.9 and NFR-4.2 are amended under CR-002 (DEC-017), and those of NFR-2.6 and FR-6.7 under CR-004 and CR-003. |
 | Acceptance Criteria | v0.2 | Changed under control where the underlying requirement changed. AC-NFR-4.2 v0.3 is supplied by CR-002 and AC-NFR-1.10 v0.3 by CR-001. The register file is at v0.3 with the evaluable AC-NFR-4.2; AC-NFR-1.10 v0.3 is applied when CR-001 is approved. Otherwise carried forward. |
 | Requirements Traceability Matrix | v0.2 | Extended at this version with the architecture, data, design, technology, implementation and verification evidence columns (v0.4), and the data/persistence column completed at v0.5. See §7. |
 | Risk Register | v0.4 | Updated with the architecture, data, technology, dependency, design, security, deployment, cost and implementation exposures arising at this milestone. See §8. |
@@ -241,7 +244,7 @@ this review recorded against the position at baseline.
 | CFL-001 to CFL-004 — stakeholder conflict resolutions | All four recorded as *Proposed*; none confirmed with the stakeholder concerned. CFL-002 carries the greatest exposure and was to close before the M2 data model was fixed | **Carried forward.** None of the four resolutions has been confirmed with the stakeholder concerned. CFL-002 in particular remains *Proposed*, so FR-1.5, FR-3.5, NFR-3.3 and NFR-4.4 — a substantial part of the security requirement set — continue to rest on a resolution STK-006 has not agreed. The exposure is unchanged from baseline and remains tracked as RSK-005 and RSK-009. The architecture and design decisions recorded in this version proceed on the team's proposed resolution and would require revision if it is not agreed. Condition C-01 remains open |
 | FR-4.2, FR-8.4, FR-9.1 | Proposed against open items OI-01 to OI-03 | **Carried forward.** All three remain *Proposed* against OI-01 to OI-03. No evidence closing them arrived during this milestone, and their RTM status is unchanged |
 | NFR-4.2 | Blocked against OI-05. States a retention period that cannot be written until DEC-005 closes | **Closed.** Released from OI-05 by the closure of DEC-005. The requirement now states the agreed one-month retention period (measured as 30 days from closure, CR-002) and its acceptance criterion is evaluable by a third party. It is enforced by procedure PROC-001 while SCP-020 remains deferred |
-| OI-06 — NFR-1.4 (90 days) against DEC-005 (one month) | Escalated at v0.3 | **Closed by DEC-016.** Retention is set per purpose. Request data: 30 days from closure (purpose A). `auditLog`: ≥ 90 days as a separate accountability purpose (POPIA s.14(1), related lawful purpose), with content minimised to identifiers, field names and status values so that no purpose-A value outlives DEC-005. Neither figure changes; the bases are amended under CR-002 |
+| OI-06 — NFR-1.4 (90 days) against DEC-005 (one month) | Escalated at v0.3 | **Closed by DEC-017.** Retention is set per purpose. Request data: 30 days from closure (purpose A). `auditLog`: ≥ 90 days as a separate accountability purpose (POPIA s.14(1), related lawful purpose), with content minimised to identifiers, field names and status values so that no purpose-A value outlives DEC-005. Neither figure changes; the bases are amended under CR-002 |
 | DEC-010 — Atlas cluster tier and NFR-1.5 mechanism | New deferment recorded at this milestone | **Closed.** The free cluster is retained; NFR-1.5 is met by an operated, encrypted 12-hourly `mongodump` to an institutional server with a weekly restore test (§10.8). Evidence item E1 (institutional server confirmation) is open |
 | Service-level target behind "overdue" | No decision log entry existed for it. Recorded as RSK-003 and as condition C-02; SCP-011 cannot be specified precisely without it | **Carried forward.** No service-level target has been agreed with STK-005 and no decision log entry exists for it. SCP-011 therefore remains specified imprecisely and no acceptance criterion for it can be evaluated by a third party. RSK-003 is unchanged and condition C-02 remains open |
 | Capacity and schedule position | Project Charter v0.3 §4.6 records that the baselined scope exceeds deliverable capacity within the window. A velocity checkpoint was set at the CON-013 gate of 29 September, with a scope-reduction order to be agreed in advance | **Carried forward, not measured.** No velocity measurement was taken at the 29 September gate and no scope-reduction order was agreed in advance of it. The AI-assisted productivity assumption on which the delivery schedule rests is therefore still unsubstantiated. RSK-014 is unchanged and condition C-05 remains open |
@@ -725,15 +728,280 @@ register, the RTM and the open items file. Sixty-eight of seventy-nine RTM rows 
 fully baselined; the remainder carry an explicit qualifier naming the assumption or
 decision they depend on.
 
-**Position at this version (v1.6).** The table above is the M1 baseline and is preserved. NFR-4.2 is no
-longer blocked: DEC-005 closed and PROC-001 enforces it (§6A). FR-4.2, FR-8.4 and FR-9.1
+**Position at this version (v1.7).** The table above is the M1 baseline and is preserved. NFR-4.2 is no
+longer blocked: DEC-005 closed and PROC-001 enforces it (§6B). FR-4.2, FR-8.4 and FR-9.1
 remain *Proposed* against OI-01 to OI-03. One new conflict is disclosed: **OI-13**, where
 FR-6.7 forbids any user from altering a history entry while NFR-4.2 requires personal fields
 on those entries to be removed after the retention period. CR-003 proposes the resolution.
 
 ---
 
-# 6A. Data and Persistence Baseline
+# 6A. Architecturally Significant Requirements and Architecture Baseline
+
+## 6A.1 Purpose
+
+This section records which requirements and constraints materially shape the structure of
+CivicConnect, the architecture chosen in response, the alternatives rejected and the
+consequences accepted. It is new at v2.0; nothing in it existed at the M1 baseline.
+
+The architectural *style* is not decided here. CON-012 is a client directive requiring a
+layered architecture, and NFR-1.7 converts it into a testable property. What remains the
+team's engineering judgement — and what this section defends — is where the layer
+boundaries fall, what each layer is responsible for, how the application is divided into
+business modules, which dependencies are permitted, and how the logical structure maps onto
+physical runtime tiers.
+
+Architecture is kept distinct from technology throughout. The stack selected under DEC-002
+and the platform selected under DEC-003 appear only where they change a structural
+consequence; their selection is recorded in the technology and deployment sections.
+
+The Assignment 2 research did not include an architecture task. The decisions in this
+section therefore rest on Week 2 teaching, the published sources cited, and the project's
+own requirement, constraint and risk evidence rather than on an Assignment 2
+recommendation.
+
+## 6A.2 How architecturally significant requirements were identified
+
+A requirement is treated as architecturally significant when changing it would force a
+structural change — to boundaries, dependencies, data placement or runtime arrangement —
+rather than a local change inside one component (Chen, Ali Babar and Nuseibeh, 2013; Bass,
+Clements and Kazman, 2021).
+
+All 30 non-functional requirements and 19 constraints were screened against that test.
+Six drivers were selected. Each is stated as a quality-attribute scenario with a
+measurable response so that it can later be verified under CON-005, rather than as a
+quality label (Bass, Clements and Kazman, 2021). Several requirements were deliberately
+*not* treated as architectural; they are listed in §6A.3.2 with the reason, so that their
+absence is not read as an omission.
+
+## 6A.3 Architecturally significant requirements
+
+### 6A.3.1 Selected drivers
+
+| ID | Quality attribute | Source evidence | Scenario and measurable response | Architectural consequence |
+|---|---|---|---|---|
+| ASR-01 | Security — consistent authorisation | NFR-3.3, NFR-4.4, CON-019, CON-006, DEC-004, CFL-002, STK-006, RSK-009 | Any caller, including one bypassing the interface, requests a function, a request record or a restricted field. The server refuses every unauthorised call at every entry point; no route exists without its guard (automated assertion over the route table); zero successful bypasses under the adversarial probing CON-019 announces. | All access to request data passes through the application layer. The presentation layer never reaches data access. One authorisation rule set lives in the application layer and is evaluated at the three enforcement points of DEC-012. |
+| ASR-02 | Integrity and auditability of the request lifecycle | NFR-1.9, NFR-1.10, NFR-3.6, NFR-1.4, CON-015, CON-017, SCP-008, FR-6.3, FR-6.7 | A status transition or assignment fails part-way. No partial change is committed; every committed transition produces a history entry and an audit entry recording actor, action and timestamp; the audit entry is written by the data store, not by application code. | Transitions are executed only by one application service inside one transaction boundary. The audit write is deliberately placed *below* the application, in database triggers, so no application path can skip it. |
+| ASR-03 | Personal-information protection | NFR-4.1, NFR-4.2, NFR-3.7, NFR-1.11, CON-007, DEC-005, STK-009, RSK-002 | Identifiable request data reaches the one-month retention period set by DEC-005. It becomes removable without destroying the aggregated statistics that NFR-4.2 requires to survive; no personal information appears in performance logs (verifiable by log scan). | Identifiable request data and aggregated reporting data are held separately, so retention can act on one without the other. Logging is a single infrastructure component that excludes personal information by construction. |
+| ASR-04 | Scalability headroom | NFR-2.4, NFR-2.7, NFR-2.1, NFR-2.6, CON-010, CON-018 | Load rises from the client-stated 100 concurrent users toward the 1 000 CON-010 asks the team to reason about. At 100 users, 95% of submissions confirm within 3 s with no failed request; capacity can be raised by adding an application instance without redesign. | The application tier holds no session or user state in process memory, so it can be replicated behind a load balancer later. Every query is issued from the data access layer, where each index is justified against a named query. |
+| ASR-05 | Maintainability for a three-person, part-time team | CON-004, CON-012, NFR-1.7, CON-002, RSK-013, RSK-014 | A member changes one capability (e.g. reporting) without understanding the rest. The change touches one module and at most the layers it spans; no presentation component imports a data-access component; every dependency crosses one layer boundary in one direction (checkable automatically in CI). | One deployable application divided into business modules, each spanning the layers. Modules interact only through another module's application-service interface or through the domain events of DEC-011, never through another module's data access. |
+| ASR-06 | Deployability within the cost constraint | CON-003, CON-016, NFR-1.8, NFR-3.5, NFR-2.5, NFR-1.5, DEC-003, DEC-010, RSK-008 | The same build is promoted from development through test and staging to production. Only external configuration changes between environments; each environment uses its own database; no secret exists at any commit; the service is available for 99% of the 07:00–18:00 weekday window. | Configuration and secrets are externalised from the code. The system runs as one application unit plus one managed data service, which keeps the operational surface within what three part-time members can support. |
+
+### 6A.3.2 Requirements screened and not treated as architectural
+
+| Requirement | Why it is not an architectural driver |
+|---|---|
+| NFR-1.2 (360 px responsive views) | Satisfied inside the presentation layer. It has no effect on boundaries, data placement or runtime arrangement once CON-011 fixes a single web client. |
+| NFR-3.1 (credential hashing) | A local property of one component in the identity module. Changing the algorithm changes one function. |
+| NFR-2.3 (management view within 5 s) | Real, but served by the structural response to ASR-04 and by the reporting projection in DEC-011. It adds no further structural decision. |
+| NFR-4.3 (privacy notice at submission) | A presentation-layer obligation with no structural consequence. |
+| NFR-1.6 (health endpoint) | Held at Low priority as a forward-engineering hook for M3 observability. It is compatible with the architecture but does not shape it. |
+
+### 6A.3.3 The driver that most influenced the architecture
+
+**ASR-01** had the greatest structural effect. Three pieces of project evidence support
+that judgement rather than a preference for security:
+
+- **Assessment method.** CON-019 states that controls will be actively probed during
+  assessment. Authorisation that is merely present in the interface will be defeated, so
+  it had to be placed server-side at every entry point.
+- **Varied rule granularity.** The requirement set spans function-level, object-level and
+  field-level access (see DEC-012), so no single layer can enforce every rule. That fixed
+  what the application layer must own.
+- **Cost of retrofitting.** DEC-004 recorded at M1 that authorisation cannot be added
+  cleanly later.
+
+The closed dependency rule in §6A.4 exists chiefly to protect this driver.
+
+### 6A.3.4 Where the drivers pull against each other
+
+| Tension | How it is handled |
+|---|---|
+| ASR-02 against ASR-04 — trigger-based audit and justified indexes both add write cost at every status change (§5.4) | Accepted. At the CON-010 load the cost is not expected to bind. NFR-1.11 performance logging supplies the evidence to detect it if it does. |
+| ASR-01 against ASR-05 — three enforcement points are more to understand and review than one | Accepted and mitigated by DEC-012's single documented rule set: the *rules* are in one place even though the *checks* are in three. |
+| ASR-06 against NFR-2.5 availability — one application instance on one host is a single point of failure | Accepted at this load and recorded as RSK-017. ASR-04 keeps the application stateless, so a second instance remains an option rather than a redesign. |
+
+## 6A.4 Architecture alternatives considered
+
+Because CON-012 fixes the layered style, the alternatives compared are the realistic *forms*
+of layering open to the team, together with one distributed option. The distributed option
+is included to show that the prescribed style is also the proportionate one on the
+project's own evidence.
+
+| Option | Description | Assessment against the drivers | Outcome |
+|---|---|---|---|
+| A. Layered monolith, technical layers only | One application organised solely by technical role (routes, services, data access) with no business modules | Satisfies ASR-01 and ASR-02. Weak on ASR-05: every capability is spread across shared folders, so a change to reporting touches the same files as a change to assignment, and part-time members collide in the same service layer. | Rejected |
+| B. Open or selectively open layering | Layers may be bypassed, typically so that read-only reporting queries reach data access directly (Richards and Ford, 2020) | The usual motivation is to avoid pass-through code on read paths. Rejected on two grounds: NFR-1.7, a client-mandated requirement under CON-012, requires every dependency to cross *exactly one* boundary; and a bypassed read path would skip the object- and field-level checks ASR-01 depends on. The reporting performance need is met instead by the pre-computed projection in DEC-011, so the bypass is unnecessary. | Rejected |
+| **C. Closed, layered modular monolith** | One deployable application, closed layers, divided internally into business-capability modules that each span the layers | Satisfies ASR-01 and ASR-02 through the closed path; ASR-05 through module boundaries; ASR-06 through a single deployable unit; ASR-04 through a stateless application tier. | **Selected** |
+| D. Service-based or microservices | Capabilities deployed as separate services communicating over the network | Independent scaling and deployment are not required at 100–1 000 users. It would multiply deployable units against CON-003 and CON-004, and it would turn the single-transaction transition of ASR-02 (CON-017) into a distributed consistency problem. Complexity is not justified by any recorded requirement (Newman, 2021). | Rejected |
+
+**Cost accepted with Option C.** Closed layering creates some pass-through code, where a layer
+forwards a call without adding behaviour — the "architecture sinkhole" (Richards and Ford,
+2020). The team accepts this deliberately. The protection it buys for ASR-01 and ASR-02 is
+worth more on this project than the code it saves. The reporting projection keeps the worst
+case — heavy read-only aggregation — out of the sinkhole.
+
+**Future evidence that would reopen the decision.** The notifications module is the most
+likely candidate for later extraction if SCP-014 returns to scope with external delivery
+channels and a different load profile. Extraction would need evidence of independent change
+rate or load, not anticipation.
+
+## 6A.5 Logical architecture — layers and responsibilities
+
+The layered structure applies the Layers pattern (Buschmann *et al.*, 1996). Dependencies
+point downward only, and each crosses exactly one boundary (NFR-1.7).
+
+| Layer | Responsibility | Must not |
+|---|---|---|
+| **Presentation** | Browser client (responsive views, input capture) and the HTTP interface: routes, request-shape validation, the route guard (DEC-012 point 1) and the response serialiser (DEC-012 point 3) | Hold business or authorisation rules (CON-019: a hidden control is not a restriction); reference data access (NFR-1.7) |
+| **Application** | Use-case services for each module; the single authorisation rule set; the request lifecycle rules (which transitions are valid, FR group 6); transaction boundaries (NFR-1.10); the domain-event registry (DEC-011) | Know how or where data is stored; depend on HTTP or on the client |
+| **Data access** | Repositories — the only components that query the data store; versioned migration scripts (NFR-1.9); the performance logger that excludes personal information (NFR-1.11); environment configuration loading | Make authorisation or lifecycle decisions |
+
+The data store sits beneath the data access layer. It is not an application layer, but it
+carries one deliberate responsibility of its own: the audit triggers required by CON-015,
+placed there precisely so that no application path can bypass them (ASR-02).
+
+**A boundary decision the team made.** Lifecycle and business rules are held as a
+framework-independent module *inside* the application layer rather than as a separate domain
+layer. Most CivicConnect operations are record-keeping workflows whose only substantial
+business logic is the status lifecycle. A separate domain layer would therefore add a
+pass-through step to nearly every operation — the sinkhole cost above, doubled. Keeping the
+lifecycle rules free of framework and database imports preserves the benefit that matters,
+which is that they can be unit-tested in isolation.
+
+The DEC-011 component diagram in §10.6 omits the data access layer for readability; the
+repository components shown here sit between the application services and the collections in
+both views.
+
+![Logical architecture](Media/architecture-logical.png)
+
+*Figure 3 — Logical architecture: the three layers, their responsibilities and the permitted
+dependency rule. Solid edges are permitted calls; the crossed edge is the dependency NFR-1.7
+forbids. Source: `docs/architecture/architecture-logical.mmd`.*
+
+## 6A.6 Module view — business capabilities
+
+Modules are derived from the nine functional-requirement feature groups (§6.2), not from
+technical folders. Each module spans the three layers and owns its own data. The final
+allocation of collections to modules is recorded in the data and persistence baseline.
+
+| Module | Feature groups | Owns (indicative) | May depend on |
+|---|---|---|---|
+| Identity & Access | 1 | Users, roles, sessions | — |
+| Reference Data | 9 | Categories, locations | Identity & Access |
+| Requests | 2, 3, 4 | Requests (identifiable data) | Identity & Access, Reference Data |
+| Assignment | 5 | Assignment records | Requests, Identity & Access |
+| Lifecycle & Work Record | 6, 7 | Request history (append-only) | Requests, Identity & Access |
+| Reporting | 8 | Aggregated counts (non-identifying) | Identity & Access; fed by events |
+| Notifications | SCP-004 (SCP-014 deferred) | In-application notifications | Fed by events |
+
+Modules interact through another module's application-service interface or by subscribing
+to the domain events of DEC-011. They never read or write another module's collections.
+Holding identifiable request data (Requests) apart from non-identifying aggregates
+(Reporting) is the structural response to ASR-03.
+
+![Module view](Media/architecture-modules.png)
+
+*Figure 4 — Module view: the seven business-capability modules and their permitted
+interactions. Solid edges are service-interface calls; dashed edges are the domain events of
+DEC-011. Source: `docs/architecture/architecture-modules.mmd`.*
+
+## 6A.7 Physical view — runtime tiers
+
+A layer is a logical separation of responsibility; a tier is a physical runtime separation
+(Kruchten, 1995). They do not map one-to-one. The presentation layer spans two tiers — the
+client runs in the browser and the HTTP interface runs on the server — while the
+application and data access layers share one server process. The detail of the platform
+configuration is recorded in the deployment section; this view shows only the structural
+consequence.
+
+| Tier | Runs | Structural point |
+|---|---|---|
+| 1 — User device | Browser client (NFR-1.1: no installation) | Untrusted. Nothing here is relied on for access control (CON-019). |
+| 2 — Application host (DEC-003) | One Node.js process: HTTP interface, application and data access layers | Stateless (ASR-04, NFR-2.7). A single instance is the current single point of failure (RSK-017). Configuration and secrets are supplied by the environment (NFR-3.5). |
+| 3 — Managed database service (DEC-002) | Replica set; separate database per environment (CON-016); audit triggers | Data redundancy is provided by the service. The backup mechanism behind NFR-1.5 remains open under DEC-010. |
+
+![Physical view](Media/architecture-physical.png)
+
+*Figure 5 — Physical view: the three runtime tiers. Logical layers are not tiers — the
+presentation layer spans tiers 1 and 2, and three layers share one process on tier 2. Source:
+`docs/architecture/architecture-physical.mmd`.*
+
+## 6A.8 Architecture decision record — DEC-014
+
+| Field | Entry |
+|---|---|
+| **ID** | DEC-014 |
+| **Date** | 29/09/2026 |
+| **Decision** | Adopt a closed, layered modular monolith: three layers (presentation, application, data access) with downward single-boundary dependencies, divided into seven business-capability modules; lifecycle rules held as a framework-independent module inside the application layer; audit writes placed in the data store. |
+| **Context** | CON-012 prescribes a layered style, and NFR-1.7 makes it testable. The team must decide boundaries, module decomposition and permitted dependencies before substantial construction under CON-013. |
+| **Drivers** | ASR-01 to ASR-06 (§6A.3). ASR-01 is the most influential. |
+| **Constraints** | CON-012, CON-004, CON-003, CON-010, CON-015, CON-017, CON-019 |
+| **Alternatives considered** | Layered monolith with technical layers only; open or selectively open layering; service-based or microservices (§6A.4) |
+| **Rationale** | The closed path protects authorisation and lifecycle integrity, the two drivers with the heaviest consequence of failure. Modules reduce collision between three part-time members. One deployable unit fits the cost and capability constraints. The reporting performance need is met by the DEC-011 projection without opening a bypass. |
+| **Trade-offs** | Pass-through code on simple reads (the sinkhole cost). No separate domain layer, so lifecycle rules depend on discipline to stay framework-free. One application instance is a single point of failure. |
+| **Risks** | RSK-016 (layer and module erosion under schedule pressure), RSK-017 (single application instance against NFR-2.5), RSK-009 (field-level rule rests on the unconfirmed CFL-002 resolution) |
+| **Evidence** | Week 2 teaching (SO6, SO7); Chen, Ali Babar and Nuseibeh (2013); Bass, Clements and Kazman (2021); Richards and Ford (2020); Buschmann *et al.* (1996); Newman (2021). No Assignment 2 task covered architecture. |
+| **Later consequence** | The repository structure mirrors the modules and layers. The dependency rule is checked automatically in CI (Criterion F). A second application instance can be added without redesign. The notifications module is the first candidate for extraction if SCP-014 evidence justifies it. The initial `src/` layout is organised by layer only; realignment to module folders is tracked as issue #51. |
+| **Owner** | Christiaan |
+| **Status** | Decided at M2 |
+
+## 6A.9 Risks raised by the architecture
+
+| ID | Risk | Cause | Early-warning indicator | P | I | Mitigation | Owner |
+|---|---|---|---|---|---|---|---|
+| RSK-016 | Layer or module boundaries erode, e.g. a route queries the database directly or one module reads another's collection, and ASR-01 protection is lost silently | Schedule pressure (RSK-014) makes a shortcut attractive, and a bypass works functionally | A pull request introducing an import from data access into the presentation layer, or a cross-module collection read | M | H | An automated dependency-rule check in CI; a boundary item in the pull-request template; reviewers check boundary compliance as part of meaningful review | Member C |
+| RSK-017 | One application instance on one host misses the 99% operating-window availability in NFR-2.5 | ASR-06 favours one deployable unit within CON-003 | Any unplanned outage during 07:00–18:00 on a weekday | M | M | Stateless application tier (ASR-04) keeps a second instance available as a configuration change; the health endpoint (NFR-1.6) gives early detection | Member C |
+
+## 6A.10 Traceability contribution
+
+This section populates two RTM columns introduced at v2.0.
+
+- **ASR / quality-driver link:** every requirement listed in the source-evidence column of
+  §6A.3.1 carries the corresponding ASR-nn.
+- **Architecture / module / component:** every functional requirement carries its module
+  from §6A.6, determined by feature group.
+
+Requirements not linked to an ASR are marked "No architectural driver" rather than left
+blank.
+
+## 6A.11 Architecture baseline
+
+**Included in this baseline:** ASR-01 to ASR-06 and the screening record in §6A.3.2; the
+selected architecture and rejected alternatives (§6A.4); the layer responsibilities and
+dependency rule (§6A.5); the module decomposition (§6A.6); the physical tier view (§6A.7);
+DEC-014; RSK-016 and RSK-017.
+
+**Version and date:** introduced at PED v1.6 (29/09/2026, issues #48–#50), baselined as part of PED v2.0.
+
+**Open decisions and deferred concerns, recorded separately rather than resolved here:**
+
+| Item | Why it is open | Evidence required to close |
+|---|---|---|
+| DEC-010 — backup mechanism for NFR-1.5 | Free managed-database clusters provide no managed backup | Cost of the lowest tier with backup, or evidence that a scheduled export meets 24 h |
+| C-01 / CFL-002 — field-level restriction on security requests | Resolution still *Proposed*; the serialiser rule rests on it | Confirmation from STK-006 |
+| Horizontal scaling | Not required at the stated load; only kept possible | M3 load-test evidence against NFR-2.1 and NFR-2.4 |
+| Realignment of `src/` to module folders | The initial application slice is organised by layer only (§6A.8) | Issue #51 merged with the test suite still passing |
+| Extraction of the notifications module | SCP-014 remains deferred | Evidence of independent change rate or load if SCP-014 returns |
+
+**Sign-off (Master Brief Appendix D):**
+
+| Field | Entry |
+|---|---|
+| Project | CivicConnect |
+| Baseline type | M2 Architecture baseline (component of the Architecture, Technology & Initial Design Baseline) |
+| Version | PED v2.0 |
+| Date | |
+| ASRs traced to stakeholder, constraint and risk evidence | YES / NO |
+| Alternatives and trade-offs recorded | YES / NO |
+| Diagrams distinguish logical layers from physical tiers | YES / NO |
+| Open decisions recorded separately | YES / NO |
+| Outcome | ACCEPTED / CONDITIONALLY ACCEPTED / REVISION REQUIRED |
+| Approved by | E. Lindsay · R. van der Merwe (via PR approval) |
+
+---
+
+# 6B. Data and Persistence Baseline
 
 **Controlled artefact:** `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`
 (full entity table, schemas, index justifications, storage arithmetic).
@@ -751,7 +1019,7 @@ The collection names are those in the §10.6 component diagram, which therefore 
 request plus its timeline, and filtered lists. History is not embedded, because append-only
 could then not be enforced by database privilege, the array would be unbounded, and the
 trigger could not observe entries as discrete events. The cost is a multi-document
-transaction on every change, which the Atlas replica set supports (DEC-015).
+transaction on every change, which the Atlas replica set supports (DEC-016).
 
 **Constraint DB-01 (append-only).** A committed `requestHistory` entry is never updated,
 replaced or deleted by any application path or application credential. Enforced at three
@@ -762,16 +1030,16 @@ alone was bypassable through `bulkWrite` and the native driver, which is why the
 exists. The single sanctioned exception is the removal of personal fields at the end of
 retention under PROC-001 (CR-003).
 
-**Integrity and concurrency (DEC-015).** The transaction encloses the `requests` update and
+**Integrity and concurrency (DEC-016).** The transaction encloses the `requests` update and
 the `requestHistory` insert. Every update is conditional on a `version` field, exposed at
-the API as the ETag (DEC-014), and a unique `{requestId, requestVersion}` index refuses a
+the API as the ETag (DEC-015), and a unique `{requestId, requestVersion}` index refuses a
 second entry for the same successor state. `auditLog` is eventually consistent (target
 ≤ 60 s): an aborted transaction produces no change event, so audit timeliness is traded
 away, not audit correctness. This differs from the Assignment 2 recommendation, which
 assumed SQL trigger semantics (A2 §3.2). The project-specific evidence is MongoDB's own
 documentation that Atlas triggers run from change streams on a separate compute layer.
 
-**Retention (DEC-016, PROC-001).** Personal fields are nulled 14–30 days after closure by a
+**Retention (DEC-017, PROC-001).** Personal fields are nulled 14–30 days after closure by a
 witnessed, twice-monthly manual procedure. Nulling rather than deletion preserves every
 aggregate FR-8.x and FR-9.2 depend on. Automated enforcement (SCP-020) stays deferred,
 because a TTL index can only delete whole documents by age, not null fields conditioned
@@ -781,12 +1049,12 @@ on closure.
 10 000 requests, under 11 % of the 0.5 GB free-cluster limit, so storage does not bind.
 Throughput does: about 9 operations per transition against a 100 ops/s ceiling. That is
 sufficient for CON-010's 100 users but not for the 1 000-user reasoning, and is recorded as
-the DEC-010 upgrade trigger and RSK-017. The cluster is a 3-node replica set with no SLA.
+the DEC-010 upgrade trigger and RSK-019. The cluster is a 3-node replica set with no SLA.
 Recovery rests on DEC-010's operated dump (§10.8).
 
 ---
 
-# 6B. Technology Stack, Versions and Deployment Compatibility
+# 6C. Technology Stack, Versions and Deployment Compatibility
 
 | Layer | Technology | Version / constraint | Evidence / note |
 |---|---|---|---|
@@ -902,7 +1170,7 @@ DEC-002 changes where part of it is enforced.
 | **Requirement** | FR-6.7 — the system shall maintain an immutable history of status, assignment and comment changes. Acceptance criterion AC-FR-6.7. Sourced from STK-005 and committed in scope as SCP-008. |
 | **ASR / Constraint** | The quality driver is auditability: a record of who changed what, when, that cannot be altered after the fact. CON-015 requires database changes to be auditable through triggers and logging. CON-007 requires auditable handling of personal information. NFR-1.9 states the audit obligation as a measurable property. The architecturally significant requirement identifier assigned to this driver is recorded in the architecture baseline. |
 | **Architecture Responsibility** | Request lifecycle management. `StatusTransitionService` owns the transition and is the only component permitted to write a history entry. The audit record is not owned by the application layer at all; responsibility for it sits in the data tier, which is what CON-015 requires and what makes the record unfalsifiable by application code. |
-| **Data Decision** | `requestHistory` is append-only under constraint DB-01, enforced at the repository, the schema (including `bulkWrite`) and the Atlas database role. It is written only inside the DEC-015 transaction that changes the request, with a unique `{requestId, requestVersion}` index as the storage-level guard against contradictory history. `auditLog` is written below the application by the Atlas trigger, after commit, with minimised content. Retention: history personal fields are removed 14–30 days after closure by PROC-001; audit entries are held 90 days under a separate purpose. **OI-06 is closed by DEC-016.** |
+| **Data Decision** | `requestHistory` is append-only under constraint DB-01, enforced at the repository, the schema (including `bulkWrite`) and the Atlas database role. It is written only inside the DEC-016 transaction that changes the request, with a unique `{requestId, requestVersion}` index as the storage-level guard against contradictory history. `auditLog` is written below the application by the Atlas trigger, after commit, with minimised content. Retention: history personal fields are removed 14–30 days after closure by PROC-001; audit entries are held 90 days under a separate purpose. **OI-06 is closed by DEC-017.** |
 | **Design / Interface Decision** | DEC-011. The history append is a **direct write inside the transition**, not a subscriber to the published event. This is the point at which DEC-011 draws a line: the event mechanism carries consequences that may fail independently of the transition — notification, projection — whereas FR-6.7 must not be capable of succeeding or failing separately from the status change it records. A history entry that can be lost while the status change commits would not satisfy AC-FR-6.7. The distinction is visible in the component diagram at §10.6: steps 1 and 2 are solid, step 3 is dashed. |
 | **Technology / ADR** | DEC-002 — MongoDB Atlas, Express, React, Node.js. Atlas managed database triggers provide the mechanism CON-015 requires, attached to the collection rather than to application code, so the audit write cannot be bypassed by any route. DEC-010 remains open against this link: the cluster tier is deferred, and the free tier does not support automated backup, so the durability of the history is an accepted exposure recorded rather than resolved at this version. |
 | **Application Artefact** | `src/services/statusTransitionService.js` performs the transition in a fixed order: the status change is committed, the history entry is appended, and the event is published last. `src/models/RequestHistory.js` enforces append-only storage at the schema, refusing every mutating operation Mongoose exposes, and `src/repositories/historyRepository.js` offers callers no mutating method at all. Immutability is therefore a property of the record rather than a discipline of the caller, which is what AC-FR-6.7 requires. The Atlas trigger writing `auditLog` under CON-015 is held as repository configuration and is added with the deployment work under DEC-003. |
@@ -994,15 +1262,17 @@ September, so the CON-013 week-3 gate is missed).
 
 | ID | Risk | P | I | Priority | Owner |
 |---|---|---|---|---|---|
-| RSK-016 | Atlas trigger suspended beyond the oplog window; audit events for that interval are lost (NFR-1.9) | 2 | 3 | High (6) | Robert |
-| RSK-017 | Free-cluster throughput (100 ops/s) or storage (0.5 GB) ceiling reached; NFR-2.1/2.4 degrade | 2 | 2 | Medium (4) | Robert |
-| RSK-018 | Scheduled backup silently stops; NFR-1.5 unmet without detection | 2 | 3 | High (6) | Robert |
+| RSK-018 | Atlas trigger suspended beyond the oplog window; audit events for that interval are lost (NFR-1.9) | 2 | 3 | High (6) | Robert |
+| RSK-019 | Free-cluster throughput (100 ops/s) or storage (0.5 GB) ceiling reached; NFR-2.1/2.4 degrade | 2 | 2 | Medium (4) | Robert |
+| RSK-020 | Scheduled backup silently stops; NFR-1.5 unmet without detection | 2 | 3 | High (6) | Robert |
+
+RSK-016 and RSK-017, raised by the architecture baseline, are recorded in §6A.9.
 
 **RSK-002** is proposed for re-scoring from probability 3 to 1 (priority 3, Medium): its cause, that no
 retention period exists, no longer holds, and enforcement now exists by procedure (PROC-001).
 The residual is a missed PROC-001 run; its indicator is a gap in the run log. **RSK-008** is
 proposed for closure: the conflict it describes is resolved by DEC-003 and DEC-010, and
-is superseded by RSK-017 and RSK-018. §8.4 below is the M1 text and is preserved; its
+is superseded by RSK-019 and RSK-020. §8.4 below is the M1 text and is preserved; its
 premise (DEC-005 open) no longer holds. The risk register file v0.5 carries these
 entries.
 
@@ -1110,12 +1380,12 @@ states what would close it.
 
 ## 10.2 Decisions recorded
 
-Sixteen entries: fifteen decided, one superseded (DEC-007), none deferred. The three deferments
+Seventeen entries: sixteen decided, one superseded (DEC-007), none deferred. The three deferments
 carried from Milestone 1 — DEC-002, DEC-003 and DEC-005 — closed at this milestone; one new
-deferment was recorded as DEC-010 and closed later in the milestone (§10.8); DEC-014 to DEC-016
+deferment was recorded as DEC-010 and closed later in the milestone (§10.8); DEC-015 to DEC-017
 record the interface, transaction and retention decisions; and the two initial design decisions required at this
 checkpoint were recorded as DEC-011 and DEC-012. The disposition of each M1 deferment is
-stated in §1.7.2, and the design decisions are described in §10.6.
+stated in §1.7.2, and the design decisions are described in §10.6. The architecture decision DEC-014 is described in §6A.8.
 
 **Supersession and identifier stability.** DEC-007 is retained with its original identifier
 and marked superseded, as §1.4 requires: a retired item is never renumbered or removed, so
@@ -1140,9 +1410,10 @@ are updated to cite DEC-013.
 | DEC-011 | Publish a domain event from the status-transition service; consequences subscribe to it | Decided at M2 |
 | DEC-012 | Enforce authorisation at the route boundary, in the service layer and in the response serialiser, against one documented rule set | Decided at M2 |
 | DEC-013 | Exclude a native mobile application; mobile access delivered through responsive web — client directive under CON-011 | Decided |
-| DEC-014 | API semantics: `/api/v1`, transitions as sub-resources, ETag/If-Match, Idempotency-Key, RFC 9457 errors | Decided at M2 |
-| DEC-015 | Transaction encloses `requests` + `requestHistory`; `auditLog` eventually consistent via trigger | Decided at M2 (with CR-001) |
-| DEC-016 | Retention by purpose: request data 30 days after closure; audit log 90 days as a separate purpose | Decided at M2 (with CR-002); closes OI-06 |
+| DEC-014 | Adopt a closed, layered modular monolith with seven business-capability modules (§6A.8) | Decided at M2 |
+| DEC-015 | API semantics: `/api/v1`, transitions as sub-resources, ETag/If-Match, Idempotency-Key, RFC 9457 errors | Decided at M2 |
+| DEC-016 | Transaction encloses `requests` + `requestHistory`; `auditLog` eventually consistent via trigger | Decided at M2 (with CR-001) |
+| DEC-017 | Retention by purpose: request data 30 days after closure; audit log 90 days as a separate purpose | Decided at M2 (with CR-002); closes OI-06 |
 
 ## 10.3 Decision defended: DEC-001
 
@@ -1276,7 +1547,7 @@ implemented, and the RTM records that position rather than leaving the columns b
 ## 10.7 Initial interface and integration decision
 
 significant integration. Assignment 2 §4.5 justified accepting a network boundary, and §4.6
-recommended REST. DEC-014 fixes the semantics that A2 §4.1 identified as the real risk: a
+recommended REST. DEC-015 fixes the semantics that A2 §4.1 identified as the real risk: a
 timed-out transition that is retried must not write a second immutable history entry. A
 transition is therefore a `POST` to a `/transitions` sub-resource, guarded by `If-Match`
 (optimistic concurrency, `412`/`428`) and `Idempotency-Key` (replay, `422` on payload
@@ -1285,7 +1556,7 @@ commits atomically with the change. Errors are RFC 9457 problem details. Search 
 in a `POST` body because URIs are logged (CON-007). The contract is to be held as
 `docs/api/openapi.yaml`. The decision adopts A2's recommendation and extends it:
 idempotency storage and the error taxonomy were not specified by the research. *Full
-record: `docs/decisions/ADR/DEC-014_API_Semantics_v0.1.md`.*
+record: `docs/decisions/ADR/DEC-015_API_Semantics_v0.1.md`.*
 
 ## 10.8 Deferment closed: DEC-010
 
@@ -1421,9 +1692,9 @@ Initial Design Baseline:
 - NFR-4.2, released from its dependency on DEC-005
 - The open items register, with OI-05 closed, OI-06 escalated and OI-12 raised
 - The risk register and the AI usage register, updated for this milestone
-- The data and persistence baseline (§6A) with constraint DB-01, and the technology and
-  deployment position (§6B, DEC-003, DEC-010)
-- DEC-014 to DEC-016; change requests CR-001 to CR-004; procedure PROC-001
+- The data and persistence baseline (§6B) with constraint DB-01, and the technology and
+  deployment position (§6C, DEC-003, DEC-010)
+- DEC-015 to DEC-017; change requests CR-001 to CR-004; procedure PROC-001
 - The requirements traceability matrix v0.5, with the data/persistence column complete at 79 of 79
 
 The architecture baseline, the data and persistence baseline and the application evidence
@@ -1480,13 +1751,29 @@ Apple Inc. (2026) *Human Interface Guidelines: Layout.* Available at:
 https://developer.apple.com/design/human-interface-guidelines/layout (Accessed: 9
 September 2026).
 
+Bass, L., Clements, P. and Kazman, R. (2021) *Software Architecture in Practice.* 4th
+edn. Boston, MA: Addison-Wesley.
+
 Boehm, B.W. (1981) *Software Engineering Economics.* Englewood Cliffs, NJ:
 Prentice-Hall.
+
+Buschmann, F., Meunier, R., Rohnert, H., Sommerlad, P. and Stal, M. (1996)
+*Pattern-Oriented Software Architecture, Volume 1: A System of Patterns.* Chichester:
+John Wiley & Sons.
+
+Chen, L., Ali Babar, M. and Nuseibeh, B. (2013) 'Characterizing architecturally
+significant requirements', *IEEE Software*, 30(2), pp. 38–45. doi:10.1109/MS.2012.174.
 
 International Organization for Standardization (2023) *ISO/IEC 25010:2023 Systems and
 software engineering — Systems and software Quality Requirements and Evaluation
 (SQuaRE) — Product quality model.* 2nd edn. Geneva: ISO. Available at:
 https://www.iso.org/standard/78176.html (Accessed: 9 September 2026).
+
+Kruchten, P.B. (1995) 'The 4+1 view model of architecture', *IEEE Software*, 12(6),
+pp. 42–50. doi:10.1109/52.469759.
+
+Newman, S. (2021) *Building Microservices: Designing Fine-Grained Systems.* 2nd edn.
+Sebastopol, CA: O'Reilly Media.
 
 Project Management Institute (2021) *A Guide to the Project Management Body of
 Knowledge (PMBOK Guide).* 7th edn. Newtown Square, PA: Project Management Institute.
@@ -1495,6 +1782,9 @@ Republic of South Africa (2013) *Protection of Personal Information Act 4 of 201
 Government Gazette No. 37067, 26 November 2013. Pretoria: Government Printer. Available
 at: https://www.gov.za/documents/protection-personal-information-act (Accessed: 9
 September 2026).
+
+Richards, M. and Ford, N. (2020) *Fundamentals of Software Architecture: An Engineering
+Approach.* Sebastopol, CA: O'Reilly Media.
 
 World Wide Web Consortium (2023) *Web Content Accessibility Guidelines (WCAG) 2.2.* W3C
 Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Accessed:
@@ -1517,25 +1807,26 @@ Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Acc
 | Traced Example | v0.2 | `docs/requirements/Traced Example` |
 | Open Items | v0.3 | `docs/requirements/Open Items` |
 | Engineering Decision Log | v0.5 | `docs/decisions/Decision Log` |
-| Architecture Decision Records (DEC-003, DEC-010, DEC-014, DEC-015, DEC-016) | v0.1 | `docs/decisions/ADR` |
+| Architecture Decision Records (DEC-003, DEC-010, DEC-015, DEC-016, DEC-017) | v0.1 | `docs/decisions/ADR` |
 | Data and Persistence Baseline | v0.1 | `docs/architecture/data` |
 | Change Requests CR-001 to CR-004 | v0.1 | `docs/change` |
 | PROC-001 Manual anonymisation procedure | v0.1 | `docs/operations` |
 | Backend corrections (review of the application slice) | – | `docs/M2_BACKEND_CORRECTIONS.md` |
 | Operational scripts and Atlas trigger configuration (backup, restore test, PROC-001, audit trigger) | v0.1 | `scripts/` |
+| Architecture diagrams | v1.0 | `docs/architecture` |
 | Risk Register | v0.5 | `docs/risk/Risk Register` |
 | Forward Engineering Considerations Register | v0.2 | `docs/risk/FEC Register` |
 | AI Usage Register | v0.5 | `docs/AI-Usage/AI Usage Register` |
 | Project Charter | v0.3 | `extras/Project Charter` |
 | Team Working Agreement | v0.1 | `docs/Team Work Agreement` |
 
-*All paths contain an outdated folder that carries the previous versions of said artefact. PED v1.5 and RTM v0.4 are archived in `docs/Outdated/`.*
+*All paths contain an outdated folder that carries the previous versions of said artefact. PED v1.6 and earlier are archived in `docs/PED/PED/Outdated/`; RTM v0.4 is archived in `docs/Outdated/`.*
 
-**Register versions at this version (v1.6).** Every register above is cited at the version held in the repository. At this version the
-Decision Log (v0.5) records DEC-014 to DEC-016 and the DEC-010 closure; the Risk Register (v0.5) records RSK-016 to RSK-018;
+**Register versions at this version (v1.7).** Every register above is cited at the version held in the repository. At this version the
+Decision Log (v0.5) records DEC-014 (architecture, §6A.8), DEC-015 to DEC-017 and the DEC-010 closure; the Risk Register (v0.5) records RSK-018 to RSK-020 (RSK-016 and RSK-017, raised by the architecture in §6A.9, are not yet entered in the register file);
 Open Items (v0.3) closes OI-06, reduces OI-10 and raises OI-13; Acceptance Criteria (v0.3) carries the evaluable AC-NFR-4.2;
 Non-Functional Requirements (v0.3) carries the one-month NFR-4.2. Open Items v0.3 consolidates the M2 changes first
-drafted inside the file then named v0.2 (now archived) with the DEC-016 and OI-13 changes; see
+drafted inside the file then named v0.2 (now archived) with the DEC-017 and OI-13 changes; see
 `docs/VERSION_AUDIT_REPORT.md`. Still pending CR approval, and therefore not yet applied
 to the registers: AC-NFR-1.10 v0.3 (CR-001), the NFR-1.4 and NFR-1.9 measurement-basis changes (CR-002), the FR-6.7 basis
 (CR-003) and NFR-2.6 (CR-004). The RSK-002 re-score and RSK-008 closure proposed in §8.3.1 await team agreement.

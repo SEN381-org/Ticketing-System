@@ -1,9 +1,9 @@
 /**
- * Accountability record (DEC-016 purpose B). Written below the application by the Atlas
+ * Accountability record (DEC-017 purpose B). Written below the application by the Atlas
  * trigger (scripts/atlas/app/) and, for authentication and access events, by the
  * application with an insert-only credential. The application never updates or deletes it.
  *
- * Traces to: CON-015, NFR-1.4, NFR-1.9, NFR-3.6, NFR-4.5, DEC-015, DEC-016.
+ * Traces to: CON-015, NFR-1.4, NFR-1.9, NFR-3.6, NFR-4.5, DEC-016, DEC-017.
  * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.6.
  *
  * Minimisation rule M-1: field NAMES and status values only — never description, location,
@@ -38,6 +38,6 @@ const auditLogSchema = new Schema(
 
 auditLogSchema.index({ eventId: 1 }, { unique: true });                              // at-least-once trigger → idempotent
 auditLogSchema.index({ requestId: 1, occurredAt: 1 });                                // NFR-3.6, NFR-4.5
-auditLogSchema.index({ recordedAt: 1 }, { expireAfterSeconds: 92 * 24 * 3600 });      // NFR-1.4 ≥ 90 days (DEC-016)
+auditLogSchema.index({ recordedAt: 1 }, { expireAfterSeconds: 92 * 24 * 3600 });      // NFR-1.4 ≥ 90 days (DEC-017)
 
 export default mongoose.models.AuditLog || mongoose.model('AuditLog', auditLogSchema);

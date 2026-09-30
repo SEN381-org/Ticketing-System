@@ -1,4 +1,4 @@
-// PROC-001 — anonymise requests closed >= 14 days ago. NFR-4.2, DEC-016. Run via mongosh.
+// PROC-001 — anonymise requests closed >= 14 days ago. NFR-4.2, DEC-017. Run via mongosh.
 // Usage: mongosh "$URI" --eval 'var DRY_RUN=true' --file scripts/retention/proc-001-anonymise.js
 const DRY = (typeof DRY_RUN === 'undefined') ? true : DRY_RUN;   // safe default
 const ELIGIBILITY_DAYS = 14;                                      // = 30 - longest run gap (16); see §2

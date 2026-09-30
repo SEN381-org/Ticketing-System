@@ -1,0 +1,39 @@
+---
+title: "Logical architecture — layers, responsibilities and the permitted dependency rule"
+---
+flowchart TB
+  subgraph PRES["Presentation layer"]
+    UI["Browser client<br/>responsive views — NFR-1.2<br/>holds no access rule — CON-019"]
+    API["HTTP interface<br/>routes + route guard — DEC-012 pt 1<br/>response serialiser — DEC-012 pt 3"]
+  end
+
+  subgraph APP["Application layer"]
+    SVC["Use-case services, one set per module<br/>transaction boundary — NFR-1.10"]
+    RULES["Authorisation rule set<br/>single documented source — DEC-012"]
+    LIFE["Lifecycle rules<br/>valid status transitions — FR group 6"]
+    EVT(["Domain-event registry — DEC-011"])
+  end
+
+  subgraph DAL["Data access layer"]
+    REPO["Repositories<br/>only components that query the store"]
+    MIG["Versioned migrations — NFR-1.9"]
+    LOG["Performance logger<br/>no personal information — NFR-1.11"]
+  end
+
+  subgraph STORE["Data store"]
+    COLS[("Module-owned collections")]
+    TRIG{{"Database triggers write the audit log<br/>CON-015 — application cannot bypass"}}
+  end
+
+  UI -->|"HTTPS / JSON — NFR-3.2"| API
+  API --> SVC
+  API --> RULES
+  SVC --> RULES
+  SVC --> LIFE
+  SVC -.-> EVT
+  SVC --> REPO
+  SVC --> LOG
+  REPO --> COLS
+  MIG -.-> COLS
+  COLS --> TRIG
+  API --x|"not permitted — NFR-1.7"| REPO

@@ -6,7 +6,7 @@
 | **From** | Robert van der Merwe (reviewer; data, persistence, technology and interface owner) |
 | **Date** | 29/09/2026 |
 | **Code reviewed** | `origin/dev` @ `7cfa94b` (merges of #57, #58, #60, each approved by both reviewers) |
-| **Authoritative references** | `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`, `docs/decisions/ADR/DEC-014_API_Semantics_v0.1.md`, `docs/decisions/ADR/DEC-015_Transaction_Boundary_v0.1.md`, `docs/decisions/ADR/DEC-016_Retention_Purposes_v0.1.md`, PED v1.6 §6A |
+| **Authoritative references** | `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md`, `docs/decisions/ADR/DEC-015_API_Semantics_v0.1.md`, `docs/decisions/ADR/DEC-016_Transaction_Boundary_v0.1.md`, `docs/decisions/ADR/DEC-017_Retention_Purposes_v0.1.md`, PED v1.7 §6B |
 
 This is the post-merge review record for the slice, in the Master Brief §9.1 form (comment →
 response → correction → re-review). Each item has a stable ID (R-01 to R-22). **Please
@@ -19,7 +19,7 @@ and reply per item: *fixed in <commit>*, *disagree because …*, or *raised as C
 |---|---|---|---|
 | R-01 | BLOCKER | Router and guard committed under `tests/` | **Fixed on `task/M2-PersonB`**: moved to `src/routes/` and `src/middleware/`; `npm test` 23/23 pass |
 | R-02 | MAJOR | No CI check to stop a red merge | Open (Christiaan's CI work) |
-| R-03 | MAJOR | `PATCH /:id/status` vs DEC-014 | Open: Ethan |
+| R-03 | MAJOR | `PATCH /:id/status` vs DEC-015 | Open: Ethan |
 | R-04 | BLOCKER-traceability | Roles ≠ FR-1.2 | **Partly fixed (models)**: `ROLE` in `src/models/_shared.js`, `User`/`Role` models use FR-1.2. Remaining for Ethan: `authorise.js`, `requestStatus.js`, `statusTransitionService.js`, tests |
 | R-05 | MINOR | Error body / default Express error handler | Open: Ethan |
 | R-06 | Q | Source of `req.actor` | Open: Ethan to answer |
@@ -31,7 +31,7 @@ and reply per item: *fixed in <commit>*, *disagree because …*, or *raised as C
 | R-12 | MINOR | History index / fields | **Fixed (model)**: `requestVersion`, unique `{requestId, requestVersion}`, idempotency fields, full `changeType` set, `campusId`. Remaining for Ethan: `historyRepository.listForRequest` should sort by `requestVersion` |
 | R-13 | MAJOR | Unconditional update, result ignored | Open: Ethan |
 | R-14 | MINOR | Repositories cannot join a transaction | Open: Ethan |
-| R-15 | MAJOR | Status change + history not atomic | Open: Ethan (DEC-015) |
+| R-15 | MAJOR | Status change + history not atomic | Open: Ethan (DEC-016) |
 | R-16 | MAJOR | Publish after commit, outside the callback | Open: Ethan |
 | R-17 | MAJOR | Reporting projection drift | Open: Ethan |
 | R-18 | MAJOR | Notification leaks internal status (FR-3.5) | Open: Ethan |
@@ -127,14 +127,14 @@ Line numbers refer to `7cfa94b`. After the R-01 move, `tests/routes/requestRoute
 **R-02 [MAJOR] No CI, so this could merge red**
 > `.github/workflows/` contains only `New Text Document.txt`. A single required `npm test` check on PRs to `dev`/`main` would have blocked R-01 automatically. That's stage 1 of the A2 §5.10 recommendation and M2 brief §10 ("repeatable automated checks already introduced should be shown"). Not your area (Christiaan's CI work), but this PR is the concrete evidence for why it's needed. Can you tag him?
 
-**R-03 [MAJOR] `requestRoutes.js:13` — `PATCH /:id/status` vs DEC-014**
-> The transition is modelled as a field update. A2 §4.6 recommended, and DEC-014 now records, `POST /api/v1/requests/:id/transitions` with `If-Match` (optimistic concurrency, 412/428) and `Idempotency-Key` (400/422/409 per the IETF draft). Without the key, a client retry after a timeout writes a **second immutable history entry**, which is the A2 §4.1 failure. Without `If-Match`, two staff acting on the same request both succeed from the same predecessor. The guard stays on the new route, so the route-table test is unaffected. Also, please mount under `/api/v1` from the start.
+**R-03 [MAJOR] `requestRoutes.js:13` — `PATCH /:id/status` vs DEC-015**
+> The transition is modelled as a field update. A2 §4.6 recommended, and DEC-015 now records, `POST /api/v1/requests/:id/transitions` with `If-Match` (optimistic concurrency, 412/428) and `Idempotency-Key` (400/422/409 per the IETF draft). Without the key, a client retry after a timeout writes a **second immutable history entry**, which is the A2 §4.1 failure. Without `If-Match`, two staff acting on the same request both succeed from the same predecessor. The guard stays on the new route, so the route-table test is unaffected. Also, please mount under `/api/v1` from the start.
 
 **R-04 [BLOCKER-traceability] `authorise.js:22-26` — roles don't match FR-1.2**
 > `OPERATION_RULES` uses `Department Staff` and `Department Head`. FR-1.2 (baselined) fixes the role set as **Requester, Technician, Coordinator, Manager, Security Officer, Administrator**. Everything that traces FR-1.2/FR-1.3/FR-6.4 to this file is therefore tracing to roles that don't exist in the requirements. Either align to FR-1.2, or raise a CR to change FR-1.2. It shouldn't diverge silently. The same applies to `requestStatus.js:21` and `statusTransitionService.js:100-103`.
 
 **R-05 [MINOR] `requestRoutes.js:26` — error body and unhandled errors**
-> `res.status(error.status).json({ error: error.message })` is fine for our own error classes, but DEC-014 standardises on RFC 9457 problem details (`application/problem+json`, stable `type`, machine `code`). More importantly, `next(error)` falls through to Express's default handler, which returns an HTML page with a stack trace unless `NODE_ENV=production`. That's an information leak CON-019 probing will find. Suggest one error-handler middleware that maps known errors and returns a generic 500 for everything else.
+> `res.status(error.status).json({ error: error.message })` is fine for our own error classes, but DEC-015 standardises on RFC 9457 problem details (`application/problem+json`, stable `type`, machine `code`). More importantly, `next(error)` falls through to Express's default handler, which returns an HTML page with a stack trace unless `NODE_ENV=production`. That's an information leak CON-019 probing will find. Suggest one error-handler middleware that maps known errors and returns a generic 500 for everything else.
 
 **R-06 [Q] `authorise.js:45` — where does `req.actor` come from?**
 > The guard trusts `req.actor`, but nothing in the slice sets it. Worth a comment (or a test) that it's set **only** by the session middleware from the server-side store, never from headers or body, since otherwise the whole guard can be bypassed by a crafted request. That's the adversarial case CON-019 will try first.
@@ -148,7 +148,7 @@ Line numbers refer to `7cfa94b`. After the R-01 move, `tests/routes/requestRoute
 > `title` is `required: true`, and there's no `location` field. FR-2.2 requires *exactly* category, location and description and *"will treat no other field as mandatory"* (resolution of CFL-001). As written, the schema would reject a compliant submission (no title) and accept a non-compliant one (no location). Suggest removing `title` (it also has no purpose under NFR-4.1's minimisation) and adding `location` as required.
 
 **R-09 [MAJOR] `Request.js:22` — `versionKey: false` and no version field**
-> This removes the only built-in optimistic-concurrency hook and doesn't replace it. The race in A2 §3.4 (two staff read Acknowledged, both write, and history gets two transitions from the same predecessor) is fully open. Baseline: a `version: Number` field, incremented on every write, exposed as `ETag: "v<n>"` (DEC-014/015).
+> This removes the only built-in optimistic-concurrency hook and doesn't replace it. The race in A2 §3.4 (two staff read Acknowledged, both write, and history gets two transitions from the same predecessor) is fully open. Baseline: a `version: Number` field, incremented on every write, exposed as `ETag: "v<n>"` (DEC-015/016).
 
 **R-10 [MAJOR] `Request.js` — fields the baseline needs that are missing**
 > - `reference` (unique, `immutable: true`): FR-2.6 / AC-FR-2.6. There's currently nothing to show the requester.
@@ -180,7 +180,7 @@ Line numbers refer to `7cfa94b`. After the R-01 move, `tests/routes/requestRoute
 >
 > The tests can't catch this because the fakes never fail. Suggested test: make `history.append` reject and assert (a) nothing is published and (b) the unit of work did not commit.
 >
-> Fix: inject a `unitOfWork` port (`run(fn)` → `session.withTransaction`), the same way `requests` and `history` are injected, so the tests stay database-free. **This doesn't change DEC-011**: DEC-011's line is between steps 2 and 3, and steps 1+2 were always meant to be one unit. It's recorded as DEC-015, with CR-001 narrowing AC-NFR-1.10 (auditLog is a post-commit trigger on Atlas, so it can't be in the transaction). Sketch in `docs/decisions/ADR/DEC-015_Transaction_Boundary_v0.1.md`.
+> Fix: inject a `unitOfWork` port (`run(fn)` → `session.withTransaction`), the same way `requests` and `history` are injected, so the tests stay database-free. **This doesn't change DEC-011**: DEC-011's line is between steps 2 and 3, and steps 1+2 were always meant to be one unit. It's recorded as DEC-016, with CR-001 narrowing AC-NFR-1.10 (auditLog is a post-commit trigger on Atlas, so it can't be in the transaction). Sketch in `docs/decisions/ADR/DEC-016_Transaction_Boundary_v0.1.md`.
 
 **R-16 [MAJOR] `statusTransitionService.js:79` — publish must be after commit, outside the callback**
 > Once R-15 is in, `publish()` must be called **after** `withTransaction()` resolves, not inside its callback. `withTransaction` re-runs the callback on `TransientTransactionError`, which would publish twice, or publish for a transaction that then aborts. The existing ordering test (`statusTransitionService.test.js:68-76`) should assert that publication happens after commit.

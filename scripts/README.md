@@ -9,9 +9,9 @@ documents remain the rationale. If a script and its document disagree, fix both 
 | `backup/civicconnect-backup.sh` | `mongodump` → gzip → GnuPG-encrypt → disk; sha256; prunes archives older than 7 days | DEC-010 (`docs/decisions/ADR/DEC-010_Backup_and_Recovery_v0.1.md`) | cron on the institutional backup server, 02:00 and 14:00 |
 | `backup/crontab.example` | The 12-hourly schedule for the dedicated `ccbackup` user | DEC-010 | copy into `crontab -e` |
 | `backup/restore-test.sh` | Weekly: verify checksum, decrypt newest archive, restore into the **test** project, run the consistency check (AC-NFR-1.5 evidence) | DEC-010 | backup server, weekly |
-| `backup/consistency-check.js` | mongosh: every request's `version` equals its latest `requestHistory.requestVersion` (+1 if anonymised); exits 1 on mismatch | DEC-010, DEC-015 | called by `restore-test.sh`; also recovery step 3 |
-| `retention/proc-001-anonymise.js` | mongosh: nulls personal fields of requests closed ≥ 14 days ago, in batched transactions; verifies 0 remaining and unchanged aggregates | PROC-001 (`docs/operations/PROC-001_Manual_Anonymisation_v0.1.md`), DEC-016 | Administrator, twice monthly (1st and 16th), temporary `retention-operator` credential |
-| `atlas/app/triggers/auditRequests.json`, `auditHistory.json` | Atlas Database Trigger definitions on `requests` and `requestHistory` (`full_document: false`) | NFR-1.9, DEC-015, DEC-016 (data baseline §3.6) | `appservices push`, one App Services app per environment |
+| `backup/consistency-check.js` | mongosh: every request's `version` equals its latest `requestHistory.requestVersion` (+1 if anonymised); exits 1 on mismatch | DEC-010, DEC-016 | called by `restore-test.sh`; also recovery step 3 |
+| `retention/proc-001-anonymise.js` | mongosh: nulls personal fields of requests closed ≥ 14 days ago, in batched transactions; verifies 0 remaining and unchanged aggregates | PROC-001 (`docs/operations/PROC-001_Manual_Anonymisation_v0.1.md`), DEC-017 | Administrator, twice monthly (1st and 16th), temporary `retention-operator` credential |
+| `atlas/app/triggers/auditRequests.json`, `auditHistory.json` | Atlas Database Trigger definitions on `requests` and `requestHistory` (`full_document: false`) | NFR-1.9, DEC-016, DEC-017 (data baseline §3.6) | `appservices push`, one App Services app per environment |
 | `atlas/app/functions/writeAuditLog.js`, `config.json` | Trigger function writing minimised, idempotent `auditLog` entries | same | same |
 
 ## Usage

@@ -1,12 +1,12 @@
-# DEC-015 — Transaction boundary for request writes; auditLog eventually consistent
+# DEC-016 — Transaction boundary for request writes; auditLog eventually consistent
 
 | Field | Entry |
 |---|---|
-| **ID** | DEC-015 |
+| **ID** | DEC-016 |
 | **Date** | 29/09/2026 |
 | **Owner** | Robert van der Merwe |
 | **Status** | Proposed. Decided on approval of this PR; **CR-001** (AC-NFR-1.10 narrowing) must be approved with it |
-| **Affects** | NFR-1.10, AC-NFR-1.10, CON-017, CON-015, NFR-1.9, FR-6.3, FR-6.7, FR-5.4, DEC-011, DEC-014 |
+| **Affects** | NFR-1.10, AC-NFR-1.10, CON-017, CON-015, NFR-1.9, FR-6.3, FR-6.7, FR-5.4, DEC-011, DEC-015 |
 | **Research** | Assignment 2 §3.2, §3.4, §3.6, §3.7 |
 
 ## Context
@@ -41,7 +41,7 @@ Two facts established at M2 make that criterion unimplementable as written:
 3. **DEC-011 consequences (`notifications`, `reportingCounts`) stay outside the transaction**
    and are published **after** `withTransaction()` resolves, never inside the callback.
 4. **Optimistic concurrency** by a `version` field. The client presents it as the ETag via
-   `If-Match` (DEC-014), and the service's update is conditional on it. A unique
+   `If-Match` (DEC-015), and the service's update is conditional on it. A unique
    `{requestId, requestVersion}` index on `requestHistory` backs that up at the storage layer.
 5. **Transaction settings recorded, not inherited:** `readConcern: snapshot`,
    `writeConcern: majority`, `readPreference: primary`, bounded by the server's 60 s
@@ -52,7 +52,7 @@ Two facts established at M2 make that criterion unimplementable as written:
 ```js
 export function createStatusTransitionService({ requests, history, unitOfWork, clock = () => new Date() }) {
   async function transition(requestId, toStatus, actor, { expectedVersion, idempotencyKey, fingerprint, note }) {
-    // DEC-014: replay before doing anything else.
+    // DEC-015: replay before doing anything else.
     const prior = idempotencyKey && await history.findByIdempotencyKey(actor.id, idempotencyKey);
     if (prior) return replayOrReject(prior, fingerprint);            // same fingerprint → replay; else 422
 
@@ -106,7 +106,7 @@ database integration test (M3) asserts that the request document is unchanged.
 - **Integrity is not weakened; only timeliness is.** An aborted transaction produces no
   change event, so the trigger can never audit a partial state. The narrowing gives up
   *audit timeliness* (seconds), not *audit correctness*.
-- **New failure mode, recorded as RSK-016.** If the trigger is suspended and its resume
+- **New failure mode, recorded as RSK-018.** If the trigger is suspended and its resume
   token falls out of the oplog, audit events for that interval are lost. The docs state the
   trigger "begins listening to new events but does not process any missed past events". M0's
   oplog is small and not configurable. Mitigations: trigger-suspension alerting in Atlas;
@@ -135,10 +135,10 @@ database integration test (M3) asserts that the request document is unchanged.
 | **AC-NFR-1.10 v0.3 (proposed)** | *Given* a status transition that writes the `requests` document (including its assignment fields) and a `requestHistory` entry inside one transaction, *when* a failure is injected after the first write and before commit, *then* neither document is changed, no `auditLog` entry for the aborted transition ever appears, and no event is published; *and given* the same transition committed, *then* exactly one `auditLog` entry per written document appears within 60 seconds |
 | Reason | Atlas triggers execute after commit via change streams; the M1 criterion assumed SQL trigger semantics |
 | Requirements affected | NFR-1.10 (AC only), NFR-1.9 (unchanged; its AC already targets a trigger-written row) |
-| Architecture/design | DEC-011 unchanged. DEC-015 new. StatusTransitionService gains a unit-of-work port |
-| UI/API/data | DEC-014 `If-Match`/412. `version` field added to `requests` |
+| Architecture/design | DEC-011 unchanged. DEC-016 new. StatusTransitionService gains a unit-of-work port |
+| UI/API/data | DEC-015 `If-Match`/412. `version` field added to `requests` |
 | Security/privacy | None negative; audit remains unbypassable |
 | Quality/testing | New unit test (append failure → nothing published); M3 integration fault-injection test; audit-lag measurement |
 | Scope / schedule / cost | Small, within the follow-up PR to the slice; no cost |
-| Risk | RSK-016 raised (trigger suspension) |
+| Risk | RSK-018 raised (trigger suspension) |
 | Recommendation | **ACCEPT** |

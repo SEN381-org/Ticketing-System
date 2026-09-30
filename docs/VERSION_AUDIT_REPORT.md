@@ -54,7 +54,7 @@ working tree or the git history.*
   new file named v0.3 therefore looked as though it would duplicate a version that was
   already in use.
 - **Resolution:** v0.3 is the version that consolidates **all** M2 changes. It takes Ethan's
-  drafted v0.3 entries together with this change set's updates: OI-06 closed by DEC-016, OI-10
+  drafted v0.3 entries together with this change set's updates: OI-06 closed by DEC-017, OI-10
   reduced (storage arithmetic), OI-13 raised (FR-6.7 vs anonymisation). Inside the file:
   - every label introduced by this change set now reads **v0.3** ("CLOSED at v0.3",
     "PARTIALLY CLOSED at v0.3", "NEW at v0.3", status "Closed at v0.3"); no "v0.4" remains;
@@ -80,7 +80,7 @@ working tree or the git history.*
 | Acceptance Criteria | `docs/Requirements/Acceptance Criteria/Acceptance Criteria v0.3.xlsx` | v0.2 (`Acceptace …`, original filename kept) → `Acceptance Criteria/Oudated/` | ✔ (filename typo corrected from v0.3 on) |
 | Non-Functional Requirements | `…/Non Functional Requirements v0.3.xlsx` | v0.2 → `Non-Functional Requirements/Outdated/` | ✔ |
 | Data and Persistence Baseline | `docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md` | – (new) | ✔ |
-| ADRs DEC-003, DEC-010, DEC-014, DEC-015, DEC-016 | `docs/decisions/ADR/DEC-0xx_*_v0.1.md` | – (new) | ✔ |
+| ADRs DEC-003, DEC-010, DEC-015, DEC-016, DEC-017 | `docs/decisions/ADR/DEC-0xx_*_v0.1.md` | – (new) | ✔ |
 | Change requests CR-001 to CR-004 | `docs/change/CR-00x_*_v0.1.md` | – (new) | ✔ |
 | PROC-001 | `docs/operations/PROC-001_Manual_Anonymisation_v0.1.md` | – (new) | ✔ |
 | AI Usage Register | `docs/AI-Usage/AI Usage Register/AI Usage Register v0.5.xlsx` | v0.4 → `AI Usage Register/Oudated/` | ✔ ("Issues found" column added per Master Brief s.10.1) |

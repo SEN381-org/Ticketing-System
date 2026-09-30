@@ -1,6 +1,6 @@
 /**
  * In-application notification — derived read model written by NotificationSubscriber
- * after commit (DEC-011). Traces to: FR-3.4, FR-3.5, SCP-004, DEC-016 (purpose A).
+ * after commit (DEC-011). Traces to: FR-3.4, FR-3.5, SCP-004, DEC-017 (purpose A).
  * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.4.
  */
 
@@ -28,6 +28,6 @@ const notificationSchema = new Schema(
 
 notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });                        // FR-3.4
 notificationSchema.index({ sourceHistoryId: 1, userId: 1 }, { unique: true });           // subscriber idempotency
-notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 });      // DEC-016 purpose A
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 });      // DEC-017 purpose A
 
 export default mongoose.models.Notification || mongoose.model('Notification', notificationSchema);

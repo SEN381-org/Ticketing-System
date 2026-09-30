@@ -1,0 +1,22 @@
+---
+title: "Physical view — runtime tiers (logical layers are not tiers)"
+---
+flowchart LR
+  subgraph T1["Tier 1 — user device (untrusted)"]
+    BR["Browser<br/>client bundle<br/>Chrome / Edge / Firefox — NFR-1.1"]
+  end
+
+  subgraph T2["Tier 2 — application host · DEC-003"]
+    NODE["Single Node.js process<br/>presentation (HTTP interface) +<br/>application + data access layers<br/>stateless — NFR-2.7"]
+    ENV["Environment configuration<br/>connection strings and secrets<br/>never committed — NFR-3.5"]
+  end
+
+  subgraph T3["Tier 3 — managed database · DEC-002 · DEC-010"]
+    RS[("Replica set<br/>separate dev / test / staging / prod<br/>databases — CON-016")]
+    TR{{"Audit triggers — CON-015"}}
+  end
+
+  BR -->|"HTTPS, TLS 1.2+ — NFR-3.2"| NODE
+  ENV -.-> NODE
+  NODE -->|"TLS driver connection"| RS
+  RS --> TR

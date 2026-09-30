@@ -1,12 +1,12 @@
-# DEC-014 — API semantics: REST/JSON over HTTPS, versioned path, ETag/If-Match concurrency, Idempotency-Key on state-changing POSTs, RFC 9457 errors
+# DEC-015 — API semantics: REST/JSON over HTTPS, versioned path, ETag/If-Match concurrency, Idempotency-Key on state-changing POSTs, RFC 9457 errors
 
 | Field | Entry |
 |---|---|
-| **ID** | DEC-014 (new at M2) |
+| **ID** | DEC-015 (new at M2) |
 | **Date** | 29/09/2026 |
 | **Owner** | Robert van der Merwe (initial interface and integration decisions) |
 | **Status** | Proposed; decided on approval |
-| **Affects** | FR-2.1, FR-2.6, FR-3.x, FR-4.3, FR-4.4, FR-5.x, FR-6.x, FR-7.x, NFR-1.6, NFR-2.1, NFR-3.3, NFR-3.6, CON-007, CON-011, CON-012, CON-013, CON-019, DEC-011, DEC-012, DEC-015, RSK-012 |
+| **Affects** | FR-2.1, FR-2.6, FR-3.x, FR-4.3, FR-4.4, FR-5.x, FR-6.x, FR-7.x, NFR-1.6, NFR-2.1, NFR-3.3, NFR-3.6, CON-007, CON-011, CON-012, CON-013, CON-019, DEC-011, DEC-012, DEC-016, RSK-012 |
 | **Research** | Assignment 2 §4 (Task 3), in particular §4.1 failure consequences, §4.4 comparison, §4.5 cost of distribution, §4.6 recommendation |
 
 ## Context
@@ -49,7 +49,7 @@ version check and no idempotency. It predates this decision and is brought into 
   and RFC 9110 §17.9 warns against sensitive data in URIs (they end up in proxy and server
   logs). This is a CON-007 obligation, not a style choice.
 
-### 2. Optimistic concurrency (joins DEC-015 to the protocol)
+### 2. Optimistic concurrency (joins DEC-016 to the protocol)
 
 - Every request representation carries **`ETag: "v<version>"`** (strong validator). RFC 9110
   §13.1.1 requires strong comparison for `If-Match`, so a weak `W/` tag could never match.
@@ -73,7 +73,7 @@ cited as the best available convention rather than a standard):
   together with a **fingerprint** (SHA-256 of method + normalised path + canonical JSON
   body). A unique partial index `{actorId, idempotencyKey}` makes the database the arbiter.
   No extra collection is needed, and the key commits atomically with the change it guards
-  (DEC-015).
+  (DEC-016).
 - Behaviour:
 
 | Situation | Response |
@@ -99,10 +99,10 @@ stack traces and Mongo error text are never returned.
 | 401 | Not authenticated | FR-1.1 |
 | 403 | Authenticated, operation not permitted for role (function level) | FR-1.3, FR-6.4, NFR-3.3 |
 | 404 | Not found, **or an object the caller may not know exists** (a requester asking for another user's request) | FR-3.6 / AC-FR-3.6 (no data, no existence oracle) |
-| 409 | Idempotency in progress; transaction write-conflict retries exhausted | DEC-015 |
-| 412 | `If-Match` stale | DEC-015 |
+| 409 | Idempotency in progress; transaction write-conflict retries exhausted | DEC-016 |
+| 412 | `If-Match` stale | DEC-016 |
 | 422 | Domain rule refused (illegal transition, resolution missing before Resolved, reason missing on close/reject); idempotency key reused with a different payload | FR-6.2, FR-6.5, FR-6.6 |
-| 428 | `If-Match` missing on a state-changing sub-resource | DEC-015 |
+| 428 | `If-Match` missing on a state-changing sub-resource | DEC-016 |
 | 503 | Health check: database unreachable | NFR-1.6 |
 
 The existing `TransitionError(422)`, `AuthorisationError(403)` and `NotFoundError(404)` map
@@ -153,5 +153,5 @@ becomes a generic 500.
   interface backlog.
 - NFR-3.3 "every entry point" becomes the finite table in §1. It is the checklist the
   route-table assertion enforces.
-- RTM: DEC-014 is added to the design/interface and ADR columns of every row in *Affects*
+- RTM: DEC-015 is added to the design/interface and ADR columns of every row in *Affects*
   (see `docs/Requirements/Requirements Traceability Matrix/RTM_v0.5_Change_Notes.md`).

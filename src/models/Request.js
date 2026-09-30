@@ -2,11 +2,11 @@
  * Service request — aggregate root of the request lifecycle.
  *
  * Traces to: FR-2.1, FR-2.2, FR-2.3, FR-2.5, FR-2.6, FR-5.x, FR-6.1, FR-6.5, FR-6.6,
- *            SCP-001, SCP-008, SCP-019, NFR-4.2, DEC-006, DEC-014, DEC-015, DEC-016.
+ *            SCP-001, SCP-008, SCP-019, NFR-4.2, DEC-006, DEC-015, DEC-016, DEC-017.
  * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.2.
  *
- * `version` is the optimistic-concurrency counter exposed as the ETag (DEC-014). Every
- * update must be conditional on it and increment it (DEC-015); that rule is enforced in
+ * `version` is the optimistic-concurrency counter exposed as the ETag (DEC-015). Every
+ * update must be conditional on it and increment it (DEC-016); that rule is enforced in
  * the repository, not here (review comments R-09, R-13).
  */
 
@@ -64,7 +64,7 @@ const requestSchema = new Schema(
     statusChangedAt: { type: Date, required: true },
     dueAt:           { type: Date, default: null },   // FR-8.3
 
-    // DEC-014 / DEC-015 — optimistic concurrency, exposed as ETag "v<version>".
+    // DEC-015 / DEC-016 — optimistic concurrency, exposed as ETag "v<version>".
     version: { type: Number, required: true, default: 0, min: 0 },
 
     anonymisedAt: { type: Date, default: null },     // NFR-4.2 / PROC-001

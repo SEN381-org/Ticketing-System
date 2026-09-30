@@ -2,7 +2,7 @@
 
 | Field | Entry |
 |---|---|
-| **ID** | PROC-001 (new; controlled procedure, referenced from SCP-020, NFR-4.2, DEC-016) |
+| **ID** | PROC-001 (new; controlled procedure, referenced from SCP-020, NFR-4.2, DEC-017) |
 | **Version** | 0.1 |
 | **Owner** | Robert van der Merwe. **Executed by** an Administrator; a second team member witnesses and signs the run record |
 | **Frequency** | **Twice monthly**, on the 1st and the 16th (or the next working day) |
@@ -28,7 +28,7 @@ early enough that the *next* run always falls inside R:
 
 > **eligibility age = R − (longest gap between runs)**
 
-- R = 30 days (DEC-016).
+- R = 30 days (DEC-017).
 - Runs on the 1st and 16th: the longest gap is 16 days (16th → 1st of a 31-day month).
 - **Eligibility: closed at least 14 days before the run date.**
 - Result: every closed request is anonymised between **14 and 30 days** after closure. It is
@@ -48,7 +48,7 @@ early enough that the *next* run always falls inside R:
 | `requests` | `description`, `location`, `requesterId`, `submittedById`, `assigneeId`, `resolution.summary`, `resolution.recordedById`, `closure.reason`, `closure.closedById` (the single list `REQUEST_PERSONAL_FIELDS`) | `_id`, `reference`, `campusId`, `categoryId`, `securityCategory`, `status`, `submittedAt`, `assignedAt`, `statusChangedAt`, `closure.closedAt`, `dueAt`, `version` (+1), `anonymisedAt` |
 | `requestHistory` | `body`, `actorId`, `fromAssigneeId`, `toAssigneeId` (`HISTORY_PERSONAL_FIELDS`) | `changeType`, `fromStatus`, `toStatus`, `actorRole`, `occurredAt`, `requestVersion`, `idempotencyKey` |
 | `notifications` | whole documents deleted (normally already removed by the 30-day TTL) | – |
-| `auditLog` | untouched: purpose B, 90 days, contains no purpose-A values (DEC-016 M-1) | – |
+| `auditLog` | untouched: purpose B, 90 days, contains no purpose-A values (DEC-017 M-1) | – |
 
 Nulling, not deleting, keeps FR-8.1/8.2/8.5 counts, overdue history (FR-8.3) and
 category retention (FR-9.2) intact. That is what AC-NFR-4.2 v0.3 checks.
@@ -85,7 +85,7 @@ and are nulled with `actorId`. The run script covers them.
 ## 6. Script — `scripts/retention/proc-001-anonymise.js` (mongosh)
 
 ```js
-// PROC-001 — anonymise requests closed >= 14 days ago. NFR-4.2, DEC-016. Run via mongosh.
+// PROC-001 — anonymise requests closed >= 14 days ago. NFR-4.2, DEC-017. Run via mongosh.
 // Usage: mongosh "$URI" --eval 'var DRY_RUN=true' --file scripts/retention/proc-001-anonymise.js
 const DRY = (typeof DRY_RUN === 'undefined') ? true : DRY_RUN;   // safe default
 const ELIGIBILITY_DAYS = 14;                                      // = 30 - longest run gap (16); see §2
@@ -164,7 +164,7 @@ The check in `docs/decisions/ADR/DEC-010_Backup_and_Recovery_v0.1.md` already do
 |---|---|
 | Change ID | CR-003 |
 | Conflict | FR-6.7: *"prevent any user, including an Administrator, from altering or deleting a recorded status transition, assignment or comment entry."* NFR-4.2 requires identifiable data, which includes comment text and actor identity on those entries, to be gone 30 days after closure. Taken literally, both cannot hold after day 30 |
-| Requested change | FR-6.7 text unchanged. Add to its measurement basis: *"Immutability applies to every interface the system provides and to every application database credential. The removal of personal fields at the end of the retention period under PROC-001 (NFR-4.2, DEC-016) is not an alteration of the record's lifecycle content: status values, change types, roles, timestamps and sequence are preserved. It is executed only by a temporary, audited database credential outside the system's interfaces."* AC-FR-6.7 unchanged; it already says "through any interface the system provides" |
+| Requested change | FR-6.7 text unchanged. Add to its measurement basis: *"Immutability applies to every interface the system provides and to every application database credential. The removal of personal fields at the end of the retention period under PROC-001 (NFR-4.2, DEC-017) is not an alteration of the record's lifecycle content: status values, change types, roles, timestamps and sequence are preserved. It is executed only by a temporary, audited database credential outside the system's interfaces."* AC-FR-6.7 unchanged; it already says "through any interface the system provides" |
 | Reason | Makes the one sanctioned exception explicit and bounded, rather than leaving two baselined requirements in silent contradiction |
 | Requirements affected | FR-6.7 (basis only), NFR-4.2 |
 | Security | The exception is narrow (two fields, eligible records only), time-limited (6 h credential), witnessed and audited |
