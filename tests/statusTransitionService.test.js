@@ -123,6 +123,85 @@ test('a failed history append publishes nothing — R-15', async () => {
   assert.equal(published, false, 'no event may be published for a transition that did not commit');
 });
 
+/*
+ * DEC-016 atomicity, FR-6.3. The ordering test above asserts only the ORDER of
+ * the two writes, so it would still pass if the history write were moved outside
+ * the unit of work — the atomicity it was cited for was not verified (found in
+ * E. Lindsay's review of the RTM v0.7 cells, posted on PR #67). A fake unit of
+ * work cannot roll anything back; what it
+ * can prove is that the service performs both writes inside the unit of work,
+ * with its session, and that nothing commits when the second write fails.
+ * Rollback by the database itself remains M3 (AC-NFR-1.10 v0.3, CR-001).
+ */
+function atomicityHarness({ failAppend = false } = {}) {
+  const SESSION = Object.freeze({ id: 'session-under-test' });
+  const writes = [];
+  let running = false;
+  let committed = false;
+
+  const requests = {
+    findById: async () => ({
+      _id: 'req-1', status: STATUS.ASSIGNED, version: 3, categoryId: CAT, campusId: 'campus-1',
+      requesterId: 'user-1', reference: 'CC-2026-000123', securityCategory: false,
+      resolution: { summary: null },
+    }),
+    applyChange: async (_id, expected, _set, _actor, options) => {
+      writes.push({ write: 'request', session: options?.session, insideRun: running });
+      return { version: expected + 1 };
+    },
+  };
+  const history = {
+    findByIdempotencyKey: async () => null,
+    append: async (_entry, options) => {
+      writes.push({ write: 'history', session: options?.session, insideRun: running });
+      if (failAppend) throw new Error('history write failed');
+      return { _id: 'hist-1' };
+    },
+  };
+  const unitOfWork = {
+    run: async (work) => {
+      running = true;
+      try {
+        const result = await work(SESSION);
+        committed = true;
+        return result;
+      } finally {
+        running = false;
+      }
+    },
+  };
+
+  const service = createStatusTransitionService({ requests, history, unitOfWork, clock: () => AT });
+  return { service, writes, SESSION, didCommit: () => committed };
+}
+
+test('both writes happen inside the unit of work, with its session — DEC-016, FR-6.3', async () => {
+  const { service, writes, SESSION, didCommit } = atomicityHarness();
+  await service.transition('req-1', STATUS.IN_PROGRESS, ACTOR, { expectedVersion: 3 });
+
+  assert.deepEqual(writes, [
+    { write: 'request', session: SESSION, insideRun: true },
+    { write: 'history', session: SESSION, insideRun: true },
+  ], 'the status change and the history entry must both be written inside unitOfWork.run()');
+  assert.equal(didCommit(), true);
+});
+
+test('nothing commits when the history write fails — DEC-016, R-15', async () => {
+  const { service, writes, didCommit } = atomicityHarness({ failAppend: true });
+  let published = false;
+  subscribe(EVENTS.REQUEST_STATUS_CHANGED, 'probe', 'test', () => { published = true; });
+
+  await assert.rejects(
+    () => service.transition('req-1', STATUS.IN_PROGRESS, ACTOR, { expectedVersion: 3 }),
+    /history write failed/,
+    'the failure must reach the caller, not be absorbed',
+  );
+  assert.equal(didCommit(), false, 'the unit of work must not commit when the history write fails');
+  assert.equal(published, false, 'no event may be published for a transition that did not commit');
+  assert.deepEqual(writes.map((w) => w.write), ['request', 'history'],
+    'both writes were attempted inside the one unit of work');
+});
+
 test('a stale version is refused before any write — DEC-015 / 412', async () => {
   const { service, calls } = harness({ version: 5 });
   await assert.rejects(
@@ -257,6 +336,46 @@ test('closing records the reason and the closure clock — FR-6.6, NFR-4.2', asy
   assert.equal(setSeen[0]['closure.closedAt'], AT,
     'closure.closedAt starts the NFR-4.2 retention clock PROC-001 selects on');
 });
+
+test('a move to Resolved records the resolution summary, when and by whom — FR-6.5', async () => {
+  const setSeen = [];
+  const requests = {
+    findById: async () => ({ _id: 'r', status: STATUS.IN_PROGRESS, version: 4, categoryId: CAT,
+                             campusId: 'c', requesterId: 'u', reference: 'CC-2026-000002',
+                             securityCategory: false, resolution: { summary: null } }),
+    applyChange: async (_id, _v, $set) => { setSeen.push($set); return { version: 5 }; },
+  };
+  const history = { append: async () => ({ _id: 'h' }), findByIdempotencyKey: async () => null };
+  const service = createStatusTransitionService({
+    requests, history, unitOfWork: { run: (w) => w('s') }, clock: () => AT,
+  });
+
+  await service.transition('r', STATUS.RESOLVED, ACTOR,
+    { expectedVersion: 4, resolutionSummary: 'Replaced the faulty wall socket' });
+
+  const $set = setSeen[0];
+  assert.equal($set.status, STATUS.RESOLVED);
+  assert.equal($set['resolution.summary'], 'Replaced the faulty wall socket');
+  assert.equal($set['resolution.recordedAt'], AT, 'recorded at the transition time');
+  assert.equal($set['resolution.recordedById'], ACTOR.id, 'recorded against the acting user');
+  assert.deepEqual(Object.keys($set).filter((k) => k.startsWith('closure.')), [],
+    'a move to Resolved does not close the request');
+});
+
+/*
+ * NOT TESTED, DELIBERATELY — do not "fix" this gap without reading OI-15.
+ *
+ * A request reopened (Resolved -> In Progress) and then resolved again WITHOUT a
+ * new summary: today the earlier resolution.* values remain on the request and
+ * satisfy FR-6.5, so the second move to Resolved is allowed. Whether that is
+ * right is undecided. FR-6.5 does not say, and the reopen rule is recorded as
+ * OI-15 for team decision: either the original summary counts, or a reopen
+ * clears resolution.* and a new summary is required.
+ *
+ * A test here would encode one of those two answers and present an open design
+ * question as a verified requirement — the failure OI-15 exists to prevent. When
+ * OI-15 is settled, test the rule the team agreed.
+ */
 
 test('the consequences of an event are enumerable from one registry — DEC-011', async () => {
   subscribe(EVENTS.REQUEST_STATUS_CHANGED, 'NotificationSubscriber', 'FR-3.4', () => {});
