@@ -56,15 +56,15 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 0.9 | 09/09/2026 | C. Burger, R. van der Merwe | Risk Register v0.4: RSK-014 and RSK-015 added for the schedule and decision-deadline exposures arising from the corrected window. Project Charter v0.3: Member C's register adopted as authoritative with a reconciliation mapping in §7.1 | E. Lindsay |
 | 1.0 | 09/09/2026 | E. Lindsay | Integration of all M1 artefacts into a single controlled document; references added; Team Working Agreement drafted; baseline conditions recorded; baseline sign-off completed | R. van der Merwe, C. Burger |
 | 1.1 | | E. Lindsay | M1 baseline review: requirements, assumptions, constraints, acceptance criteria and forward engineering considerations reviewed against the evidence now available; changes recorded under controlled change and superseded content preserved | R. van der Merwe, C. Burger |
-| 1.2 | | C. Burger | Architecturally significant requirements identified and linked to stakeholder, constraint and risk evidence; architecture baseline and diagrams recorded | E. Lindsay, R. van der Merwe |
+| 1.2 | | C. Burger | Architecturally significant requirements identified and linked to stakeholder, constraint and risk evidence; architecture baseline and diagrams recorded *(not used — this work was delivered as 1.6)* | E. Lindsay, R. van der Merwe |
 | 1.3 | 29/09/2026 | R. van der Merwe | Data and persistence baseline (§6B): entities, aggregates, ownership and lifecycle; Mongoose schemas for `requests`, `requestHistory`, `notifications`, `reportingCounts`, `auditLog`, `users`/`roles`/`groups`; append-only constraint DB-01 stated at three layers; transaction boundary DEC-016 with CR-001 (AC-NFR-1.10); retention by purpose DEC-017 closing OI-06 with CR-002; PROC-001 manual anonymisation (interim control for NFR-4.2, SCP-020 deferred) with CR-003; CR-004 (NFR-2.6); RTM v0.5 data/persistence column completed (62 rows) and 10 populated cells corrected | E. Lindsay, C. Burger |
 | 1.4 | 29/09/2026 | R. van der Merwe | Technology and deployment (§6C): DEC-003 recorded as a full ADR (Hostinger VPS + one Atlas free cluster per environment); DEC-010 closed (free cluster in production; 12-hourly `mongodump` to an institutional server for NFR-1.5); DEC-015 API semantics (versioned REST, ETag/If-Match, Idempotency-Key, RFC 9457 errors); runtime minimum set to Node 22 (engines ">=22.0.0"); RSK-018 to RSK-020 raised. Application slice build fixed: router and guard moved from `tests/` to `src/` (23/23 tests pass) | E. Lindsay, C. Burger |
 | 1.5 | 29/09/2026 | E. Lindsay | Initial design decisions recorded as architecture decision records (DEC-011, DEC-012) with supporting component and sequence diagrams; requirements traceability matrix extended from nine columns to fourteen (v0.4); end-to-end trace for FR-6.7 recorded at §7.5 and completed into implementation and initial verification evidence | R. van der Merwe, C. Burger |
 | 1.6 | 29/09/2026 | C. Burger | Architecturally significant requirements (ASR-01–06) and architecture baseline recorded as §6A: alternatives, layer responsibilities, business modules, physical tiers, DEC-014, Figures 3–5, RSK-016/017 and architecture sign-off | E. Lindsay, R. van der Merwe |
 | 1.7 | 29/09/2026 | R. van der Merwe | Working draft: Member B content (rows 1.3 and 1.4) integrated into this document and merged with v1.6 (C. Burger) from `dev`; Member B identifiers renumbered to follow the §6A content already merged — DEC-014–016 → DEC-015–017, RSK-016–018 → RSK-018–020, §6A/§6B → §6B/§6C; register references aligned to the versions held in the repository (Decision Log v0.5, Risk Register V0.5, Open Items v0.3, Acceptance Criteria v0.3, Non-Functional Requirements v0.3, RTM v0.5); PED v1.6 archived in `docs/PED/PED/Outdated/` and RTM v0.4 in `docs/Outdated/`; `src/models/` aligned to the data baseline with `tests/models.test.js` (suite 39/39); AI Usage Register v0.5 records the Claude Code assistance for this work. Minor version used because .0 is reserved for the frozen milestone baseline | E. Lindsay, C. Burger |
-| 1.8 | 30/09/2026 | R. van der Merwe | Open Items v0.4 (v0.3 archived): OI-14 raised (`reportingCounts` reconciliation job, owner R. van der Merwe, target M3) and OI-15 raised (transition model confirmation, including whether a reopened-then-resolved request satisfies FR-6.5 from its original summary), both arising from PR #62 and its review; §6.5, §12.2 and Appendix A updated to cite them. PED v1.7 archived in `docs/PED/PED/Outdated/` | E. Lindsay, C. Burger |
-| 1.9 | | C. Burger | Repository structure aligned to the architecture; continuous integration controls adopted; application and technical documentation recorded *(planned; renumbered from 1.6, then 1.8, as delivered revisions took those numbers)* | E. Lindsay, R. van der Merwe |
-| 1.10 | | E. Lindsay, R. van der Merwe, C. Burger | Risk register, assumptions, dependencies and forward engineering considerations updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone *(planned; renumbered from 1.7, then 1.9)* | Reviewed by the two members other than each author |
+| 1.8 | 30/09/2026 | C. Burger | Risk Register V0.6: RSK-016 and RSK-017 entered; RSK-002 and RSK-007 re-scored, RSK-008 closed (superseded by RSK-019 and RSK-020), RSK-012 recorded as mitigated, RSK-015 as materialised; M2 review column added and exposure-matrix formulas extended to all rows. FEC Register V0.3: M2 influence sheet (§9.5). RTM v0.6: ASR / quality-driver link and Architecture / module / component columns completed for all 79 rows (§6A.10). §7.5 cites ASR-02; §8.3, §8.4.1, §9.5 and Appendix A updated to the new register versions *(delivers the risk and FEC part of the row previously planned as 1.9)* | E. Lindsay, R. van der Merwe |
+| 1.9 | | C. Burger | Repository structure aligned to the architecture; continuous integration controls adopted; application and technical documentation recorded *(planned; renumbered from 1.8)* | E. Lindsay, R. van der Merwe |
+| 1.10 | | E. Lindsay, R. van der Merwe | Assumptions and dependencies updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone *(planned; the remainder of the row previously planned as 1.9)* | Reviewed by the two members other than each author |
 | 2.0 | | E. Lindsay | Integration of all M2 artefacts into this document; Architecture, Technology & Initial Design Baseline identified, approved and signed off; M1 baseline conditions reviewed and their status recorded. Reserved for the frozen milestone baseline | R. van der Merwe, C. Burger |
 
 Baselined content is not silently overwritten. Changes after this baseline follow the
@@ -226,8 +226,8 @@ change are preserved in the affected artefact.
 | Non-Functional Requirements | v0.2 | Changed under control. NFR-4.2 is released from OI-05 by the closure of DEC-005 and now states the agreed retention period. The measurement bases of NFR-1.4, NFR-1.9 and NFR-4.2 are amended under CR-002 (DEC-017), and those of NFR-2.6 and FR-6.7 under CR-004 and CR-003. |
 | Acceptance Criteria | v0.2 | Changed under control where the underlying requirement changed. AC-NFR-4.2 v0.3 is supplied by CR-002 and AC-NFR-1.10 v0.3 by CR-001. The register file is at v0.3 with the evaluable AC-NFR-4.2; AC-NFR-1.10 v0.3 is applied when CR-001 is approved. Otherwise carried forward. |
 | Requirements Traceability Matrix | v0.2 | Extended at this version with the architecture, data, design, technology, implementation and verification evidence columns (v0.4), and the data/persistence column completed at v0.5. See §7. |
-| Risk Register | v0.4 | Updated with the architecture, data, technology, dependency, design, security, deployment, cost and implementation exposures arising at this milestone. See §8. |
-| Forward Engineering Considerations Register | v0.2 | Reviewed; the influence each consideration exerted on the decisions recorded at this version is stated in §9. |
+| Risk Register | v0.4 | Updated at v0.5 and v0.6 with the architecture, data, technology, dependency, design, security, deployment, cost and implementation exposures arising at this milestone. See §8. |
+| Forward Engineering Considerations Register | V0.3 | Reviewed; the influence each consideration exerted on the decisions recorded at this version is stated in §9. |
 | Engineering Decision Log | v0.2 | Extended with the decisions recorded at this milestone and with the disposition of the three deferments carried from M1. See §10. |
 | AI Usage Register | v0.1 | Extended for the Milestone 2 period. The completeness limitation disclosed in §11.4 is addressed or carried forward as recorded there. |
 
@@ -729,14 +729,11 @@ register, the RTM and the open items file. Sixty-eight of seventy-nine RTM rows 
 fully baselined; the remainder carry an explicit qualifier naming the assumption or
 decision they depend on.
 
-**Position at this version (v1.8).** The table above is the M1 baseline and is preserved. NFR-4.2 is no
+**Position at this version (v1.7).** The table above is the M1 baseline and is preserved. NFR-4.2 is no
 longer blocked: DEC-005 closed and PROC-001 enforces it (§6B). FR-4.2, FR-8.4 and FR-9.1
 remain *Proposed* against OI-01 to OI-03. One new conflict is disclosed: **OI-13**, where
 FR-6.7 forbids any user from altering a history entry while NFR-4.2 requires personal fields
 on those entries to be removed after the retention period. CR-003 proposes the resolution.
-Open Items v0.4 adds **OI-15**: FR-6.5 does not say whether resolution information recorded
-before a reopen (Resolved → In Progress) still satisfies it when the request is resolved again.
-The transition model is a design proposal pending confirmation under the same item.
 
 ---
 
@@ -1092,7 +1089,7 @@ administrative: at M4 the project must demonstrate which stakeholder expectation
 satisfied, and an untraceable requirement cannot be evaluated against the expectation
 that produced it.
 
-**Controlled artefact:** Requirements Traceability Matrix v0.2.
+**Controlled artefact:** Requirements Traceability Matrix v0.6.
 
 ## 7.2 Structure
 
@@ -1109,8 +1106,8 @@ the evidence the later lifecycle stages actually produce:
 | Column | State at v2.0 |
 |---|---|
 | Requirement ID, source, requirement, priority, acceptance criteria | Carried forward from v1.0 |
-| ASR / quality-driver link | Populated where a requirement is traceable to a recorded architectural driver; otherwise carried as pending against the architecture baseline |
-| Architecture / module / component | Module identified for every requirement; component allocation pending the architecture baseline |
+| ASR / quality-driver link | Populated for all 79 rows at v0.6: 58 linked to ASR-01 to ASR-06, 16 marked "No architectural driver", 5 marked "Screened out" per §6A.3.2 |
+| Architecture / module / component | Populated for all 79 rows at v0.6: module from §6A.6, and layer or component from §6A.5 and the application slice |
 | Data / persistence impact | Populated where the requirement determines a persistence consequence; otherwise pending the data model |
 | Design / interface decision | Populated where DEC-011 or DEC-012 applies; otherwise pending |
 | Technology decision | Populated for every row from DEC-002, with the specific mechanism named where the technology determines the approach |
@@ -1172,7 +1169,7 @@ DEC-002 changes where part of it is enforced.
 | Link | Evidence at v2.0 |
 |---|---|
 | **Requirement** | FR-6.7 — the system shall maintain an immutable history of status, assignment and comment changes. Acceptance criterion AC-FR-6.7. Sourced from STK-005 and committed in scope as SCP-008. |
-| **ASR / Constraint** | The quality driver is auditability: a record of who changed what, when, that cannot be altered after the fact. CON-015 requires database changes to be auditable through triggers and logging. CON-007 requires auditable handling of personal information. NFR-1.9 states the audit obligation as a measurable property. The architecturally significant requirement identifier assigned to this driver is recorded in the architecture baseline. |
+| **ASR / Constraint** | The quality driver is auditability: a record of who changed what, when, that cannot be altered after the fact. CON-015 requires database changes to be auditable through triggers and logging. CON-007 requires auditable handling of personal information. NFR-1.9 states the audit obligation as a measurable property. The driver is recorded as **ASR-02** (integrity and auditability of the request lifecycle) in §6A.3.1. |
 | **Architecture Responsibility** | Request lifecycle management. `StatusTransitionService` owns the transition and is the only component permitted to write a history entry. The audit record is not owned by the application layer at all; responsibility for it sits in the data tier, which is what CON-015 requires and what makes the record unfalsifiable by application code. |
 | **Data Decision** | `requestHistory` is append-only under constraint DB-01, enforced at the repository, the schema (including `bulkWrite`) and the Atlas database role. It is written only inside the DEC-016 transaction that changes the request, with a unique `{requestId, requestVersion}` index as the storage-level guard against contradictory history. `auditLog` is written below the application by the Atlas trigger, after commit, with minimised content. Retention: history personal fields are removed 14–30 days after closure by PROC-001; audit entries are held 90 days under a separate purpose. **OI-06 is closed by DEC-017.** |
 | **Design / Interface Decision** | DEC-011. The history append is a **direct write inside the transition**, not a subscriber to the published event. This is the point at which DEC-011 draws a line: the event mechanism carries consequences that may fail independently of the transition — notification, projection — whereas FR-6.7 must not be capable of succeeding or failing separately from the status change it records. A history entry that can be lost while the status change commits would not satisfy AC-FR-6.7. The distinction is visible in the component diagram at §10.6: steps 1 and 2 are solid, step 3 is dashed. |
@@ -1222,7 +1219,7 @@ make exposure explicit early enough to be managed, and to connect a risk to the
 decision, constraint or scope item that creates it. A risk stated too vaguely to act on
 has no engineering value.
 
-**Controlled artefact:** Risk Register v0.4.
+**Controlled artefact:** Risk Register V0.6.
 
 ## 8.2 Method
 
@@ -1241,26 +1238,29 @@ Charter v0.3 §7.1, and where the two disagree this register governs.
 
 ## 8.3 Register summary
 
-Fifteen risks are recorded, RSK-001 to RSK-015, each linked to the artefacts that
-create or are affected by the exposure. Every risk names a specific condition rather
-than a general category.
+Twenty risks are recorded, RSK-001 to RSK-020. Eighteen are open; RSK-008 is closed and
+RSK-015 has materialised. Both rows are retained, because an identifier is never reused
+(§1.4). Every risk names a specific condition rather than a general category. The register
+summary as it stood at v1.0 (fifteen risks) is preserved in PED v1.0.
 
 **Highest exposure (priority 9):**
 
 | ID | Risk |
 |---|---|
 | RSK-001 | Requesters continue using email, telephone and WhatsApp after launch, so duplication persists outside the single record |
-| RSK-002 | Identifiable personal information is retained indefinitely because no retention period has been agreed |
 | RSK-014 | The AI productivity assumption underpinning the schedule fails to deliver the required multiplier, and the remaining critical path overruns the delivery window |
 
 **High band (priority 6):** RSK-003 (no agreed definition of "overdue"), RSK-004
-(duplicates recreated inside the platform), RSK-007 (selected stack unavailable in the
-institutional environment), RSK-008 (hosting platform cannot satisfy security and
-retention needs), RSK-009 (RBAC specified but only partially delivered), RSK-012
-(traceability decays after baseline), RSK-015 (DEC-002 and DEC-003 not closed by 22
-September, so the CON-013 week-3 gate is missed).
+(duplicates recreated inside the platform), RSK-009 (RBAC specified but only partially
+delivered), RSK-012 (traceability decays after baseline), RSK-016 (layer or module
+boundaries erode), RSK-018 (Atlas audit trigger suspended), RSK-020 (scheduled backup
+silently stops).
 
-**Medium band (priority 3–4):** RSK-005, RSK-006, RSK-010, RSK-011, RSK-013.
+**Medium band (priority 3–4):** RSK-002, RSK-005, RSK-006, RSK-007, RSK-010, RSK-011,
+RSK-013, RSK-017, RSK-019.
+
+**Closed or materialised:** RSK-008 (closed, superseded by RSK-019 and RSK-020) and
+RSK-015 (materialised; consequence recorded against C-04 and C-05).
 
 ### 8.3.1 Risks raised or re-scored during M2 (data, technology and deployment)
 
@@ -1272,13 +1272,28 @@ September, so the CON-013 week-3 gate is missed).
 
 RSK-016 and RSK-017, raised by the architecture baseline, are recorded in §6A.9.
 
-**RSK-002** is proposed for re-scoring from probability 3 to 1 (priority 3, Medium): its cause, that no
+**RSK-002** was proposed for re-scoring from probability 3 to 1 (priority 3, Medium): its cause, that no
 retention period exists, no longer holds, and enforcement now exists by procedure (PROC-001).
 The residual is a missed PROC-001 run; its indicator is a gap in the run log. **RSK-008** is
 proposed for closure: the conflict it describes is resolved by DEC-003 and DEC-010, and
 is superseded by RSK-019 and RSK-020. §8.4 below is the M1 text and is preserved; its
 premise (DEC-005 open) no longer holds. The risk register file v0.5 carries these
 entries.
+
+### 8.3.2 Register changes adopted at v1.8 (Risk Register V0.6)
+
+| ID | Change | Reason |
+|---|---|---|
+| RSK-002 | Re-scored 3×3 → 1×3 (priority 3) | The §8.3.1 proposal is adopted. DEC-005 and DEC-017 fixed retention and PROC-001 enforces it; the residual is a missed PROC-001 run |
+| RSK-007 | Re-scored 2×3 → 1×3 (priority 3) | DEC-002 closed on a stack that builds and passes its tests on team machines and in CI; the residual is a platform difference found at deployment |
+| RSK-008 | Closed | Resolved by DEC-003 and DEC-010; the residual exposure is carried by RSK-019 and RSK-020 |
+| RSK-009 | Unchanged score, now load-bearing | DEC-012 enforcement point 3 rests on CFL-002 (C-01 open). Review of PR #62 found that security-category requests could not be closed or rejected by anyone; the fix is recorded for confirmation under OI-15 |
+| RSK-012 | Open — mitigated | The single subscription registry bounds the DEC-011 cost; RTM v0.6 is complete for the architecture columns |
+| RSK-015 | Materialised | DEC-002 and DEC-003 closed on 29/09/2026, after the 22/09/2026 deadline |
+| RSK-016, RSK-017 | Entered | Raised by the architecture baseline in §6A.9 |
+
+The register's new "M2 review" column records the reason for every change against the row
+it applies to, so the M1 wording of each risk stays visible.
 
 ## 8.4 The risk deserving most attention
 
@@ -1307,6 +1322,19 @@ DEC-005 still open and unowned. The contingency, if guidance does not arrive, is
 a documented institutional retention standard as an interim position rather than
 proceeding with none.
 
+### 8.4.1 Position at Milestone 2
+
+The §8.4 selection is the M1 judgement and is preserved. Its premise no longer holds:
+DEC-005 closed, and RSK-002 is re-scored to priority 3.
+
+At v1.8, RSK-001 and RSK-014 share the highest score. **RSK-014 now deserves the most
+attention.** At M1 it was distinguished as a risk "with a date and a trigger". That date,
+the CON-013 gate of 29 September, has passed without a velocity measurement (condition
+C-05), so the risk has lost the control that made it manageable. RSK-001 remains
+operational and recoverable, as argued at M1. The next action for RSK-014 is to take the
+velocity measurement against the merged M2 work and agree the scope-reduction order in
+Appendix B (C-05).
+
 ## 8.5 A risk the register raises against the baseline itself
 
 RSK-003 records that no engineering decision has been logged for the service-level
@@ -1326,8 +1354,8 @@ this register is to identify those concerns without prematurely deciding them, a
 record what each one has already changed in the baseline. It is the difference between
 thinking ahead and racing ahead.
 
-**Controlled artefact:** FEC Register v0.2, with a second sheet recording baseline
-influence.
+**Controlled artefact:** FEC Register V0.3, with a second sheet recording M1 baseline
+influence and a third recording M2 influence.
 
 ## 9.2 Considerations recorded
 
@@ -1367,6 +1395,22 @@ likely operational cost beyond the educational context (FEC-007); a scope positi
 requests already open at go-live (FEC-002); a decision record for the service-level
 target behind "overdue" (FEC-003, and RSK-003). These are carried forward rather than
 closed.
+
+## 9.5 Influence at Milestone 2
+
+§9.3 records what the considerations changed at M1 and is preserved. The register's third
+sheet (FEC Register V0.3) records what each one changed in the M2 architecture, data,
+technology and design decisions.
+
+| FEC | M2 decisions shaped | Effect at M2 | Status |
+|---|---|---|---|
+| FEC-001 | ASR-01, ASR-03, DEC-012, DEC-017 | Authorisation became the most influential driver (§6A.3.3); identifiable data held apart from aggregates (§6A.6) | Open: CFL-002 unconfirmed (C-01) |
+| FEC-002 | — | No M2 decision; `campusId` on every collection keeps a later bulk load migration-free | Open, carried to M3 |
+| FEC-003 | ASR-01 to ASR-06, DEC-011, DEC-012, CI | ASRs stated as measurable scenarios; enforcement chosen so it can be asserted automatically; tests run in CI | Open: "overdue" target (C-02) |
+| FEC-004 | DEC-002 | Stack the team can support, Node 22 minimum, builds on team machines and in CI | Addressed; residual RSK-007 |
+| FEC-005 | DEC-003, DEC-010, DEC-011, DEC-017 | Hosting separated from the managed database; operated backup; audit retention as its own purpose; SCP-014 can return as a subscriber without rework | Addressed; residual RSK-019, RSK-020 |
+| FEC-006 | ASR-02, DEC-016, DB-01 | Audit write below the application; append-only history at three layers; one unit of work | Open: trigger deployment (RSK-018) |
+| FEC-007 | DEC-003, DEC-010, ASR-06 | Free cluster kept with a stated upgrade trigger; one deployable unit | Open: post-handover cost undocumented |
 
 ---
 
@@ -1714,9 +1758,7 @@ recorded in §1.7.2.
 
 No engineering decision is deferred at this version. DEC-010 closed with two dated evidence items
 (E1 institutional backup server, E2 first restore test) on which it depends. OI-13 (FR-6.7
-against NFR-4.2) is open pending CR-003. OI-15 (transition model confirmation, including the
-FR-6.5 reopen question) awaits team agreement, and OI-14 (`reportingCounts` reconciliation)
-is owned for M3. Three
+against NFR-4.2) is open pending CR-003. Three
 requirements remain unsettled — FR-4.2, FR-8.4 and FR-9.1 — as recorded in §6.5; NFR-4.2
 is closed by the closure of DEC-005. Three conditions from the M1 baseline are carried
 forward rather than closed: C-01, C-02 and C-05, as recorded in Appendix B.
@@ -1809,9 +1851,9 @@ Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Acc
 | Functional Requirements | v0.2 | `docs/requirements/Functional Requirements` |
 | Non-Functional Requirements | v0.3 | `docs/requirements/Non-Functional Requirements` |
 | Acceptance Criteria | v0.3 | `docs/requirements/Acceptance Criteria` |
-| Requirements Traceability Matrix | v0.5 | `docs/requirements/Requirements Traceability Matrix` |
+| Requirements Traceability Matrix | v0.6 | `docs/requirements/Requirements Traceability Matrix` |
 | Traced Example | v0.2 | `docs/requirements/Traced Example` |
-| Open Items | v0.4 | `docs/requirements/Open Items` |
+| Open Items | v0.3 | `docs/requirements/Open Items` |
 | Engineering Decision Log | v0.5 | `docs/decisions/Decision Log` |
 | Architecture Decision Records (DEC-003, DEC-010, DEC-015, DEC-016, DEC-017) | v0.1 | `docs/decisions/ADR` |
 | Data and Persistence Baseline | v0.1 | `docs/architecture/data` |
@@ -1820,22 +1862,22 @@ Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Acc
 | Backend corrections (review of the application slice) | – | `docs/M2_BACKEND_CORRECTIONS.md` |
 | Operational scripts and Atlas trigger configuration (backup, restore test, PROC-001, audit trigger) | v0.1 | `scripts/` |
 | Architecture diagrams | v1.0 | `docs/architecture` |
-| Risk Register | v0.5 | `docs/risk/Risk Register` |
+| Risk Register | V0.6 | `docs/risk/Risk Register` |
 | Forward Engineering Considerations Register | v0.2 | `docs/risk/FEC Register` |
 | AI Usage Register | v0.5 | `docs/AI-Usage/AI Usage Register` |
 | Project Charter | v0.3 | `extras/Project Charter` |
 | Team Working Agreement | v0.1 | `docs/Team Work Agreement` |
 
-*All paths contain an outdated folder that carries the previous versions of said artefact. PED v1.7 and earlier are archived in `docs/PED/PED/Outdated/`; RTM v0.4 is archived in `docs/Outdated/`.*
+*All paths contain an outdated folder that carries the previous versions of said artefact. PED v1.6 and earlier are archived in `docs/PED/PED/Outdated/`; RTM v0.4 is archived in `docs/Outdated/`.*
 
 **Register versions at this version (v1.8).** Every register above is cited at the version held in the repository. At this version the
-Decision Log (v0.5) records DEC-014 (architecture, §6A.8), DEC-015 to DEC-017 and the DEC-010 closure; the Risk Register (v0.5) records RSK-018 to RSK-020 (RSK-016 and RSK-017, raised by the architecture in §6A.9, are not yet entered in the register file);
-Open Items (v0.4) raises OI-14 and OI-15, and carries the v0.3 changes that closed OI-06, reduced OI-10 and raised OI-13; Acceptance Criteria (v0.3) carries the evaluable AC-NFR-4.2;
+Decision Log (v0.5) records DEC-014 (architecture, §6A.8), DEC-015 to DEC-017 and the DEC-010 closure; the Risk Register (V0.6) records RSK-016 to RSK-020 and the M2 re-scoring in §8.3.2; the FEC Register (V0.3) records M2 influence (§9.5); the RTM (v0.6) completes the ASR and architecture columns;
+Open Items (v0.3) closes OI-06, reduces OI-10 and raises OI-13; Acceptance Criteria (v0.3) carries the evaluable AC-NFR-4.2;
 Non-Functional Requirements (v0.3) carries the one-month NFR-4.2. Open Items v0.3 consolidates the M2 changes first
 drafted inside the file then named v0.2 (now archived) with the DEC-017 and OI-13 changes; see
 `docs/VERSION_AUDIT_REPORT.md`. Still pending CR approval, and therefore not yet applied
 to the registers: AC-NFR-1.10 v0.3 (CR-001), the NFR-1.4 and NFR-1.9 measurement-basis changes (CR-002), the FR-6.7 basis
-(CR-003) and NFR-2.6 (CR-004). The RSK-002 re-score and RSK-008 closure proposed in §8.3.1 await team agreement.
+(CR-003) and NFR-2.6 (CR-004). The RSK-002 re-score and RSK-008 closure proposed in §8.3.1 are adopted in Risk Register V0.6, subject to approval of the pull request that introduces this version.
 
 ---
 
