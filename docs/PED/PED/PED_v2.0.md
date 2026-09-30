@@ -66,8 +66,8 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 1.9 | 30/09/2026 | R. van der Merwe | Integration of two parallel v1.8 drafts: v1.8 (C. Burger, registers) merged with the Member B draft also numbered 1.8 on `task/M2-PersonB` (commit 375de35), whose content is carried here: Open Items v0.4 (v0.3 archived) with OI-14 (`reportingCounts` reconciliation, owner R. van der Merwe, target M3) and OI-15 (transition model confirmation, including whether a reopened-then-resolved request satisfies FR-6.5), cited in §6.5 and §12.2. Also: RTM v0.7 (implementation and verification evidence for the eleven requirements the slice implements after PR #63, three recorded as partial); DEC-002 recorded as an ADR with a weighted comparison matrix (§6C), cited from its row in Decision Log v0.6 (v0.5 archived); API contract `docs/api/openapi.yaml` v0.1 for the transition endpoint (DEC-015); AI Usage Register v0.6; superseded working notes removed. PED v1.7 and v1.8 archived in `docs/PED/PED/Outdated/` | E. Lindsay, C. Burger |
 | 1.10 | 30/09/2026 | C. Burger | Continuous integration adopted (issue #52, PR #66): `.github/workflows/ci.yml` runs `npm ci`, `npm test`, a layer-boundary check (NFR-1.7, DEC-014, RSK-016) and a full-history secret scan (NFR-3.5) on every pull request to `dev` and `main`, both set as required status checks; pull request template adopted (#53); README extended with contribution, CI and repository-structure guidance (#54); AI Usage Register v0.7 (#55). §11.1 records the controls. Stale references corrected: §1.7.1 FEC version at M1 (v0.2), §6A.11 DEC-010 row, §7.1 RTM v0.7, §8.3.1, §10.6 application evidence, §11.3 AI Usage Register version, §12.1 decision-log count, open items and RTM version; Appendix A. `src/` realignment to module folders (#51) remains open *(the repository-structure part of the row planned since 1.6)* | E. Lindsay, R. van der Merwe |
 | 1.11 | 30/09/2026 | E. Lindsay | Aligned to RTM v0.8 (NFR-3.3 added; FR-1.3 and FR-6.7 corrected to partial) in §1.7.1, §7.1, §7.2, §10.6, §12.1 and Appendix A; register citations moved to Open Items v0.5 (OI-16 raised, cited in §6.5 and Figure 2) and AI Usage Register v0.8 in §11.3, §12.1 and Appendix A; §10.7 opening sentence restored (truncated since v1.6); Figure 1 and Figure 2 captions updated for the corrected diagrams (PR #71); note added to §10.2 recording, without correcting, the decision-count error in the baselined v1.0; Appendix A paths corrected to `docs/Requirements/` | R. van der Merwe, C. Burger |
-| 1.12 | | E. Lindsay, R. van der Merwe | Assumptions and dependencies updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone *(planned; the remainder of the row previously planned as 1.9; renumbered from 1.10, then 1.11)* | Reviewed by the two members other than each author |
-| 2.0 | 30/09/2026 | E. Lindsay | Milestone 2 baseline. Architecture, Technology & Initial Design Baseline identified in §12: what is baselined and what is deliberately not. M1 conditions reviewed and their final M2 status recorded in Appendix B (C-01, C-02 and C-05 open; C-03 partially closed; C-04 closed), with the M2 baseline sign-off block. Citations aligned to the versions held in the repository: AI Usage Register v0.9, Scope Baseline v0.3, Non-Functional Requirements v0.3, Acceptance Criteria v0.3, Data and Persistence Baseline v0.2, Team Working Agreement v0.2. The Data and Persistence Baseline (R. van der Merwe) and the Team Working Agreement (team) moved from draft to approved status by a header-only change, so that no baselined artefact describes itself as a draft; their content is unchanged. PED v1.11 archived | R. van der Merwe, C. Burger |
+| 1.12 | — | E. Lindsay, R. van der Merwe | **Not undertaken at M2; carried into M3.** Planned as: assumptions and dependencies updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone *(the remainder of the row previously planned as 1.9; renumbered from 1.10, then 1.11)* | — |
+| 2.0 | 30/09/2026 | E. Lindsay | Milestone 2 baseline. Architecture, Technology & Initial Design Baseline identified in §12: what is baselined and what is deliberately not. M1 conditions reviewed and their final M2 status recorded in Appendix B (C-01, C-02 and C-05 open; C-03 partially closed; C-04 closed), with the M2 baseline sign-off block. Citations aligned to the versions held in the repository: AI Usage Register v0.9, Scope Baseline v0.3, Non-Functional Requirements v0.3, Acceptance Criteria v0.3, Data and Persistence Baseline v0.2, Team Working Agreement v0.2. The Data and Persistence Baseline (R. van der Merwe) and the Team Working Agreement (team) moved from draft to approved status by a header-only change, so that no baselined artefact describes itself as a draft; their content is unchanged. Appendix A extended with the files it did not list (Requirements Control, the RTM v0.5 change notes, the DEC-011 and DEC-012 diagram sources, the R-01 negative-verification evidence, the PED references and the three briefs). Version row 1.12 recorded as not undertaken at M2. PED v1.11 archived | R. van der Merwe, C. Burger |
 
 Baselined content is not silently overwritten. Changes after this baseline follow the
 change control process in Master Brief §14.
@@ -1877,6 +1877,7 @@ reason and what it needs.
 | CR-001 to CR-004, and OI-13 | Change requests raised, not approved | Approval | R. van der Merwe |
 | FR-4.2, FR-8.4 and FR-9.1 | Still *Proposed* (OI-01 to OI-03) | Closure through controlled change | R. van der Merwe (C-03) |
 | The "overdue" service-level target, and the schedule measurement | Conditions C-02 and C-05 are open | See Appendix B | R. van der Merwe |
+| The assumptions and dependencies review (version-history row 1.12) | Not undertaken at M2 | A review against the M2 architecture, data, technology, design, security, deployment and cost evidence | E. Lindsay, R. van der Merwe; carried into M3 |
 
 These are preserved options and disclosed exposures, not omissions.
 
@@ -1908,6 +1909,9 @@ evidence is at component level: no requirement is yet reachable over HTTP, and t
 browser client. And the schedule is still not evidenced: the velocity checkpoint that
 condition C-05 required was not taken, so the capacity finding recorded since M1 remains
 unmeasured.
+
+The application entry point and the browser client have no recorded owner (§12.2).
+Allocating them is an input to M3 planning.
 
 ---
 
@@ -1977,15 +1981,19 @@ Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Acc
 | Non-Functional Requirements | v0.3 | `docs/Requirements/Non-Functional Requirements` |
 | Acceptance Criteria | v0.3 | `docs/Requirements/Acceptance Criteria` |
 | Requirements Traceability Matrix | v0.8 | `docs/Requirements/Requirements Traceability Matrix` |
+| RTM change notes (v0.5) | – | `docs/Requirements/Requirements Traceability Matrix/RTM_v0.5_Change_Notes.md` |
 | Traced Example | v0.2 | `docs/Requirements/Traced Example` |
+| Requirements Control | v0.1 | `docs/Requirements/Requirements Control` |
 | Open Items | v0.5 | `docs/Requirements/Open Items` |
 | Engineering Decision Log | v0.6 | `docs/decisions/Decision Log` |
 | Architecture Decision Records (DEC-002, DEC-003, DEC-010, DEC-015, DEC-016, DEC-017) | v0.1 | `docs/decisions/ADR` |
+| Design decision diagram sources (DEC-011, DEC-012); images embedded as Figures 1 and 2 | versioned with the PED | `docs/decisions/Diagrams` |
 | API contract (OpenAPI 3.1; transition endpoint) | v0.1 | `docs/api/openapi.yaml` |
 | Data and Persistence Baseline | v0.2 | `docs/architecture/data` |
 | Change Requests CR-001 to CR-004 | v0.1 | `docs/change` |
 | PROC-001 Manual anonymisation procedure | v0.1 | `docs/operations` |
 | Backend corrections (review of the application slice) | – | `docs/M2_BACKEND_CORRECTIONS.md` |
+| Negative verification evidence for the route-table assertion (R-01, N-5) | – | `docs/evidence/R-01_negative_verification.txt` |
 | Operational scripts and Atlas trigger configuration (backup, restore test, PROC-001, audit trigger) | v0.1 | `scripts/` |
 | Architecture diagrams | v1.0 | `docs/architecture` |
 | Risk Register | V0.6 | `docs/risk/Risk Register` |
@@ -1995,8 +2003,12 @@ Recommendation, 5 October 2023. Available at: https://www.w3.org/TR/WCAG22/ (Acc
 | Pull request template | v0.1 | `.github/pull_request_template.md` |
 | Project Charter | v0.3 | `extras/Project Charter` |
 | Team Working Agreement | v0.2 | `docs/Team Work Agreement` |
+| PED references | v0.1 | `docs/PED/References` |
+| Master Project Brief (governing document) | v1.1 (file named v0.1) | `extras/Briefs` |
+| Project Milestone 1 Brief | v0.1 (file name; no version stated in the brief) | `extras/Briefs` |
+| Project Milestone 2 Brief | v0.1 (file name; no version stated in the brief) | `extras/Briefs` |
 
-*All paths contain an outdated folder that carries the previous versions of said artefact. PED v1.11 and earlier are archived in `docs/PED/PED/Outdated/`; RTM v0.4 is archived in `docs/Outdated/`.*
+*Each versioned artefact keeps its previous versions in an outdated folder at its location. PED v1.11 and earlier are archived in `docs/PED/PED/Outdated/`; RTM v0.4 is archived in `docs/Outdated/`.*
 
 **Register versions at this version (v2.0).** Every register above is cited at the version held in the repository. At this version the
 Decision Log (v0.6) records DEC-014 (architecture, §6A.8), DEC-015 to DEC-017 and the DEC-010 closure, and its DEC-002 row cites the DEC-002 ADR, which records the weighted comparison (§6C); the Risk Register (V0.6) records RSK-016 to RSK-020 and the M2 re-scoring in §8.3.2; the FEC Register (V0.3) records M2 influence (§9.5); the RTM (v0.8) completes the ASR and architecture columns (v0.6), carries implementation and verification evidence for eleven requirements (v0.7), and adds NFR-3.3 and corrects FR-1.3 and FR-6.7 to partial (v0.8);
@@ -2181,7 +2193,7 @@ that the original condition as written at M1 is preserved unaltered.
 | C-02 | Record a decision for the "overdue" service-level target | R. van der Merwe | **Open** | C-02 remains open. SCP-011 requires overdue requests to be identified, which needs a service-level target agreed with STK-005. None has been agreed, and no Decision Log entry records either a target or a deferment, so the acceptance criterion for the overdue view cannot yet be evaluated by a third party. In the meantime the data model allows a target to be supplied without migration: `categories.targetResolutionHours` and `requests.dueAt` exist and are null, and FR-8.4 remains *Proposed* under OI-02. The exposure is RSK-003. A target, or a logged deferment stating the evidence required, is needed before SCP-011 is specified. |
 | C-03 | Close the four unsettled requirements | R. van der Merwe | **Partially closed** | NFR-4.2 is closed: the closure of DEC-005 releases it from OI-05 and it now states the agreed one-month retention period. FR-4.2, FR-8.4 and FR-9.1 remain *Proposed* against OI-01 to OI-03 and are carried forward with their RTM status unchanged |
 | C-04 | Progress the three deferred decisions with dated evidence tasks | E. Lindsay | **Closed, after the stated deadline** | All three decisions are now taken: DEC-002 (MERN), DEC-003 (Hostinger) and DEC-005 (one-month retention). DEC-002 and DEC-003 closed after the 22 September working deadline imposed by CON-013, so the exposure recorded as RSK-015 materialised rather than being avoided. The effect on the week-three gate is recorded against C-05 |
-| C-05 | Act on the capacity and schedule finding | R. van der Merwe | **Open** | C-05 remains open. It required velocity to be measured at the CON-013 gate on 29 September 2026, against a scope-reduction order agreed in advance, with both recorded in the Decision Log. Neither was done: no measurement was taken, no reduction order was agreed, and no Decision Log entry exists. In the meantime Milestone 2 produced the first implementation evidence velocity can be measured against: a component-level application slice verified by 83 automated tests, with RTM evidence for 12 of 79 requirements. That evidence is not itself a measurement, so the AI-assisted productivity assumption (Project Charter v0.3 §4.6, assumption A14) remains unsubstantiated. The exposure is RSK-014; RSK-015 has materialised. A measurement against the M2 evidence and an agreed reduction order are required before M3 scope is committed. |
+| C-05 | Act on the capacity and schedule finding | R. van der Merwe | **Open** | C-05 remains open. It required velocity to be measured at the CON-013 gate on 29 September 2026, against a scope-reduction order agreed in advance, with both recorded in the Decision Log. Neither was done: no measurement was taken, no reduction order was agreed, and no Decision Log entry exists. In the meantime Milestone 2 produced the first implementation evidence velocity can be measured against: a component-level application slice verified by 83 automated tests, with RTM evidence for 12 of 79 requirements. That evidence is not itself a measurement, so the AI-assisted productivity assumption (Project Charter v0.3 §4.6, assumption A14) remains unsubstantiated. The exposure is RSK-014; RSK-015 has materialised. A measurement against the M2 evidence and an agreed reduction order are required. The original closure point, the CON-013 gate on 29 September 2026, has passed without the measurement being taken. No revised closure date is recorded. The team is to agree one at the M2 review. |
 
 A condition carried forward is not a failure of the baseline; it is a commitment that
 could not be honestly closed on the evidence available, and it remains visible rather
