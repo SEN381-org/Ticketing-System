@@ -127,7 +127,8 @@ test('a failed history append publishes nothing — R-15', async () => {
  * DEC-016 atomicity, FR-6.3. The ordering test above asserts only the ORDER of
  * the two writes, so it would still pass if the history write were moved outside
  * the unit of work — the atomicity it was cited for was not verified (found in
- * the review of RTM v0.7). A fake unit of work cannot roll anything back; what it
+ * E. Lindsay's review of the RTM v0.7 cells, posted on PR #67). A fake unit of
+ * work cannot roll anything back; what it
  * can prove is that the service performs both writes inside the unit of work,
  * with its session, and that nothing commits when the second write fails.
  * Rollback by the database itself remains M3 (AC-NFR-1.10 v0.3, CR-001).
