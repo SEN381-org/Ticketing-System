@@ -3,7 +3,7 @@
  *
  * Traces to: FR-2.4, FR-2.5, FR-5.4, FR-6.3, FR-6.7, FR-7.1–7.5, AC-FR-6.7, SCP-008,
  *            SCP-019, DEC-015 (idempotency), DEC-016, constraint DB-01.
- * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.3–§4.
+ * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md §3.3–§4.
  *
  * Append-only is enforced in three layers (DB-01). This file is layer 2: it refuses every
  * mutation that passes through Mongoose — query, document and bulkWrite middleware. It does

@@ -1,7 +1,7 @@
 /**
  * Controlled request category (reference data). Deactivated, never deleted.
  * Traces to: FR-1.5 (isSecurity, CFL-002), FR-2.3, FR-8.3, FR-8.4, FR-9.1, FR-9.2, SCP-002.
- * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.8.
+ * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md §3.8.
  */
 
 import mongoose from 'mongoose';

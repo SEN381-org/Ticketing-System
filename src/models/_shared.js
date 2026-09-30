@@ -1,6 +1,6 @@
 /**
  * Shared model definitions. Authoritative source: docs/architecture/data/
- * Data_and_Persistence_Baseline_v0.1.md §3.1.
+ * Data_and_Persistence_Baseline_v0.2.md §3.1.
  *
  * src/domain/requestStatus.js and src/domain/accessRules.js import STATUS and
  * ROLE from here rather than declaring their own, so the domain and the

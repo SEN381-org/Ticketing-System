@@ -1,6 +1,6 @@
 /**
  * Identity. Traces to: FR-1.1, FR-1.2, FR-1.4, FR-1.6, FR-4.6, FR-5.2, NFR-2.7, NFR-3.1, SCP-019.
- * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.7.
+ * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md §3.7.
  */
 
 import mongoose from 'mongoose';

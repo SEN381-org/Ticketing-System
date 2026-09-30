@@ -4,7 +4,7 @@
  * application with an insert-only credential. The application never updates or deletes it.
  *
  * Traces to: CON-015, NFR-1.4, NFR-1.9, NFR-3.6, NFR-4.5, DEC-016, DEC-017.
- * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.6.
+ * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md §3.6.
  *
  * Minimisation rule M-1: field NAMES and status values only — never description, location,
  * comment body or other free text.

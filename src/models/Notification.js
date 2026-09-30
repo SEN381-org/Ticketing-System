@@ -1,7 +1,7 @@
 /**
  * In-application notification — derived read model written by NotificationSubscriber
  * after commit (DEC-011). Traces to: FR-3.4, FR-3.5, SCP-004, DEC-017 (purpose A).
- * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.1.md §3.4.
+ * Authoritative definition: docs/architecture/data/Data_and_Persistence_Baseline_v0.2.md §3.4.
  */
 
 import mongoose from 'mongoose';
