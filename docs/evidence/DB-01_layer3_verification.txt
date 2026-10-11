@@ -1,9 +1,9 @@
 Negative verification of DB-01 layer 3 (database privilege on requestHistory and auditLog)
 FR-6.7, AC-FR-6.7, NFR-1.4. DB-01 v0.3 section 4, DEC-003 v0.2
 
-Run on        : 2026-10-11 21:11 UTC
+Run on        : 2026-10-11 23:09 UTC
 Node          : v26.0.0
-Branch        : task/M3-db01-layer3-role (9f93b1c)
+Branch        : task/M3-db01-layer3-role (0b98abc)
 Driver        : native MongoClient (bundled with mongoose 8.24.4), no models loaded
 Database user : civicconnect-app
 Database      : civicconnect
@@ -11,6 +11,8 @@ Roles         : civicconnect-app@admin
 Granted on requestHistory : find, insert
 Granted on auditLog       : find, insert
 Granted on sessions       : find, insert, remove, update
+Privileges reported       : 10
+Database-wide grants      : none
 
 1. Control. find on requestHistory with the application credential:
      db.collection('requestHistory').findOne({})
@@ -25,7 +27,7 @@ Granted on sessions       : find, insert, remove, update
      message : user is not allowed to do action [update] on [civicconnect.requestHistory]
 
 3. Native-driver delete on requestHistory. The filter matches no document, so nothing is lost if it is accepted:
-     await db.collection('requestHistory').deleteOne({ _id: 'layer3-probe-f9b8c0f14cad' });
+     await db.collection('requestHistory').deleteOne({ _id: 'layer3-probe-309d17376875' });
 
      REFUSED by the database.
      code    : 8000 (AtlasError)
@@ -44,7 +46,7 @@ Granted on sessions       : find, insert, remove, update
      message : user is not allowed to do action [update] on [civicconnect.auditLog]
 
 6. Native-driver delete on auditLog. The filter matches no document, so nothing is lost if it is accepted:
-     await db.collection('auditLog').deleteOne({ _id: 'layer3-probe-2840643ce24c' });
+     await db.collection('auditLog').deleteOne({ _id: 'layer3-probe-868e9556635e' });
 
      REFUSED by the database.
      code    : 8000 (AtlasError)
@@ -56,6 +58,12 @@ Granted on sessions       : find, insert, remove, update
      allowed. Probe document inserted, updated and deleted.
      Indexes on sessions: could not be listed: 8000 (AtlasError)
 
+8. No database-wide grant reaches requestHistory or auditLog with a destructive action.
+     Not attempted for real: a drop or rename that was wrongly allowed could not be undone.
+     Looked for: update, remove, dropCollection, renameCollectionSameDB, dropIndex, dropDatabase, collMod, convertToCapped, emptycapped
+
+     none found. Database-wide grants reported: 0.
+
 PASS  find on requestHistory is allowed
 PASS  update on requestHistory is refused
 PASS  delete on requestHistory is refused
@@ -63,6 +71,7 @@ PASS  find on auditLog is allowed
 PASS  update on auditLog is refused
 PASS  delete on auditLog is refused
 PASS  insert, update and delete on sessions are allowed
+PASS  no database-wide grant carries a destructive action
 
 RESULT: VERIFIED
 
@@ -70,7 +79,9 @@ The database refused an update and a delete on requestHistory and on auditLog
 that were issued with the application credential through the native
 driver. The same credential read both collections and wrote sessions in
 the same run, so the refusal is the missing privilege and not a failed
-login. DB-01 layer 3 therefore holds for this credential on this cluster.
+login. The privileges the server reports for this connection include no
+database-wide grant of a destructive action. DB-01 layer 3 therefore
+holds for this credential on this cluster.
 
 What this does not show: that any other credential is restricted (the
 retention-operator user and Atlas project administrators are not), or
@@ -90,8 +101,14 @@ REVIEW NOTES
      returns AtlasError code 8000 ('user is not allowed to do action'), which
      satisfies this requirement.
 
-  3. Privilege Listing Note: The privilege listing output by this script only
-     reports grants where `resource.collection` matches. It does not prove the
-     absence of a database-wide grant. The refused updates/deletes on the
-     restricted collections are what definitively prove there is no
-     database-wide override.
+  3. Privilege Listing Note: The "Granted on <collection>" lines report only
+     grants whose `resource.collection` matches that collection. The refused
+     updates and deletes prove there is no database-wide grant of update or
+     remove. They do not rule out a database-wide grant of dropCollection,
+     renameCollection or dropIndex, which could destroy the audit trail
+     without an update or a remove. That gap is covered by step 8: the script
+     lists every grant whose resource has an empty collection name or reaches
+     every database, and the server reported none ("Database-wide grants:
+     none", 10 privileges reported in total). Step 8 rests on the server's
+     own report of this connection's privileges. Unlike steps 2, 3, 5 and 6,
+     it is not an attempted operation.
