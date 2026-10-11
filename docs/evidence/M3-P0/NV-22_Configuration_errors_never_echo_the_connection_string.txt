@@ -1,0 +1,36 @@
+Negative verification NV-22 — Configuration errors never echo the connection string
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  A startup error cannot print the credential in MONGODB_URI to the journal (NFR-3.5).
+
+1. The protected behaviour was broken in src/config.js.
+   Original:
+         problems.push('PORT is not an integer between 1 and 65535');
+   Replaced with:
+         problems.push(`PORT is not an integer between 1 and 65535 (MONGODB_URI=${mongodbUri})`);   // SABOTAGE
+
+2. Result of `node --test tests/config.test.js`:
+
+     not ok - an error never echoes the connection string — NFR-3.5
+     # tests 5
+     # pass 4
+     # fail 1
+
+   Expected to fail: an error never echoes the connection string
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

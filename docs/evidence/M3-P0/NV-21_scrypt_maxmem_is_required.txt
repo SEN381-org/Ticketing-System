@@ -1,0 +1,38 @@
+Negative verification NV-21 — scrypt maxmem is required
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  With Node's default maxmem the DEC-018 parameters cannot hash at all (DEC-018 §2).
+
+1. The protected behaviour was broken in src/infrastructure/passwordHasher.js.
+   Original:
+         scrypt(password, salt, KEY_LENGTH, { N, r, p, maxmem: SCRYPT_MAXMEM },
+   Replaced with:
+         scrypt(password, salt, KEY_LENGTH, { N, r, p },   // SABOTAGE: default maxmem
+
+2. Result of `node --test tests/passwordHasher.test.js`:
+
+     not ok - the stored form is self-describing and holds no plaintext — NFR-3.1
+     not ok - two hashes of one password differ (salted), and both verify
+     # tests 6
+     # pass 4
+     # fail 2
+
+   Expected to fail: the stored form is self-describing and holds no plaintext
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  It does NOT show: It shows hashing fails without maxmem. Whether the hash is slow enough on the VPS is DEC-018 evidence item 1, still open.

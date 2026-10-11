@@ -1,0 +1,38 @@
+Negative verification NV-01 — Whole-application guard assertion
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  A route added to ANY mounted router without the guard fails the build (NFR-3.3, CON-019, DEC-012). The pre-Phase-0 test only walked the request router and would not have seen this.
+
+1. The protected behaviour was broken in src/routes/sessionRoutes.js.
+   Original:
+       router.delete('/current',
+   Replaced with:
+       router.get('/all', (req, res) => res.json([]));   // SABOTAGE: unguarded, not public
+     
+       router.delete('/current',
+
+2. Result of `node --test tests/authorisationGuard.test.js`:
+
+     not ok - every non-public route in the composed application carries the guard — NFR-3.3, CON-019
+     # tests 14
+     # pass 13
+     # fail 1
+
+   Expected to fail: every non-public route in the composed application carries the guard
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

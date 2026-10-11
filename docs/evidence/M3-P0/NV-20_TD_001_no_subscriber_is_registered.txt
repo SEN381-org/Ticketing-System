@@ -1,0 +1,38 @@
+Negative verification NV-20 — TD-001: no subscriber is registered
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Registering a DEC-011 subscriber fails the build, so TD-001 cannot go stale.
+
+1. The protected behaviour was broken in src/composition.js.
+   Original:
+     export function composeApplication({ log = console } = {}) {
+   Replaced with:
+     import { registerSubscribers } from './events/subscribers/index.js';   // SABOTAGE
+     export function composeApplication({ log = console } = {}) {
+       registerSubscribers({ notifications: {}, reportingCounts: {} });
+
+2. Result of `node --test tests/composition.test.js`:
+
+     not ok - no DEC-011 subscriber is registered in the composed application — TD-001
+     # tests 3
+     # pass 2
+     # fail 1
+
+   Expected to fail: no DEC-011 subscriber is registered in the composed application
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

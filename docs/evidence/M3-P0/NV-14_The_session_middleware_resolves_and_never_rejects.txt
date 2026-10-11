@@ -1,0 +1,43 @@
+Negative verification NV-14 — The session middleware resolves and never rejects
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Only the guard decides 401 (DEC-018 §4, DEC-012). A middleware that rejects a cookie-less request breaks login, which is public.
+
+1. The protected behaviour was broken in src/middleware/session.js.
+   Original:
+           if (!token) return next();
+   Replaced with:
+           if (!token) return res.status(401).end();   // SABOTAGE: middleware rejects
+
+2. Result of `node --test tests/app.test.js`:
+
+     not ok - a transition with no session is 401 problem details, and the service is not reached — AC-FR-1.1 (API half)
+     not ok - login sets __Host-sid with HttpOnly, Secure, SameSite=Lax, Path=/ and no Domain — DEC-018 §3
+     not ok - a failed login is one identical 401 whatever the cause — DEC-018 §5
+     not ok - with a session the transition reaches the service with the session actor — DEC-018 §4
+     not ok - an identity header is refused with 403 even with a valid session — R-06, CON-019
+     not ok - a role without the operation is 403, decided by the guard — FR-1.3, NFR-3.3
+     not ok - logout is 204, clears the cookie, ends the session, and is idempotent — DEC-018 §5
+     not ok - an unknown route is a 404 problem, not an HTML page — CON-019
+     # tests 14
+     # pass 6
+     # fail 8
+
+   Expected to fail: login sets __Host-sid with HttpOnly, Secure, SameSite=Lax
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

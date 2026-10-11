@@ -1,0 +1,38 @@
+Negative verification NV-17 — Health is public
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  The health endpoint answers without a session (NFR-1.6, AC-NFR-1.6).
+
+1. The protected behaviour was broken in src/routes/healthRoutes.js.
+   Original:
+       router.get('/', async (req, res, next) => {
+   Replaced with:
+       router.get('/', (req, res, next) => next(Object.assign(new Error('x'), { status: 401 })), async (req, res, next) => {   // SABOTAGE: refuses
+
+2. Result of `node --test tests/app.test.js`:
+
+     not ok - health answers without a session, and reports both statuses — AC-NFR-1.6
+     not ok - health reports a database outage as 503 — DEC-015, NFR-1.6
+     # tests 14
+     # pass 12
+     # fail 2
+
+   Expected to fail: health answers without a session
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  It does NOT show: It shows the route answers without a session in the test harness. Behaviour against a real cluster is in the smoke record.

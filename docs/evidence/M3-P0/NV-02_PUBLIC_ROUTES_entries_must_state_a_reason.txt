@@ -1,0 +1,36 @@
+Negative verification NV-02 — PUBLIC_ROUTES entries must state a reason
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  An unguarded route cannot be made public silently: its entry must carry a reason (DEC-018 §5).
+
+1. The protected behaviour was broken in src/routes/publicRoutes.js.
+   Original:
+     reason: 'Logging in cannot require being logged in (FR-1.1)',
+   Replaced with:
+     reason: '',   // SABOTAGE
+
+2. Result of `node --test tests/authorisationGuard.test.js`:
+
+     not ok - every PUBLIC_ROUTES entry states why it needs no guard — DEC-018 §5
+     # tests 14
+     # pass 13
+     # fail 1
+
+   Expected to fail: every PUBLIC_ROUTES entry states why it needs no guard
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
