@@ -13,6 +13,8 @@
  *   deleteOne                                 → refused by the database
  * Then:
  *   insert, update, delete on sessions        → allowed (control, DEC-018)
+ *   database-wide grants in the server's own privilege listing
+ *                                             → none carries a destructive action
  *
  * The controls matter. A credential with no rights at all is also refused, and
  * that would prove nothing about the role. The controls show the credential is
@@ -131,29 +133,68 @@ async function expectAllowed(name, attempt) {
 }
 
 /**
+ * Actions that would alter or destroy a restricted collection. `update` and
+ * `remove` are also attempted for real below. The rest are not attempted,
+ * because a drop or rename that was wrongly allowed could not be undone, so
+ * for those the listing is the evidence.
+ */
+const DESTRUCTIVE_ACTIONS = Object.freeze([
+  'update', 'remove', 'dropCollection', 'renameCollectionSameDB', 'dropIndex',
+  'dropDatabase', 'collMod', 'convertToCapped', 'emptycapped',
+]);
+
+/** A grant that is not tied to one named collection of this database, but still reaches it. */
+function isWiderThanCollection(resource, databaseName) {
+  if (!resource) return false;
+  if (resource.anyResource === true) return true;
+  if (typeof resource.db !== 'string') return false;                 // cluster-level: no collection data
+  if (resource.db !== '' && resource.db !== databaseName) return false;
+  return resource.db === '' || resource.collection === '';
+}
+
+const describeResource = (r) => (r.anyResource ? 'any resource'
+  : `${r.db === '' ? 'any database' : r.db} / ${r.collection === '' ? 'every collection' : r.collection}`);
+
+/**
  * What the server says this connection may do. Any user may ask this about itself.
  *
- * It lists only the grants whose resource names the collection. A database-wide
- * grant has no collection in its resource and would not appear here, so this
- * listing is context and cannot show that the grants are per collection only.
- * The refused writes below are what show that.
+ * Two listings. The per-collection lines show grants whose resource names that
+ * collection. The database-wide lines show grants whose resource has an empty
+ * collection name, or reaches every database: a grant of that kind applies to
+ * requestHistory and auditLog without naming them, and would not appear in the
+ * per-collection lines.
+ *
+ * @returns {Promise<{rows: string[], wider: Array<{resource: object, actions: string[]}> | null}>}
+ *          `wider` is null when the server would not report privileges.
  */
 async function grantedPrivileges(db) {
   try {
     const { authInfo } = await db.command({ connectionStatus: 1, showPrivileges: true });
+    const privileges = authInfo.authenticatedUserPrivileges ?? [];
     const roles = (authInfo.authenticatedUserRoles ?? []).map((r) => `${r.role}@${r.db}`);
     const actionsOn = (collection) => {
-      const actions = (authInfo.authenticatedUserPrivileges ?? [])
+      const actions = privileges
         .filter((p) => p.resource?.collection === collection && p.resource?.db === db.databaseName)
         .flatMap((p) => p.actions);
       return actions.length > 0 ? [...new Set(actions)].sort().join(', ') : '(no collection-level grant reported)';
     };
-    return [
-      `Roles         : ${roles.join(', ') || '(none reported)'}`,
-      ...[...RESTRICTED, SESSIONS].map((c) => `${`Granted on ${c}`.padEnd(25)} : ${actionsOn(c)}`),
-    ];
+    const wider = privileges.filter((p) => isWiderThanCollection(p.resource, db.databaseName));
+    return {
+      wider,
+      rows: [
+        `Roles         : ${roles.join(', ') || '(none reported)'}`,
+        ...[...RESTRICTED, SESSIONS].map((c) => `${`Granted on ${c}`.padEnd(25)} : ${actionsOn(c)}`),
+        `Privileges reported       : ${privileges.length}`,
+        ...(wider.length === 0
+          ? ['Database-wide grants      : none']
+          : wider.map((p) => `Database-wide grant       : ${describeResource(p.resource)}: ${[...p.actions].sort().join(', ')}`)),
+      ],
+    };
   } catch (error) {
-    return [`Roles         : not available (${error?.codeName ?? error?.message ?? 'connectionStatus failed'})`];
+    return {
+      wider: null,
+      rows: [`Roles         : not available (${error?.codeName ?? error?.message ?? 'connectionStatus failed'})`],
+    };
   }
 }
 
@@ -194,7 +235,8 @@ try {
   say(`Driver        : native MongoClient (bundled with mongoose ${mongoose.version}), no models loaded`);
   say(`Database user : ${databaseUserOf(uri)}`);
   say(`Database      : ${db.databaseName}`);
-  (await grantedPrivileges(db)).forEach((row) => say(row));
+  const granted = await grantedPrivileges(db);
+  granted.rows.forEach((row) => say(row));
   say();
 
   let step = 0;
@@ -256,6 +298,24 @@ try {
   detail([`Indexes on ${SESSIONS}: ${await describeIndexes(sessions)}`]);
   say();
 
+  say(`${++step}. No database-wide grant reaches ${RESTRICTED.join(' or ')} with a destructive action.`);
+  say('     Not attempted for real: a drop or rename that was wrongly allowed could not be undone.');
+  say(`     Looked for: ${DESTRUCTIVE_ACTIONS.join(', ')}`);
+  say();
+  if (granted.wider === null) {
+    record('no database-wide grant carries a destructive action', false);
+    detail(['NOT ESTABLISHED. The server did not report the privileges of this connection.']);
+  } else {
+    const offending = granted.wider
+      .map((p) => ({ resource: p.resource, actions: p.actions.filter((a) => DESTRUCTIVE_ACTIONS.includes(a)) }))
+      .filter((p) => p.actions.length > 0);
+    record('no database-wide grant carries a destructive action', offending.length === 0);
+    detail(offending.length === 0
+      ? [`none found. Database-wide grants reported: ${granted.wider.length}.`]
+      : offending.map((p) => `FOUND on ${describeResource(p.resource)}: ${p.actions.join(', ')}`));
+  }
+  say();
+
   const failed = results.filter((r) => !r.ok);
   results.forEach((r) => say(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}`));
   say();
@@ -266,7 +326,9 @@ try {
     say('that were issued with the application credential through the native');
     say('driver. The same credential read both collections and wrote sessions in');
     say('the same run, so the refusal is the missing privilege and not a failed');
-    say('login. DB-01 layer 3 therefore holds for this credential on this cluster.');
+    say('login. The privileges the server reports for this connection include no');
+    say('database-wide grant of a destructive action. DB-01 layer 3 therefore');
+    say('holds for this credential on this cluster.');
     say();
     say('What this does not show: that any other credential is restricted (the');
     say('retention-operator user and Atlas project administrators are not), or');
