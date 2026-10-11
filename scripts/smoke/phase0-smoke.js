@@ -23,7 +23,7 @@
  * the test cluster's database is dropped per run (DEC-003).
  *
  * Usage (server already running against the SAME cluster):
- *   node --env-file=.env scripts/smoke/phase0-smoke.js --base-url http://localhost:3000
+ *   node --env-file=.env scripts/smoke/phase0-smoke.js --base-url http://127.0.0.1:3000
  * Paste the full output into docs/evidence/ as the reachability record.
  */
 

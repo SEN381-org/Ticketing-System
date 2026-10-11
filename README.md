@@ -47,7 +47,7 @@ node --env-file=.env scripts/admin/create-user.js --email you@example.org \
 ```
 
 The Phase 0 reachability check runs against a server already started on the same cluster:
-`node --env-file=.env scripts/smoke/phase0-smoke.js --base-url http://localhost:<port>`.
+`node --env-file=.env scripts/smoke/phase0-smoke.js --base-url http://127.0.0.1:<port>`.
 
 ## What is implemented
 
