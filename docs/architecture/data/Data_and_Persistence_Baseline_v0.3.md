@@ -518,9 +518,19 @@ sessionSchema.index({ lastSeenAt: 1 }, { expireAfterSeconds: 30 * 60 });   // cl
 > between 29 and 30 minutes after the user's last request and is never valid after 30
 > minutes of inactivity.
 
-The TTL index is **cleanup, not enforcement**. The TTL monitor runs about once a minute, so
-a document can outlive its expiry briefly. The session middleware compares `lastSeenAt`
-itself and refuses an expired session whether or not the document still exists.
+The TTL index is **cleanup, not enforcement**, and it **cannot enforce the 30 minutes on its
+own**. MongoDB's TTL monitor runs about once a minute, so an expired document stays readable
+until the next pass, and longer if the monitor is delayed. A design that relied on the index
+would accept a session after 30 minutes of inactivity. The session middleware therefore
+compares `lastSeenAt` itself on every request and refuses an expired session whether or not
+the document still exists. The index only removes the document afterwards.
+
+**Direction of the tolerance.** `lastSeenAt` is written at most once per 60 seconds, so it can
+only be older than the user's real last request, by up to a minute. It is never newer. The
+30 minutes are counted from `lastSeenAt`, so a session expires **between 29 and 30 minutes
+after the user's real last request — early, never late.** "Between 30 and 31 minutes" is the
+wrong reading: it would let a session survive more than 30 minutes of inactivity and breach
+AC-NFR-3.4.
 
 A session is valid only if all of the following hold: the document exists; `now − lastSeenAt`
 < 30 min; the user exists with `status: 'active'`; and `user.sessionEpoch` equals the
@@ -528,8 +538,10 @@ session's `sessionEpoch` (FR-1.4: revocation increments the epoch and so termina
 existing session). Roles and authorisations are **not** stored in the session. They are read
 from `users` on every request (NFR-2.7, FR-1.6).
 
-Storage: one small document per active session, removed within about 31 minutes of
-inactivity. At CON-010's 100 concurrent users this is well under 100 KB and does not change
+Storage: one small document per active session. The TTL monitor deletes it on its first pass
+after `lastSeenAt` + 30 minutes, normally within a minute of that point. This is when the
+document is removed, not how long the session is valid: the middleware has refused it since
+`lastSeenAt` + 30:00. At CON-010's 100 concurrent users this is well under 100 KB and does not change
 the §7 arithmetic. Throughput: two reads per authenticated request (the session and the
 user), plus at most one `lastSeenAt` write per session per minute. **These reads are new
 load the §7 figure of about 20–40 ops/s for NFR-2.4 did not include.** They must be part of
