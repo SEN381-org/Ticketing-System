@@ -1,24 +1,26 @@
 /**
- * DB-01 layer 3 negative verification. Traces to: FR-6.7, AC-FR-6.7, DB-01 v0.3 §4, DEC-003 v0.2.
+ * DB-01 layer 3 negative verification. Traces to: FR-6.7, AC-FR-6.7, NFR-1.4, DB-01 v0.3 §4, DEC-003 v0.2.
  *
  * Layers 1 and 2 (repository interface, schema middleware) stop Mongoose paths
  * only. Layer 3 is the Atlas custom role `civicconnect-app`: find and insert
- * only on `requestHistory`. This script connects with the application's own
- * credential through the native driver, so nothing in src/ is in the way, and
- * attempts what the role must refuse:
+ * only on `requestHistory` and on `auditLog`. This script connects with the
+ * application's own credential through the native driver, so nothing in src/
+ * is in the way, and attempts what the role must refuse.
  *
- *   1. find on requestHistory                 → allowed (control)
- *   2. updateOne on requestHistory            → refused by the database
- *   3. deleteOne on requestHistory            → refused by the database
- *   4. insert, update, delete on sessions     → allowed (control, DEC-018)
+ * For each of requestHistory and auditLog:
+ *   find                                      → allowed (control)
+ *   updateOne                                 → refused by the database
+ *   deleteOne                                 → refused by the database
+ * Then:
+ *   insert, update, delete on sessions        → allowed (control, DEC-018)
  *
- * The controls matter. A credential with no rights at all is also refused at
- * step 2, and that would prove nothing about the role. Steps 1 and 4 show the
- * credential is authenticated and working, so the refusal is the privilege.
+ * The controls matter. A credential with no rights at all is also refused, and
+ * that would prove nothing about the role. The controls show the credential is
+ * authenticated and working, so the refusal is the privilege.
  *
- * Insert on requestHistory is not attempted: the entry could not be removed
- * afterwards. If step 2 is NOT refused, the role is wrong and the update has
- * been applied to one history document. The script then removes the probe
+ * Insert is not attempted on either restricted collection: the entry could not
+ * be removed afterwards. If an update is NOT refused, the role is wrong and the
+ * update has been applied to one document. The script then removes the probe
  * field again and reports FAIL. Run it against the test cluster only.
  *
  * Usage:
@@ -40,7 +42,10 @@ import mongoose from 'mongoose';
 const { MongoClient } = mongoose.mongo;
 
 const HISTORY = 'requestHistory';
+const AUDIT = 'auditLog';
 const SESSIONS = 'sessions';
+/** DB-01 §4: find and insert only. */
+const RESTRICTED = Object.freeze([HISTORY, AUDIT]);
 const SERVER_SELECTION_TIMEOUT_MS = 5000;
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '..');
@@ -77,10 +82,11 @@ function git(...args) {
 }
 
 /**
- * A self-managed deployment answers with code 13 (Unauthorized). Atlas shared
- * clusters answer through a proxy with code 8000 (AtlasError) and name the
- * action in the message. Anything else is not counted as a refusal: a network
- * error must never be recorded as evidence that the role works.
+ * DB-01 §4 asks for an `Unauthorized` refusal. A self-managed deployment gives
+ * exactly that, code 13. Atlas shared clusters answer through a proxy with code
+ * 8000 (AtlasError) and name the action in the message, which is the same
+ * refusal under another code. Anything else is not counted: a network error
+ * must never be recorded as evidence that the role works.
  */
 function isAuthorisationRefusal(error, action) {
   if (error?.code === 13 || error?.codeName === 'Unauthorized') return true;
@@ -124,7 +130,14 @@ async function expectAllowed(name, attempt) {
   }
 }
 
-/** What the server says this connection may do. Any user may ask this about itself. */
+/**
+ * What the server says this connection may do. Any user may ask this about itself.
+ *
+ * It lists only the grants whose resource names the collection. A database-wide
+ * grant has no collection in its resource and would not appear here, so this
+ * listing is context and cannot show that the grants are per collection only.
+ * The refused writes below are what show that.
+ */
 async function grantedPrivileges(db) {
   try {
     const { authInfo } = await db.command({ connectionStatus: 1, showPrivileges: true });
@@ -137,11 +150,23 @@ async function grantedPrivileges(db) {
     };
     return [
       `Roles         : ${roles.join(', ') || '(none reported)'}`,
-      `Granted on ${HISTORY} : ${actionsOn(HISTORY)}`,
-      `Granted on ${SESSIONS}       : ${actionsOn(SESSIONS)}`,
+      ...[...RESTRICTED, SESSIONS].map((c) => `${`Granted on ${c}`.padEnd(25)} : ${actionsOn(c)}`),
     ];
   } catch (error) {
     return [`Roles         : not available (${error?.codeName ?? error?.message ?? 'connectionStatus failed'})`];
+  }
+}
+
+/** Whether the TTL index is really there. Reported, not judged: it is not part of DB-01 layer 3. */
+async function describeIndexes(collection) {
+  try {
+    const indexes = await collection.indexes();
+    if (indexes.length === 0) return 'none';
+    return indexes
+      .map((i) => (i.expireAfterSeconds === undefined ? i.name : `${i.name} (expireAfterSeconds ${i.expireAfterSeconds})`))
+      .join(', ');
+  } catch (error) {
+    return `could not be listed: ${error?.code ?? '(none)'} (${error?.codeName ?? error?.name ?? 'unknown'})`;
   }
 }
 
@@ -158,11 +183,10 @@ try {
 
 try {
   const db = client.db();
-  const history = db.collection(HISTORY);
   const sessions = db.collection(SESSIONS);
 
-  say('Negative verification of DB-01 layer 3 (database privilege on requestHistory)');
-  say('FR-6.7, AC-FR-6.7. DB-01 v0.3 section 4, DEC-003 v0.2');
+  say(`Negative verification of DB-01 layer 3 (database privilege on ${RESTRICTED.join(' and ')})`);
+  say('FR-6.7, AC-FR-6.7, NFR-1.4. DB-01 v0.3 section 4, DEC-003 v0.2');
   say();
   say(`Run on        : ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`);
   say(`Node          : ${process.version}`);
@@ -173,49 +197,63 @@ try {
   (await grantedPrivileges(db)).forEach((row) => say(row));
   say();
 
-  say(`1. Control. find on ${HISTORY} with the application credential:`);
-  say(`     db.collection('${HISTORY}').findOne({})`);
-  say();
-  await expectAllowed(`find on ${HISTORY} is allowed`, async () => {
-    const found = await history.findOne({}, { projection: { _id: 1 } });
-    return found ? 'One document read.' : 'The collection is empty.';
-  });
-  say();
+  let step = 0;
+  for (const name of RESTRICTED) {
+    const collection = db.collection(name);
 
-  say('2. Native-driver update, which layers 1 and 2 cannot see:');
-  say(`     await db.collection('${HISTORY}').updateOne({}, { $set: { x: 1 } });`);
-  say();
-  const updated = await expectRefused(`update on ${HISTORY} is refused`, 'update',
-    () => history.updateOne({}, { $set: { x: 1 } }));
-  if (updated?.modifiedCount > 0) {
-    const reverted = await history.updateOne({ x: 1 }, { $unset: { x: '' } }).catch(() => null);
-    detail([reverted?.modifiedCount > 0
-      ? 'The probe field was removed again from the document it was written to.'
-      : 'THE PROBE FIELD COULD NOT BE REMOVED. One history document now carries { x: 1 }.']);
+    say(`${++step}. Control. find on ${name} with the application credential:`);
+    say(`     db.collection('${name}').findOne({})`);
+    say();
+    await expectAllowed(`find on ${name} is allowed`, async () => {
+      const found = await collection.findOne({}, { projection: { _id: 1 } });
+      return found ? 'One document read.' : 'The collection is empty.';
+    });
+    say();
+
+    say(`${++step}. Native-driver update on ${name}, which layers 1 and 2 cannot see:`);
+    say(`     await db.collection('${name}').updateOne({}, { $set: { x: 1 } });`);
+    say();
+    const updated = await expectRefused(`update on ${name} is refused`, 'update',
+      () => collection.updateOne({}, { $set: { x: 1 } }));
+    if (updated?.modifiedCount > 0) {
+      const reverted = await collection.updateOne({ x: 1 }, { $unset: { x: '' } }).catch(() => null);
+      detail([reverted?.modifiedCount > 0
+        ? 'The probe field was removed again from the document it was written to.'
+        : `THE PROBE FIELD COULD NOT BE REMOVED. One ${name} document now carries { x: 1 }.`]);
+    }
+    say();
+
+    say(`${++step}. Native-driver delete on ${name}. The filter matches no document, so nothing is lost if it is accepted:`);
+    const absentId = `layer3-probe-${randomBytes(6).toString('hex')}`;
+    say(`     await db.collection('${name}').deleteOne({ _id: '${absentId}' });`);
+    say();
+    await expectRefused(`delete on ${name} is refused`, 'remove', () => collection.deleteOne({ _id: absentId }));
+    say();
   }
-  say();
 
-  say('3. Native-driver delete. The filter matches no document, so nothing is lost if it is accepted:');
-  const absentId = `layer3-probe-${randomBytes(6).toString('hex')}`;
-  say(`     await db.collection('${HISTORY}').deleteOne({ _id: '${absentId}' });`);
-  say();
-  await expectRefused(`delete on ${HISTORY} is refused`, 'remove', () => history.deleteOne({ _id: absentId }));
-  say();
-
-  say(`4. Control. The same role must still write ${SESSIONS} (DEC-018):`);
+  say(`${++step}. Control. The same role must still write ${SESSIONS} (DEC-018):`);
   say('     insertOne, updateOne, deleteOne on one probe document');
   say();
   const probeId = `layer3-probe-${randomBytes(6).toString('hex')}`;
-  await expectAllowed(`insert, update and delete on ${SESSIONS} are allowed`, async () => {
-    // lastSeenAt is already past the idle limit, so the TTL index removes the probe if the delete below fails.
+  let probeInserted = false;
+  const sessionsWritable = await expectAllowed(`insert, update and delete on ${SESSIONS} are allowed`, async () => {
+    // Assumption: Mongoose's createIndexes fails silently under this restricted role, so the TTL
+    // index likely does not exist on the test cluster. Manual cleanup is required if delete fails.
+    // The indexes actually present are listed below, so the record does not rest on the assumption.
     await sessions.insertOne({ _id: probeId, lastSeenAt: new Date(Date.now() - IDLE_LIMIT_MS - 60_000) });
+    probeInserted = true;
     const { modifiedCount } = await sessions.updateOne({ _id: probeId }, { $set: { probe: true } });
     const { deletedCount } = await sessions.deleteOne({ _id: probeId });
     if (modifiedCount !== 1 || deletedCount !== 1) {
-      throw new Error(`probe ${probeId}: modified ${modifiedCount}, deleted ${deletedCount}, expected 1 and 1`);
+      throw new Error(`modified ${modifiedCount}, deleted ${deletedCount}, expected 1 and 1`);
     }
+    probeInserted = false;
     return 'Probe document inserted, updated and deleted.';
   });
+  if (!sessionsWritable && probeInserted) {
+    detail([`MANUAL CLEANUP REQUIRED: remove the ${SESSIONS} document with _id '${probeId}'.`]);
+  }
+  detail([`Indexes on ${SESSIONS}: ${await describeIndexes(sessions)}`]);
   say();
 
   const failed = results.filter((r) => !r.ok);
@@ -224,11 +262,11 @@ try {
   if (failed.length === 0) {
     say('RESULT: VERIFIED');
     say();
-    say('The database refused an update and a delete on requestHistory that were');
-    say('issued with the application credential through the native driver. The');
-    say('same credential read requestHistory and wrote sessions in the same run,');
-    say('so the refusal is the missing privilege and not a failed login. DB-01');
-    say('layer 3 therefore holds for this credential on this cluster.');
+    say(`The database refused an update and a delete on ${RESTRICTED.join(' and on ')}`);
+    say('that were issued with the application credential through the native');
+    say('driver. The same credential read both collections and wrote sessions in');
+    say('the same run, so the refusal is the missing privilege and not a failed');
+    say('login. DB-01 layer 3 therefore holds for this credential on this cluster.');
     say();
     say('What this does not show: that any other credential is restricted (the');
     say('retention-operator user and Atlas project administrators are not), or');

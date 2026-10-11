@@ -13,7 +13,7 @@ documents remain the rationale. If a script and its document disagree, fix both 
 | `retention/proc-001-anonymise.js` | mongosh: nulls personal fields of requests closed ≥ 14 days ago, in batched transactions; verifies 0 remaining and unchanged aggregates | PROC-001 (`docs/operations/PROC-001_Manual_Anonymisation_v0.1.md`), DEC-017 | Administrator, twice monthly (1st and 16th), temporary `retention-operator` credential |
 | `atlas/app/triggers/auditRequests.json`, `auditHistory.json` | Atlas Database Trigger definitions on `requests` and `requestHistory` (`full_document: false`) | NFR-1.9, DEC-016, DEC-017 (data baseline §3.6) | `appservices push`, one App Services app per environment |
 | `atlas/app/functions/writeAuditLog.js`, `config.json` | Trigger function writing minimised, idempotent `auditLog` entries | same | same |
-| `verify_layer3_role.js` | Node, native driver: with the application credential, attempts an update and a delete on `requestHistory` and expects the database to refuse both; `find` on `requestHistory` and a write on `sessions` are the controls. Writes `docs/evidence/DB-01_layer3_verification.txt`; exits 1 if not verified | DB-01 v0.3 §4, DEC-003 v0.2 (FR-6.7) | Robert, against the **test** cluster, after the `civicconnect-app` role is created or changed: `node --env-file=.env scripts/verify_layer3_role.js` |
+| `verify_layer3_role.js` | Node, native driver: with the application credential, attempts an update and a delete on `requestHistory` and on `auditLog` and expects the database to refuse all four; `find` on each and a write on `sessions` are the controls. Writes `docs/evidence/DB-01_layer3_verification.txt`; exits 1 if not verified | DB-01 v0.3 §4, DEC-003 v0.2 (FR-6.7, NFR-1.4) | Robert, against the **test** cluster, after the `civicconnect-app` role is created or changed: `node --env-file=.env scripts/verify_layer3_role.js` |
 
 ## Usage
 
@@ -32,13 +32,19 @@ mongosh "$URI" --eval 'var DRY_RUN=false' --file scripts/retention/proc-001-anon
 # ("civicconnect") must match the environment's database.
 ```
 
-## Not yet verified against a live cluster
+## What has been verified against a live cluster
 
-The shell scripts were checked with `bash -n`, the JS with `node --check` and the JSON by
-parsing. None has been run against Atlas yet. First real runs are DEC-010 evidence item E2
-(restore test) and the first PROC-001 run after go-live. The Atlas custom roles
-(`civicconnect-app`, `civicconnect-backup`, `civicconnect-retention`) are specified in DEC-003
-and data baseline §4 but not yet scripted. That's a forward item: `atlas` CLI
-`customDbRoles create`.
+**Verified.** `verify_layer3_role.js` was run on 11/10/2026 against the test cluster (Atlas
+project CivicConnect-Test, database `civicconnect`) with the `civicconnect-app` credential.
+The record is `docs/evidence/DB-01_layer3_verification.txt`. The `civicconnect-app` custom
+role exists on that cluster. It was created by hand in the Atlas console, so it is still
+console state rather than configuration (CON-015), and it exists on the test cluster only.
+
+**Not yet verified.** The backup, retention and Atlas trigger scripts were checked with
+`bash -n`, `node --check` and by parsing the JSON. None of them has been run against Atlas
+yet. First real runs are DEC-010 evidence item E2 (restore test) and the first PROC-001 run
+after go-live. The Atlas custom roles (`civicconnect-app`, `civicconnect-backup`,
+`civicconnect-retention`) are specified in DEC-003 and data baseline §4 but not yet
+scripted. That's a forward item: `atlas` CLI `customDbRoles create`.
 
 No credentials are held in this folder (NFR-3.5).
