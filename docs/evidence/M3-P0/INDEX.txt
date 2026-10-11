@@ -42,7 +42,7 @@ restoration: 132 tests, 132 pass, 0 fail):
 NV-23  CAUGHT  TD-002 constraint: role-first security gate (act)  (NV-23_TD_002_constraint_role_first_security_gate_act.txt)
 NV-24  CAUGHT  TD-002 constraint: role-first security gate (view)  (NV-24_TD_002_constraint_role_first_security_gate_view.txt)
 NV-25  CAUGHT  DEF-002 regression: a sent code missing from the contract  (NV-25_DEF_002_regression_a_sent_code_missing_from_the_contract.txt)
-NV-26  CAUGHT  DEF-002 regression: a new error type not added to the contract  (NV-26_DEF_002_regression_a_new_error_type_not_added_to_the_contract.txt)
+NV-26  CAUGHT  DEF-002 regression: a new error type not added to the contract  (NV-26_DEF_002_regression_a_new_error_type_not_added_to_the_contrac.txt)
 
 These records cover the unit and HTTP-level tests, run without a database. They
 are not evidence of behaviour against a real cluster (see the Phase 0 smoke
