@@ -1,0 +1,36 @@
+Negative verification NV-25 — DEF-002 regression: a sent code missing from the contract
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:41 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 4921f4c (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Re-introducing DEF-002 (INTERNAL_ERROR absent from openapi.yaml) fails the contract test.
+
+1. The protected behaviour was broken in docs/api/openapi.yaml.
+   Original:
+     , INTERNAL_ERROR]
+   Replaced with:
+     ]   # SABOTAGE: DEF-002 reintroduced
+
+2. Result of `node --test tests/openapiContract.test.js`:
+
+     not ok - every problem code the code can send is in the contract, and no other — DEF-002, DEC-015
+     # tests 1
+     # pass 0
+     # fail 1
+
+   Expected to fail: every problem code the code can send is in the contract
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 132
+     # pass 132
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

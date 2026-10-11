@@ -1,0 +1,38 @@
+Negative verification NV-24 — TD-002 constraint: role-first security gate (view)
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:41 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 4921f4c (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Removing the Security Officer role check from mayViewRequest lets a category-authorised non-Security-Officer view a security-category request (FR-1.5).
+
+1. The protected behaviour was broken in src/domain/accessRules.js.
+   Original:
+     
+         if (request.securityCategory && !has(actor, ROLE.SECURITY_OFFICER)) return false;
+   Replaced with:
+     
+         // SABOTAGE: role-first security check removed (view)
+
+2. Result of `node --test tests/authorisationGuard.test.js`:
+
+     not ok - TD-002 constraint: category authorisation never opens a security request without the Security Officer role (view) — FR-1.5
+     # tests 16
+     # pass 15
+     # fail 1
+
+   Expected to fail: TD-002 constraint: category authorisation never opens a security request without the Security Officer role (view)
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 132
+     # pass 132
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
