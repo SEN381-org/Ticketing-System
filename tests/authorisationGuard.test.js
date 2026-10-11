@@ -6,20 +6,26 @@
  * per-method guard-call alternative on detectability: a missing guard call is
  * invisible, whereas a route registered without its guard is visible here and
  * fails the build.
+ *
+ * Since M3 Phase 0 the assertion runs over the WHOLE composed application, the
+ * graph src/server.js serves, not over one router. A router added to the app
+ * without its guard fails here, and so does a public route that is not in
+ * PUBLIC_ROUTES with a reason.
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createRequestRouter } from '../src/routes/requestRoutes.js';
+import { PUBLIC_ROUTES, isPublicRoute } from '../src/routes/publicRoutes.js';
+import { composeApplication } from '../src/composition.js';
+import { routeTable as appRouteTable } from '../src/app.js';
 import { GUARD_NAME, requireOperation, assertActorNotClientSupplied }
   from '../src/middleware/authorise.js';
 import { OPERATION_RULES, mayPerformOperation, mayActOnRequest, visibleStatusFor }
   from '../src/domain/accessRules.js';
 import { ROLE, STATUS } from '../src/models/_shared.js';
 import { AuthenticationError, AuthorisationError } from '../src/errors.js';
-
-const PUBLIC_ROUTES = [];   // stated, not assumed
 
 function routeTable(router) {
   return router.stack.filter((l) => l.route).flatMap((l) =>
@@ -35,15 +41,37 @@ function run(guard, req) {
   return { passed, error };
 }
 
-test('every non-public route carries the composed guard — NFR-3.3, CON-019', () => {
-  const routes = routeTable(createRequestRouter({ statusTransitionService: {} }));
+const isGuarded = (route) => route.handlers.some((h) => h.guardName === GUARD_NAME);
+
+test('every non-public route in the composed application carries the guard — NFR-3.3, CON-019', () => {
+  const routes = appRouteTable(composeApplication({ log: { error() {} } }).app);
   assert.ok(routes.length > 0, 'the route table must not be empty');
 
   for (const route of routes) {
-    const signature = `${route.method} ${route.path}`;
-    if (PUBLIC_ROUTES.includes(signature)) continue;
-    assert.ok(route.handlers.some((h) => h.guardName === GUARD_NAME),
-      `${signature} is registered without the authorisation guard`);
+    if (isPublicRoute(route.method, route.path)) continue;
+    assert.ok(isGuarded(route), `${route.method} ${route.path} is registered without the authorisation guard`);
+  }
+});
+
+test('every PUBLIC_ROUTES entry states why it needs no guard — DEC-018 §5', () => {
+  for (const entry of PUBLIC_ROUTES) {
+    assert.equal(typeof entry.reason, 'string', `${entry.method} ${entry.path} has no reason`);
+    assert.ok(entry.reason.trim().length >= 20, `${entry.method} ${entry.path} has no meaningful reason`);
+  }
+});
+
+test('every PUBLIC_ROUTES entry matches a registered route, so the list cannot go stale', () => {
+  const registered = new Set(appRouteTable(composeApplication({ log: { error() {} } }).app)
+    .map((r) => `${r.method} ${r.path}`));
+  for (const entry of PUBLIC_ROUTES) {
+    assert.ok(registered.has(`${entry.method} ${entry.path}`),
+      `PUBLIC_ROUTES lists ${entry.method} ${entry.path}, which is not a registered route`);
+  }
+});
+
+test('the request router guards every route it registers', () => {
+  for (const route of routeTable(createRequestRouter({ statusTransitionService: {} }))) {
+    assert.ok(isGuarded(route), `${route.method} ${route.path} is registered without the authorisation guard`);
   }
 });
 

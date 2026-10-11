@@ -1,30 +1,120 @@
 openapi: 3.1.0
 info:
   title: CivicConnect API
-  version: 0.1.0
+  version: 0.2.0
   summary: Browser-to-backend contract for the CivicConnect request lifecycle.
   description: |
-    Contract referenced by DEC-015 (API semantics). Version 0.1 covers the one
-    state-changing operation implemented in the M2 application slice: the status
-    transition. It describes the code in `src/routes/requestRoutes.js`,
-    `src/services/statusTransitionService.js`, `src/errors.js` and
-    `src/middleware/errorHandler.js`.
+    Contract referenced by DEC-015 (API semantics) and DEC-018 (authentication and
+    sessions). Version 0.2 (M3 Phase 0) adds the session resource and the health
+    endpoint to the status transition from 0.1. It describes the code in
+    `src/routes/`, `src/services/`, `src/middleware/` and `src/errors.js`.
 
     The remaining DEC-015 endpoints are not listed here, because they are not yet
-    implemented: submission, read, list, search, assignments, comments, history,
-    notifications and health. Each is added when its route exists (M3), so this
-    file never describes an endpoint the application does not serve.
+    implemented: submission, read, list, search, assignments, comments, history
+    and notifications. Each is added when its route exists, so this file never
+    describes an endpoint the application does not serve.
 
-    Traces to: FR-6.2 to FR-6.6, FR-1.3, NFR-3.3, CON-019, DEC-012, DEC-015, DEC-016.
+    Every write must be sent as `application/json` (415 otherwise) and is capped
+    at 32 kB (413). With SameSite=Lax this is the CSRF mitigation DEC-015 §5
+    records. Unauthenticated routes are exactly those listed in
+    `src/routes/publicRoutes.js`, each with its reason.
+
+    Traces to: FR-1.1, FR-1.3, FR-1.4, FR-6.2 to FR-6.6, NFR-1.4, NFR-1.6, NFR-3.3,
+    NFR-3.4, CON-019, DEC-012, DEC-015, DEC-016, DEC-018.
 servers:
   - url: /api/v1
     description: Versioned base path (DEC-015). Breaking changes go to /api/v2.
 tags:
   - name: requests
     description: Service request lifecycle
+  - name: sessions
+    description: Authentication (DEC-018)
+  - name: operations
+    description: Health (NFR-1.6)
 security:
   - session: []
 paths:
+  /health:
+    get:
+      tags: [operations]
+      operationId: getHealth
+      summary: Application and data-store availability
+      description: |
+        Public (NFR-1.6: "without requiring a user account"). Issues a database
+        `ping` only, bounded to 3 seconds. It reads no collection and no personal
+        data. Used by the DEC-003 deploy script after a restart.
+      security: []
+      responses:
+        '200':
+          description: The application is up and the database answered.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              example: { application: up, database: up }
+        '503':
+          description: The application is up and the database did not answer (DEC-015).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              example: { application: up, database: down }
+  /sessions:
+    post:
+      tags: [sessions]
+      operationId: createSession
+      summary: Log in
+      description: |
+        Public: logging in cannot require being logged in (FR-1.1). On success,
+        sets the `__Host-sid` cookie and issues a new session identifier every
+        time (no fixation). Every failure (unknown email, wrong password, revoked
+        account) returns one identical 401, and an unknown email still costs a
+        password hash, so neither the response nor its timing reveals which
+        accounts exist (DEC-018 §5). Every attempt is recorded in `auditLog`
+        (NFR-1.4); the submitted email never is.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginCommand' }
+      responses:
+        '201':
+          description: Logged in.
+          headers:
+            Set-Cookie:
+              description: '__Host-sid=<opaque>; Path=/; HttpOnly; Secure; SameSite=Lax'
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionUser' }
+        '400':
+          description: Body is not a JSON object with exactly the string fields email and password, or is not valid JSON (INVALID_REQUEST).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: The credentials were not accepted (UNAUTHENTICATED). Identical for every cause.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '415':
+          description: Not sent as application/json (UNSUPPORTED_MEDIA_TYPE).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /sessions/current:
+    delete:
+      tags: [sessions]
+      operationId: deleteCurrentSession
+      summary: Log out
+      description: |
+        Public and idempotent (DEC-018 §5). Ends the session named by the
+        caller's cookie, if there is one, and always clears the cookie. It never
+        reveals whether a session existed. A logout is recorded in `auditLog`
+        only when a session was actually ended.
+      security: []
+      responses:
+        '204':
+          description: No session remains for this cookie.
   /requests/{id}/transitions:
     post:
       tags: [requests]
@@ -109,7 +199,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TransitionReplay'
         '400':
-          description: Idempotency-Key missing or blank (IDEMPOTENCY_KEY_REQUIRED).
+          description: Idempotency-Key missing or blank (IDEMPOTENCY_KEY_REQUIRED), or the body is not valid JSON (INVALID_REQUEST).
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -148,6 +238,16 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+        '413':
+          description: Body over 32 kB (PAYLOAD_TOO_LARGE).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '415':
+          description: Not sent as application/json (UNSUPPORTED_MEDIA_TYPE).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '428':
           description: If-Match missing or malformed (PRECONDITION_REQUIRED).
           content:
@@ -163,12 +263,42 @@ components:
     session:
       type: apiKey
       in: cookie
-      name: sid
+      name: __Host-sid
       description: |
-        The session establishes `req.actor` server-side. Identity is never taken
-        from a header, query parameter or request body (review comment R-06).
-        The cookie name is a placeholder until authentication is implemented.
+        The session establishes `req.actor` server-side (DEC-018). Identity is
+        never taken from a header, query parameter or request body (review
+        comment R-06); an identity-shaped header is refused with 403. The value
+        is opaque; only its SHA-256 is stored. A session is refused once 30
+        minutes have elapsed since its recorded last activity, which is refreshed
+        at most once per 60 seconds, so it expires between 29 and 30 minutes
+        after the last request (NFR-3.4).
   schemas:
+    Health:
+      type: object
+      required: [application, database]
+      properties:
+        application: { type: string, enum: [up] }
+        database: { type: string, enum: [up, down] }
+    LoginCommand:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string, format: password }
+    SessionUser:
+      type: object
+      required: [id, displayName, roles]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        roles:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            description: The controlled role set (FR-1.2).
+            enum: [Requester, Technician, Coordinator, Manager, Security Officer, Administrator]
     Status:
       type: string
       description: The controlled status set (FR-6.1).
@@ -225,5 +355,6 @@ components:
         code:
           type: string
           enum: [IDEMPOTENCY_KEY_REQUIRED, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, PRECONDITION_FAILED,
-                 INVALID_TRANSITION, IDEMPOTENCY_CONFLICT, PRECONDITION_REQUIRED]
+                 INVALID_TRANSITION, IDEMPOTENCY_CONFLICT, PRECONDITION_REQUIRED, INVALID_REQUEST,
+                 UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE, INTERNAL_ERROR]
         instance: { type: string }

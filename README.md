@@ -17,13 +17,37 @@ the code is wrong. Status and role values come from FR-6.1 and FR-1.2 through
 ## Running
 
 ```
-npm install
+npm ci
 npm test
 ```
 
 Node 22 or later (`.nvmrc`). The test suite needs no database connection.
 CI installs with `npm ci` from `package-lock.json`, so commit the lockfile whenever a
 dependency changes.
+
+**The application (M3 Phase 0, DEC-018).** Copy `.env.example` to `.env`, fill in
+`MONGODB_URI` for the development or test cluster and a `PORT`, then:
+
+```
+npm run start:dev                     # node --env-file=.env src/server.js
+```
+
+It listens on `127.0.0.1` only (DEC-003) and refuses to start if the configuration is
+missing or the database cannot be reached. **Use `http://localhost:<port>` in a browser,
+not a LAN IP.** The session cookie is `__Host-sid`, which requires `Secure`, and
+`localhost` is the only plain-HTTP origin browsers treat as secure. Over a LAN IP the
+cookie is silently dropped and every request looks logged out.
+
+The first account is created on the host. There is no sign-up route and no default
+credential:
+
+```
+node --env-file=.env scripts/admin/create-user.js --email you@example.org \
+  --name "Your Name" --roles Administrator --campus <campusId>
+```
+
+The Phase 0 reachability check runs against a server already started on the same cluster:
+`node --env-file=.env scripts/smoke/phase0-smoke.js --base-url http://localhost:<port>`.
 
 ## What is implemented
 
@@ -41,10 +65,18 @@ dependency changes.
 | FR-1.5, FR-3.5 — security-category restriction | `src/domain/accessRules.js` | `authorisationGuard.test.js` |
 | FR-4.1, FR-5.2 — category authorisation | `src/domain/accessRules.js` | `statusTransitionService.test.js` |
 | NFR-1.10, CON-017 — no partial commit | `src/infrastructure/unitOfWork.js` | `statusTransitionService.test.js`; rollback at M3 |
+| FR-1.1 — authenticate before any request data (API half) | `src/services/authService.js`, `src/middleware/session.js`, `src/routes/sessionRoutes.js` | `app.test.js`, `authService.test.js` |
+| FR-1.4 — revocation ends existing sessions (partial: no admin functions) | `src/services/authService.js` (session epoch) | `authService.test.js`, `app.test.js` |
+| NFR-1.4 — authentication attempts logged (partial: retention not observed) | `src/repositories/auditRepository.js` | `authService.test.js` |
+| NFR-1.6 — public health endpoint | `src/routes/healthRoutes.js`, `src/services/healthService.js` | `app.test.js` |
+| NFR-3.1 — slow salted hash | `src/infrastructure/passwordHasher.js` | `passwordHasher.test.js` |
+| NFR-3.4 — 30-minute idle expiry | `src/services/authService.js` | `authService.test.js` |
 
 Collections written by this slice: `requests`, `requestHistory` (inside one
-transaction), then `notifications` and `reportingCounts` from the DEC-011
-subscribers, and `auditLog` from the Atlas trigger after commit.
+transaction), and `auditLog` from the Atlas trigger after commit. Since M3 Phase 0,
+also `sessions` and the application's authentication events in `auditLog`.
+`notifications` and `reportingCounts` would be written by the DEC-011 subscribers,
+which are not registered in the composed application (TD-001).
 
 ## How the decisions appear in the code
 
@@ -121,6 +153,19 @@ the system. That is a CON-007 exposure, not only an FR-6.6 gap.
   a security exception; and that `request:assign` includes the Manager, where
   FR-5.1 names only the Coordinator.
 - The assignment sub-resource itself (`POST /requests/{id}/assignments`).
+- **DEC-011 subscribers are not registered** in the composed application (Technical Debt
+  Register TD-001). A transition publishes its event to no listener, so no notification
+  is created and `reportingCounts` is not maintained. `composition.test.js` asserts the
+  registry is empty, so wiring one forces TD-001 to be updated.
+- **FR-1.6 group permissions are not evaluated** (TD-002). DB-01 §3.7 specifies the union;
+  `req.actor` carries `groupIds`, but `accessRules.js` does not read them.
+- FR-1.4's Administrator functions (create, amend roles, revoke over the API). Only
+  `scripts/admin/create-user.js` creates users.
+- AC-FR-1.3: recording the guard's rejected attempt. `auditRepository.recordSecurityEvent()`
+  exists for it; the guard does not call it yet.
+- Login throttling or lockout (RSK-021). No threshold is stated in the record.
+- Deployment (Nginx, TLS for NFR-3.2, systemd): M3 Phase 1.
+- Any user interface.
 
 ## Structure
 
@@ -143,9 +188,13 @@ src/
   repositories/    persistence access; the only update path for requests
   services/        application services
   events/          domain event publication and subscribers (DEC-011)
-  infrastructure/  unit of work (DEC-016)
-  middleware/      authorisation guard (DEC-012) and problem-details handler
-  routes/          Express routes (DEC-015)
+  infrastructure/  unit of work (DEC-016), database lifecycle, password hashing (DEC-018)
+  middleware/      authorisation guard (DEC-012), session (DEC-018), request body, problem details
+  routes/          Express routes (DEC-015); publicRoutes.js lists every unguarded route
+  app.js           createApp(deps): middleware order and routers, no I/O
+  composition.js   the production object graph, no I/O
+  server.js        configuration, connection, listen, shutdown
+  config.js        environment variables, validated
 tests/             verification evidence referenced from the RTM
 ```
 
