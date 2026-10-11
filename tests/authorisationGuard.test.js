@@ -22,7 +22,7 @@ import { composeApplication } from '../src/composition.js';
 import { routeTable as appRouteTable } from '../src/app.js';
 import { GUARD_NAME, requireOperation, assertActorNotClientSupplied }
   from '../src/middleware/authorise.js';
-import { OPERATION_RULES, mayPerformOperation, mayActOnRequest, visibleStatusFor }
+import { OPERATION_RULES, mayPerformOperation, mayActOnRequest, mayViewRequest, visibleStatusFor }
   from '../src/domain/accessRules.js';
 import { ROLE, STATUS } from '../src/models/_shared.js';
 import { AuthenticationError, AuthorisationError } from '../src/errors.js';
@@ -144,4 +144,37 @@ test('a requester never sees a restricted status on a security request — FR-3.
   assert.equal(visibleStatusFor(STATUS.ON_HOLD, false, requester), STATUS.ON_HOLD,
     'a non-security request is not restricted');
   assert.equal(visibleStatusFor(STATUS.ON_HOLD, true, { roles: [ROLE.SECURITY_OFFICER] }), STATUS.ON_HOLD);
+});
+
+/*
+ * TD-002 repayment constraint. The security-category gate holds today ONLY
+ * because groups cannot carry roles and the gate checks the Security Officer
+ * role BEFORE category authorisation. DB-01 §3.7's union does not itself scope
+ * security categories. Whoever implements the FR-1.6 union must keep the
+ * role-first check; these tests fail if it is removed from either predicate.
+ * The actor below is the worst case the union could produce: every staff role
+ * except Security Officer, authorised for the security category itself, and in
+ * a group.
+ */
+const SECURITY_REQUEST = Object.freeze({ categoryId: 'cat-sec', securityCategory: true, requesterId: 'other' });
+const NON_SECURITY_STAFF = Object.values(ROLE).filter((r) =>
+  ![ROLE.SECURITY_OFFICER, ROLE.REQUESTER, ROLE.ADMINISTRATOR].includes(r));
+
+test('TD-002 constraint: category authorisation never opens a security request without the Security Officer role (act) — FR-1.5', () => {
+  const widest = { id: 'u', roles: NON_SECURITY_STAFF, categoryAuthorisations: ['cat-sec'], groupIds: ['g1'] };
+  assert.equal(mayActOnRequest(SECURITY_REQUEST, widest), false);
+  for (const role of NON_SECURITY_STAFF) {
+    assert.equal(mayActOnRequest(SECURITY_REQUEST, { ...widest, roles: [role] }), false, role);
+  }
+  assert.equal(mayActOnRequest(SECURITY_REQUEST, { ...widest, roles: [ROLE.SECURITY_OFFICER] }), true,
+    'the Security Officer with the category must still be able to act');
+});
+
+test('TD-002 constraint: category authorisation never opens a security request without the Security Officer role (view) — FR-1.5', () => {
+  const widest = { id: 'u', roles: NON_SECURITY_STAFF, categoryAuthorisations: ['cat-sec'], groupIds: ['g1'] };
+  assert.equal(mayViewRequest(SECURITY_REQUEST, widest), false);
+  for (const role of NON_SECURITY_STAFF) {
+    assert.equal(mayViewRequest(SECURITY_REQUEST, { ...widest, roles: [role] }), false, role);
+  }
+  assert.equal(mayViewRequest(SECURITY_REQUEST, { ...widest, roles: [ROLE.SECURITY_OFFICER] }), true);
 });
