@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node src/server.js",
     "start:dev": "node --env-file=.env src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:integration": "node --env-file=.env.test --test \"tests/integration/*.test.js\""
   },
   "dependencies": {
     "express": "^4.22.3",
