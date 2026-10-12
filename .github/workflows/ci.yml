@@ -73,6 +73,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Scanned range: every commit reachable from any fetched ref, stated by
+      # --log-opts rather than left to the default (which is the same range).
+      # Gitleaks' "N commits scanned" is lower than git's commit count, and that
+      # is expected: it does not scan binary file contents, so a commit whose
+      # only changes are binary edits or deletions (e.g. an .xlsx-only register
+      # update) contributes nothing to scan and is not counted. Reconciled on
+      # 2026-10-12 by scanning each commit alone: exactly 8 commits are
+      # uncounted, all of that kind.
+      # Consequence: secrets inside binary files (.xlsx, .docx, .pdf) are not
+      # detected, in history or in the current tree.
       - name: Scan for committed secrets with Gitleaks
         run: |
           docker run --rm -v "${{ github.workspace }}:/repo" \
