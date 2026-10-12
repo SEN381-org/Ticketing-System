@@ -72,6 +72,11 @@ Path=/ and no Domain" (tests/app.test.js) failed once in the green re-run of NV-
 in a later six-run loop. The failure message was not captured either time; it did not fail
 in about 175 further full-suite runs. The test and the code it exercises are not part of
 this change. Cause unknown. It was not re-run until green at any point. Logged as DEF-013.
+Afterwards, two runs were made only to capture the failure message, not to get a pass: 200
+isolated runs of tests/app.test.js, and 100 full-suite runs (2026-10-12, 266 s, nothing
+else running). Neither reproduced it: 0 failures in either. Both earlier failures happened
+while the sabotage loops were also running, so load or contention remains possible but
+unconfirmed. The cause is still unknown.
 
 Three sabotages (NV-40, NV-41, NV-43) were NOT caught when first run. NV-40 and NV-41 were later
 closed by new tests (NV-45, NV-49) and their records stay as history. NV-43 remains NOT CAUGHT.
