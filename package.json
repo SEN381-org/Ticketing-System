@@ -10,7 +10,8 @@
     "start": "node src/server.js",
     "start:dev": "node --env-file=.env src/server.js",
     "test": "node --test",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "build:client": "npm --prefix client run build"
   },
   "dependencies": {
     "express": "^4.22.3",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
     "globals": "^17.13.0"
   }
 }
