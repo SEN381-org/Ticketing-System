@@ -7,6 +7,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "start": "node src/server.js",
+    "start:dev": "node --env-file=.env src/server.js",
     "test": "node --test"
   },
   "dependencies": {

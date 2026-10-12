@@ -1,0 +1,38 @@
+Negative verification NV-12 — No unlogged successful login
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  If the success event cannot be written, no session is created (NFR-1.4).
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+         await audit.recordSecurityEvent({
+           origin: 'auth', eventType: 'auth.login.success',
+   Replaced with:
+         audit.recordSecurityEvent({   // SABOTAGE: not awaited, failure swallowed
+           origin: 'auth', eventType: 'auth.login.success',
+
+2. Result of `node --test tests/authService.test.js`:
+
+     not ok - if the success event cannot be recorded, no session is created — NFR-1.4
+     # tests 15
+     # pass 14
+     # fail 1
+
+   Expected to fail: if the success event cannot be recorded, no session is created
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

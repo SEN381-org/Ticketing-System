@@ -1,0 +1,39 @@
+Negative verification NV-08 — Identical login failure (timing): unknown email still pays for a hash
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Without the dummy hash, an unknown email returns measurably faster than a known one (DEC-018 §5).
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+           await costOfAHash(password);
+     
+   Replaced with:
+           // SABOTAGE: dummy hash skipped
+     
+
+2. Result of `node --test tests/authService.test.js`:
+
+     not ok - unknown email, wrong password and revoked account fail identically — DEC-018 §5
+     # tests 15
+     # pass 14
+     # fail 1
+
+   Expected to fail: unknown email, wrong password and revoked account fail identically
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  It does NOT show: It shows the dummy hash is CALLED for an unknown email. It does not measure response timing; no test here compares durations.

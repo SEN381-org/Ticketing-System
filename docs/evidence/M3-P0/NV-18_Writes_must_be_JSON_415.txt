@@ -1,0 +1,36 @@
+Negative verification NV-18 — Writes must be JSON (415)
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  A form-encoded POST is refused, which is half of the DEC-015 CSRF mitigation.
+
+1. The protected behaviour was broken in src/app.js.
+   Original:
+       app.use(requireJsonOnWrites, parseJsonBody, mapBodyErrors);
+   Replaced with:
+       app.use(parseJsonBody, mapBodyErrors);   // SABOTAGE: content type not enforced
+
+2. Result of `node --test tests/app.test.js`:
+
+     not ok - a write that is not JSON is 415, including login — DEC-015 §5 (CSRF)
+     # tests 14
+     # pass 13
+     # fail 1
+
+   Expected to fail: a write that is not JSON is 415, including login
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

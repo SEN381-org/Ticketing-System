@@ -1,0 +1,49 @@
+M3 Phase 0 — negative verification index (DEC-018, project instructions §6)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825
+
+Each entry broke one protected behaviour, ran the tests that guard it, confirmed
+the expected tests failed, restored the file and re-ran the full suite. The
+sabotage text, the failing test names and the counts are in each file. The run
+was scripted so that every sabotage was applied and reverted mechanically; the
+working tree was confirmed clean afterwards.
+
+NV-01  CAUGHT  Whole-application guard assertion  (NV-01_Whole_application_guard_assertion.txt)
+NV-02  CAUGHT  PUBLIC_ROUTES entries must state a reason  (NV-02_PUBLIC_ROUTES_entries_must_state_a_reason.txt)
+NV-03  CAUGHT  Revocation through the session epoch  (NV-03_Revocation_through_the_session_epoch.txt)
+NV-04  CAUGHT  Idle limit boundary at exactly 30:00  (NV-04_Idle_limit_boundary_at_exactly_30_00.txt)
+NV-05  CAUGHT  The rejected 30–31 minute tolerance  (NV-05_The_rejected_30_31_minute_tolerance.txt)
+NV-06  CAUGHT  lastSeenAt refresh at most once per 60 s  (NV-06_lastSeenAt_refresh_at_most_once_per_60_s.txt)
+NV-07  CAUGHT  Identical login failure (message)  (NV-07_Identical_login_failure_message.txt)
+NV-08  CAUGHT  Identical login failure (timing): unknown email still pays for a hash  (NV-08_Identical_login_failure_timing_unknown_email_still_pays_for_.txt)
+NV-09  CAUGHT  Only the token hash is stored  (NV-09_Only_the_token_hash_is_stored.txt)
+NV-10  CAUGHT  New identifier on every login (fixation)  (NV-10_New_identifier_on_every_login_fixation.txt)
+NV-11  CAUGHT  The email never reaches the audit record (M-1)  (NV-11_The_email_never_reaches_the_audit_record_M_1.txt)
+NV-12  CAUGHT  No unlogged successful login  (NV-12_No_unlogged_successful_login.txt)
+NV-13  CAUGHT  Logout audits only a session that existed  (NV-13_Logout_audits_only_a_session_that_existed.txt)
+NV-14  CAUGHT  The session middleware resolves and never rejects  (NV-14_The_session_middleware_resolves_and_never_rejects.txt)
+NV-15  CAUGHT  An invalid cookie is cleared  (NV-15_An_invalid_cookie_is_cleared.txt)
+NV-16  CAUGHT  Client-supplied identity is refused over HTTP  (NV-16_Client_supplied_identity_is_refused_over_HTTP.txt)
+NV-17  CAUGHT  Health is public  (NV-17_Health_is_public.txt)
+NV-18  CAUGHT  Writes must be JSON (415)  (NV-18_Writes_must_be_JSON_415.txt)
+NV-19  CAUGHT  Malformed JSON is the client's error  (NV-19_Malformed_JSON_is_the_client_s_error.txt)
+NV-20  CAUGHT  TD-001: no subscriber is registered  (NV-20_TD_001_no_subscriber_is_registered.txt)
+NV-21  CAUGHT  scrypt maxmem is required  (NV-21_scrypt_maxmem_is_required.txt)
+NV-22  CAUGHT  Configuration errors never echo the connection string  (NV-22_Configuration_errors_never_echo_the_connection_string.txt)
+
+Full suite after all restorations: # tests 129, # pass 129, # fail 0
+
+Added later, run on 2026-10-11 15:41 UTC against commit 4921f4c (full suite after
+restoration: 132 tests, 132 pass, 0 fail):
+
+NV-23  CAUGHT  TD-002 constraint: role-first security gate (act)  (NV-23_TD_002_constraint_role_first_security_gate_act.txt)
+NV-24  CAUGHT  TD-002 constraint: role-first security gate (view)  (NV-24_TD_002_constraint_role_first_security_gate_view.txt)
+NV-25  CAUGHT  DEF-002 regression: a sent code missing from the contract  (NV-25_DEF_002_regression_a_sent_code_missing_from_the_contract.txt)
+NV-26  CAUGHT  DEF-002 regression: a new error type not added to the contract  (NV-26_DEF_002_regression_a_new_error_type_not_added_to_the_contrac.txt)
+
+These records cover the unit and HTTP-level tests, run without a database. They
+are not evidence of behaviour against a real cluster (see the Phase 0 smoke
+record), of transaction atomicity, of least privilege, or of TLS.
