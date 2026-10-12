@@ -92,7 +92,8 @@ fails if client source imports anything from `src/`, if it does not import
 
 ## Evidence still required
 
-1. The pinned Playwright version, recorded when `e2e/` lands.
+1. ~~The pinned Playwright version, recorded when `e2e/` lands.~~ Recorded: `@playwright/test`
+   1.64.0, pinned exactly in `e2e/package.json` (Chromium build 1248).
 2. A recorded local E2E run: E2E-1 and E2E-2a pass, and E2E-2b is an expected failure with
    its 422 quoted. It is the condition for #89 leaving draft.
 3. The client build step, added to DEC-003's deploy procedure before the staging run.
