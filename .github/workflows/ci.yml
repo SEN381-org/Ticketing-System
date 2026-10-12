@@ -10,8 +10,16 @@
 #      directly (NFR-1.7, DEC-014, RSK-016).
 #   2. secret-scan — scans the full git history for committed credentials
 #      (NFR-3.5, Master Brief §9, CON-006).
-# A mature CI/CD pipeline is not an M2 requirement; this is stage 1 of the
-# staged adoption recorded in the team's Assignment 2 research.
+#   3. lint — ESLint, defect-catching rules only, fails on any error
+#      (eslint.config.js). M3 §9 quality gate.
+#   4. dependency-audit — npm audit of the production dependencies, fails on
+#      a high or critical advisory. M3 §9 quality gate.
+#   5. codeql — CodeQL static security analysis of the JavaScript sources.
+#      The blocking check is GitHub's "CodeQL" code-scanning result, which
+#      fails a pull request that introduces a new alert. M3 §9 quality gate.
+# A mature CI/CD pipeline is not an M2 requirement; jobs 1-2 were stage 1 of
+# the staged adoption recorded in the team's Assignment 2 research, and jobs
+# 3-5 are the M3 stage.
 
 name: CI
 
@@ -52,6 +60,10 @@ jobs:
           fi
           echo "No presentation-to-data-access imports found."
 
+  # Not a candidate for a deliberate-failure demonstration. This job scans
+  # history, so a seeded fake secret stays in the history after the revert and
+  # would fail every later run until it was allowlisted or the history
+  # rewritten. The M3 §9 demonstration uses the layer boundary check instead.
   secret-scan:
     name: Secret scan (full history)
     runs-on: ubuntu-latest
@@ -66,3 +78,62 @@ jobs:
           docker run --rm -v "${{ github.workspace }}:/repo" \
             zricethezav/gitleaks:v8.18.4 \
             detect --source /repo --redact --verbose
+
+  lint:
+    name: Static analysis (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 (matches package.json engines)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies from the lockfile
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  dependency-audit:
+    name: Dependency audit (npm)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 (matches package.json engines)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Production dependencies only: they are what is deployed to Hostinger.
+      # Dev tooling (ESLint) never ships, so an advisory there would block
+      # merges without exposing the running system.
+      # High, not moderate: moderate pulls in transitive advisories with no fix
+      # path, and a gate that fails on what the team cannot fix gets ignored.
+      - name: Audit production dependencies (high and critical fail the build)
+        run: npm audit --omit=dev --audit-level=high
+
+  codeql:
+    name: CodeQL analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/analyze@v3
