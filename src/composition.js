@@ -24,6 +24,7 @@ import { sessionRepository } from './repositories/sessionRepository.js';
 import { userRepository } from './repositories/userRepository.js';
 import { auditRepository } from './repositories/auditRepository.js';
 import { createStatusTransitionService } from './services/statusTransitionService.js';
+import { createRequestQueryService } from './services/requestQueryService.js';
 import { createAuthService } from './services/authService.js';
 import { createHealthService } from './services/healthService.js';
 import { createApp } from './app.js';
@@ -35,6 +36,7 @@ export function composeApplication({ log = console } = {}) {
       audit: auditRepository, passwords: passwordHasher,
     }),
     healthService: createHealthService({ pingDatabase }),
+    requestQueryService: createRequestQueryService({ requests: requestRepository }),
     statusTransitionService: createStatusTransitionService({
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
     }),
