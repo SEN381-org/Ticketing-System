@@ -77,7 +77,8 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}:/repo" \
             zricethezav/gitleaks:v8.18.4 \
-            detect --source /repo --redact --verbose
+            detect --source /repo --redact --verbose \
+            --log-opts="--all --full-history"
 
   lint:
     name: Static analysis (ESLint)
