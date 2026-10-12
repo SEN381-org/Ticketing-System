@@ -24,7 +24,6 @@ import { ROLE } from '../src/models/_shared.js';
 
 const T0 = new Date('2026-10-11T08:00:00Z');
 const at = (ms) => new Date(T0.getTime() + ms);
-const MIN = 60 * 1000;
 
 function fakeWorld({ users: seed = [] } = {}) {
   const users = new Map(seed.map((u) => [String(u._id), { ...u }]));
