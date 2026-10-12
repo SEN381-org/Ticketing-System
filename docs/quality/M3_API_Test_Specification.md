@@ -6,7 +6,7 @@
 | **Version** | 0.1 |
 | **Author** | Robert van der Merwe (Member B) |
 | **Date** | 12 October 2026 |
-| **Status** | Proposed. Written before the tests exist and before any of them has been run |
+| **Status** | Executed. Written before the tests existed; the tests have since been implemented and run on 12 October 2026. Run output: `docs/evidence/M3_API_Test_Run.txt`. Negative verifications (§7): `docs/evidence/M3_API_Negative_Verification.txt`. Failures are logged as DEF-007 to DEF-011 |
 | **Test basis** | DEC-015 v0.1 (API semantics), DEC-016 v0.1 (transaction boundary), AC-NFR-1.10 v0.3 (CR-001) |
 | **Code examined** | `feat/m3-phase0-composition-root` at `5a64a7c` (PR #83). The transition route, service and error classes it contains are unchanged from `dev` |
 | **Traces to** | FR-6.2, FR-6.3, FR-6.7, AC-FR-6.7, NFR-1.10, CON-017 |
@@ -18,8 +18,9 @@ output. This was agreed with the DEC-015 implementer on 12/10/2026: all four dif
 §2 are to be corrected in the code and in `docs/api/openapi.yaml`, in a separate PR after
 PR #83 merges, and DEC-015 does not change.
 
-Every "Predicted" column below is a prediction from reading the code. Nothing has been
-executed yet.
+Every "Predicted" column below is a prediction from reading the code, made before anything
+was executed. The predictions are left as written; the observed results are in
+`docs/evidence/M3_API_Test_Run.txt`.
 
 ---
 
@@ -28,7 +29,7 @@ executed yet.
 | # | Decision | Reason |
 |---|---|---|
 | S1 | The cases drive the system over real HTTP: `createApp` listening on an ephemeral port, called with `fetch` | Cases 1 and 2 are about headers and status codes, which exist only at the route |
-| S2 | They run with the `civicconnect-app` credential only. Fixtures are created fresh with unique identifiers and left behind | It is the role the application runs as. That role cannot delete from `requestHistory` or drop the database (DB-01 layer 3), so clean-up is not possible with it |
+| S2 | They run with the `civicconnect-app` credential only. Fixtures are created fresh with unique identifiers and left behind | It is the role the application runs as. That role cannot delete from `requestHistory` or drop the database (DB-01 layer 3), so clean-up is not possible with it (contradicts DEC-003's Test row; logged as DEF-006) |
 | S3 | Files live in `tests/integration/` and are skipped, with a printed reason, when `MONGODB_URI` is unset | CI has no cluster credential. A skipped case must never read as a verified one |
 | S4 | Assertions follow DEC-015 and DEC-016 as written | M3 brief §11: expected results are derived before execution from authoritative project evidence |
 | S5 | The unique indexes `{requestId: 1, requestVersion: 1}` and `{actorId: 1, idempotencyKey: 1}` (partial, string keys) are assumed to exist on the test cluster, created by hand | The application role cannot create or list indexes, so the suite cannot check for them |
@@ -68,21 +69,26 @@ tests/integration/
   transactionBoundary.integration.test.js   Case 3
 ```
 
-`package.json` gains `"test:integration": "node --env-file=.env.test --test tests/integration/"`.
+`package.json` gains `"test:integration": "node --env-file=.env --import \"data:text/javascript,import dns from 'node:dns';dns.setServers(['8.8.8.8','1.1.1.1']);\" --test \"tests/integration/*.test.js\""`.
+The `--import` sets public DNS resolvers so that the `mongodb+srv` lookup works on a machine whose only resolver is loopback.
 `npm test` also discovers these files; without `MONGODB_URI` they report as skipped.
 
 ### 3.2 Skip rule
 
 ```js
-export const skip = process.env.MONGODB_URI
-  ? false
-  : 'MONGODB_URI is not set: integration cases were NOT run';
+// false when MONGODB_URI is set and contains 'civicconnecttest'; otherwise the reason, which the runner prints
+export const skip = skipReason(process.env.MONGODB_URI);
 
 before(async () => { if (!skip) await connectDatabase(process.env.MONGODB_URI); });
 after(async ()  => { if (!skip) await disconnectDatabase(); });
 
 test('…', { skip }, async (t) => { /* … */ });
 ```
+
+The suite is opt-in. It leaves fixtures behind that the application role cannot remove, so
+it refuses to run unless `MONGODB_URI` contains `civicconnecttest`. A URI that is unset, or
+that does not name the test cluster, skips every case with the reason printed and connects
+to nothing.
 
 ### 3.3 Fixture, created per test
 

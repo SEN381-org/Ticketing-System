@@ -9,10 +9,12 @@
  * assertion is scoped to that fixture's `requestId` or `actorId`. A collection
  * count would include earlier runs.
  *
- * Without MONGODB_URI the cases are skipped with a printed reason. A skipped
- * case is not a verified one.
+ * The cases write fixtures that cannot be removed, so they are opt-in: they run
+ * only when MONGODB_URI contains `civicconnecttest`. With no URI, or a URI that
+ * does not name the test cluster, they are skipped with a printed reason and
+ * nothing connects. A skipped case is not a verified one.
  *
- * Run:  npm run test:integration   (reads .env.test)
+ * Run:  npm run test:integration   (reads .env)
  */
 
 import { before, after } from 'node:test';
@@ -26,9 +28,19 @@ import Request from '../../src/models/Request.js';
 import RequestHistory from '../../src/models/RequestHistory.js';
 import { ROLE, STATUS } from '../../src/models/_shared.js';
 
-export const skip = process.env.MONGODB_URI
-  ? false
-  : 'MONGODB_URI is not set: integration cases were NOT run';
+/** The URI must name the test cluster. The URI itself is never printed: it holds a credential. */
+const TEST_CLUSTER_MARKER = 'civicconnecttest';
+
+function skipReason(uri) {
+  if (!uri) return 'MONGODB_URI is not set: integration cases were NOT run';
+  if (!uri.includes(TEST_CLUSTER_MARKER)) {
+    return `MONGODB_URI does not contain "${TEST_CLUSTER_MARKER}": refusing to run against a database `
+      + 'that is not the test cluster, integration cases were NOT run';
+  }
+  return false;
+}
+
+export const skip = skipReason(process.env.MONGODB_URI);
 
 /** The application logs a 500 it renders. The fault in case 3 is deliberate, so it is not echoed. */
 export const quiet = { error() {} };
