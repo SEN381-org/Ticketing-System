@@ -923,8 +923,8 @@ Rejected, which is terminal, so the transition rule also refuses a second attemp
 will not hold for a non-terminal target status once the assignments route exists.
 
 What it shows about the test cluster: with the application guards removed, MongoDB accepted
-a second history entry with the same (actorId, idempotencyKey), logged as DEF-014, and with
-the same (requestId, requestVersion), logged as DEF-015.
+a second history entry with the same (actorId, idempotencyKey) and with the same
+(requestId, requestVersion). Logged as DEF-014.
 
 ================================================================================
 ISOLATED VERIFICATION, Case 1: no version check and no transition rule
@@ -994,7 +994,7 @@ Result
   of ignoring checkTransition, which is the guard case 4 exercises. It is not part of this
   verification.
 
-  Further observation, logged as DEF-015. Under this break applyChange returns expectedVersion + 1,
+  Further observation on DEF-014. Under this break applyChange returns expectedVersion + 1,
   so the second history entry is written with requestVersion 1, the same as the first. The
   insert was accepted. The unique index {requestId: 1, requestVersion: 1} that specification
   S5 also assumes therefore did not act on the test cluster either.
@@ -1534,9 +1534,9 @@ Result
   Cases 1, 2c, 2d, 2e and 4 fail further subtests as side effects of the three removed
   guards. They are listed but are not part of this verification.
 
-  Further observation on DEF-014 and DEF-015. The second entry has the same actorId and
-  idempotencyKey as the first (DEF-014), and the same requestId and requestVersion, 1
-  (DEF-015). Neither unique index refused it.
+  Further observation on DEF-014. The second entry has the same actorId and idempotencyKey
+  as the first, and the same requestId and requestVersion (1). Neither unique index refused
+  it.
 
 Every subtest, as reported by the runner (unedited):
 
@@ -1932,3 +1932,5 @@ After the isolated verifications
 
 The suite was run again on the restored code: exit code 1, tests 40, pass 25, fail 15, skipped 0, with the same result for every
 subtest as the baseline. docs/evidence/M3_API_Test_Run.txt is unchanged.
+
+Note (2026-10-12): In the isolated runs recorded above, the unique index gap on (requestId, requestVersion) was initially attributed to DEF-014. Following review and defect splitting, this second index gap is formally logged as DEF-015. DEF-014 strictly covers the (actorId, idempotencyKey) index.
