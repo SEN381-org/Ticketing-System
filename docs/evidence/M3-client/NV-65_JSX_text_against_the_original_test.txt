@@ -1,0 +1,45 @@
+Negative verification NV-65 — A STATUS value as literal JSX text, against the ORIGINAL tests/clientBoundary.test.js (before review)
+M3 client (client/, tests/clientBoundary.test.js); verification under project instructions §6
+
+Run on : 2026-10-12 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : a22b450 (HEAD). The code under test (client/, tests/clientBoundary.test.js) is UNCOMMITTED working-tree content.
+Baseline: 162 tests, 162 pass, with the original 4-test version of tests/clientBoundary.test.js in place.
+
+CLAIM
+  No client/src file holds a STATUS value as JSX text, e.g. <option>Rejected</option> written out with no quotes.
+  The original test's literal check only looked inside quote characters.
+
+1. The protected behaviour was broken in the CLIENT, and the ORIGINAL test file was temporarily put back in place.
+     --- client/src/SignIn.jsx (original)
+     +++ client/src/SignIn.jsx (sabotaged)
+       - <h1>Sign in</h1>
+       + <h1>Sign in</h1>
+       + <option>Rejected</option>
+   The original test file (SHA-256 a5aa616e7cfe33c50b9079428ca9f98528a2794b81b6332472a68c1f14da32af) was written
+   over tests/clientBoundary.test.js for this one run, then the reviewed version was written back.
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     (no failing test)
+     # tests 162
+     # pass 162
+     # fail 0
+
+   Expected to fail (written down before the run): the string-literal test, if it covered JSX text.
+   Outcome: NOT CAUGHT — the original test did not fail. A status hard-coded as JSX text would have passed the gate.
+
+3. Both files were restored by writing back their original content. SHA-256 after restore:
+     client/src/SignIn.jsx             2d1349690f5a6535df30456d3e34fb70a0a5d332688cbb36dc1c4f8d11552642 (same as before the run)
+     tests/clientBoundary.test.js      7432a0507e93a300b78ef7fede30b7725099dea7f1e24768ea981c37d0eeb57d (the reviewed version, same as before the run)
+   The full suite was re-run: 167 tests, 167 pass, 0 fail.
+
+RESPONSE
+  The test was strengthened (JSX text scan, whole-word, case-sensitive; plus detector self-tests on fixed strings
+  and a full-extension, recursive walk). The same break was then run against the reviewed test: NV-57, CAUGHT.
+
+INTERPRETATION
+  What this shows: the original gate had a real hole for the one form of hard-coded value that needs no quote
+  characters, and the sabotage-fail-restore method found it.
+  What this does NOT show: that the reviewed test has no hole; see the "does NOT show" list in its header.
