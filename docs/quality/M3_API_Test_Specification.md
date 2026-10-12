@@ -48,6 +48,7 @@ cluster only if someone created it by hand.
 | D2 | §2: a stale `If-Match` returns `412` with the current ETag in the problem body | The problem body carries only the stale version, in `detail` (`errors.js`) | Case 1 |
 | D3 | §3: the fingerprint is SHA-256 of method + normalised path + canonical JSON body | `JSON.stringify(body)` only, and the replay lookup is by `(actorId, key)` with no request id | Cases 2d, 2e |
 | D4 | §3: a key reused with a different payload is problem type `idempotency-key-reused` | `idempotency-conflict` / `IDEMPOTENCY_CONFLICT` (`errors.js`) | Case 2c |
+| D5 | §4: an authenticated role not permitted for the operation gets `403` | A wrong-role transition returns `422 INVALID_TRANSITION` (`statusTransitionService.js:88`) | new case: wrong-role transition, expect 403 |
 
 D3 is a correctness defect, not only a conformance difference: the same key sent to a
 different request would replay the first request's result, so the second transition would
