@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | **Artefact** | Test specification for the three API/integration cases of M3 Assessment Area D |
-| **Version** | 0.1 |
+| **Version** | 0.2 |
 | **Author** | Robert van der Merwe (Member B) |
 | **Date** | 12 October 2026 |
 | **Status** | Executed. Written before the tests existed; the tests have since been implemented and run on 12 October 2026. Run output: `docs/evidence/M3_API_Test_Run.txt`. Negative verifications (§7): `docs/evidence/M3_API_Negative_Verification.txt`. Failures are logged as DEF-007 to DEF-011 |
-| **Test basis** | DEC-015 v0.1 (API semantics), DEC-016 v0.1 (transaction boundary), AC-NFR-1.10 v0.3 (CR-001) |
+| **Test basis** | DEC-015 v0.1 (API semantics), DEC-016 v0.1 (transaction boundary), AC-NFR-1.10 v0.3 (proposed under CR-001, not yet baselined) |
 | **Code examined** | `feat/m3-phase0-composition-root` at `5a64a7c` (PR #83). The transition route, service and error classes it contains are unchanged from `dev` |
 | **Traces to** | FR-6.2, FR-6.3, FR-6.7, AC-FR-6.7, NFR-1.10, CON-017 |
 
@@ -76,7 +76,7 @@ The `--import` sets public DNS resolvers so that the `mongodb+srv` lookup works 
 ### 3.2 Skip rule
 
 ```js
-// false when MONGODB_URI is set and contains 'civicconnecttest'; otherwise the reason, which the runner prints
+// false when the host in MONGODB_URI contains 'civicconnecttest'; otherwise the reason, which the runner prints
 export const skip = skipReason(process.env.MONGODB_URI);
 
 before(async () => { if (!skip) await connectDatabase(process.env.MONGODB_URI); });
@@ -86,9 +86,9 @@ test('…', { skip }, async (t) => { /* … */ });
 ```
 
 The suite is opt-in. It leaves fixtures behind that the application role cannot remove, so
-it refuses to run unless `MONGODB_URI` contains `civicconnecttest`. A URI that is unset, or
-that does not name the test cluster, skips every case with the reason printed and connects
-to nothing.
+it refuses to run unless the host parsed from `MONGODB_URI` contains `civicconnecttest`. A URI
+that is unset, that cannot be parsed, or whose host does not name the test cluster, skips
+every case with the reason printed and connects to nothing.
 
 ### 3.3 Fixture, created per test
 
@@ -227,10 +227,12 @@ replay or receive `409`. That path depends on the index assumed in S5.
 
 | Field | Entry |
 |---|---|
-| **Test basis** | AC-NFR-1.10 v0.3 (CR-001); DEC-016 decisions 1 and 3; FR-6.3; FR-6.7; CON-017 |
+| **Test basis** | Proposed AC-NFR-1.10 v0.3 under CR-001 (not yet baselined); DEC-016 decisions 1 and 3; FR-6.3; FR-6.7; CON-017 |
 | **Why selected** | The audit argument rests on the status change and its history entry committing together. The M2 test for this asserted only the order of the writes, and still passed with the history write outside the transaction |
 | **Technique / level** | Fault injection. API integration: real HTTP, real cluster, the real `requestRepository` and `createUnitOfWork()` |
 | **Precondition** | Request R at `v0`, status `Received`. The Coordinator is logged in |
+
+**Note.** Test basis: Proposed AC-NFR-1.10 v0.3 under CR-001 (not yet baselined).
 
 **Fault.** A wrapper around the real `historyRepository`. It performs the real insert
 inside the transaction, reads the request back through the same session, and then throws.
@@ -316,7 +318,7 @@ guard stopped the write first:
   `201` and writes a second history entry.
 
 With every application guard removed, the cluster accepted the duplicate history entries,
-so the unique indexes assumed in S5 did not act. That is logged as DEF-014. All runs,
+so the unique indexes assumed in S5 did not act. That is logged as DEF-014 and DEF-015. All runs,
 including the isolated ones, are in `docs/evidence/M3_API_Negative_Verification.txt`.
 
 ---
