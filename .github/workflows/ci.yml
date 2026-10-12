@@ -81,14 +81,29 @@ jobs:
       # update) contributes nothing to scan and is not counted. Reconciled on
       # 2026-10-12 by scanning each commit alone: exactly 8 commits are
       # uncounted, all of that kind.
-      # Consequence: secrets inside binary files (.xlsx, .docx, .pdf) are not
-      # detected, in history or in the current tree.
+      # Consequence: secrets inside binary files are not detected by this step.
+      # The next two steps close that gap for Office documents.
       - name: Scan for committed secrets with Gitleaks
         run: |
           docker run --rm -v "${{ github.workspace }}:/repo" \
             zricethezav/gitleaks:v8.18.4 \
             detect --source /repo --redact --verbose \
             --log-opts="--all --full-history"
+
+      # An .xlsx/.docx/.pptx is a zip of XML, so every version of every Office
+      # document in the history is unzipped and its text scanned. Proven on
+      # 2026-10-12 with a fake token that existed only in an overwritten
+      # workbook version: the step above missed it, these two found it.
+      # Other binaries (images) are not text containers and are not covered.
+      - name: Extract every committed version of every Office document
+        run: scripts/ci/extract-office-documents.sh . "$RUNNER_TEMP/office-documents"
+
+      - name: Scan the extracted Office document text with Gitleaks
+        run: |
+          cat "$RUNNER_TEMP/office-documents/MANIFEST.txt"
+          docker run --rm -v "$RUNNER_TEMP/office-documents:/scan" \
+            zricethezav/gitleaks:v8.18.4 \
+            detect --no-git --source /scan --redact --verbose
 
   lint:
     name: Static analysis (ESLint)
