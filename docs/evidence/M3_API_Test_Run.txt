@@ -1,0 +1,287 @@
+This run supersedes the initial run at 549854d to remove personal tooling paths from stack traces, and utilizes the committed package.json script.
+M3 API/integration test run (docs/quality/M3_API_Test_Specification.md v0.1, differences D1 to D5)
+Date (UTC):   2026-10-12T16:18:55Z
+Code:         src/ identical to dev at b08debb; tests, harness and package.json as committed together with this file (parent commit c277357, branch task/M3-api-integration-tests)
+Supersedes:   the runs recorded in this file at commits 549854d (34 checks) and d9fbe19 (40 checks). Same 40 checks and the same results as the second; run from a neutral directory, after the five negative verifications in M3_API_Negative_Verification.txt and with src/ restored.
+Node:         v26.0.0
+Environment:  Atlas project CivicConnect-Test, database civicconnect, credential civicconnect-app
+Command:      npm run test:integration
+Exit code:    1
+Raw output follows, unedited.
+================================================================================
+
+> civicconnect@0.1.0 test:integration
+> node --env-file=.env --import "data:text/javascript,import dns from 'node:dns';dns.setServers(['8.8.8.8','1.1.1.1']);" --test "tests/integration/*.test.js"
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.5223ms)
+  ✔ nothing is written (0.47ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (617.6847ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.1905ms)
+  ✔ the replay writes nothing (0.0909ms)
+  ✖ the replay has the same status code (0.5373ms)
+  ✖ the replay has the same body (0.4361ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.1181ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (747.2222ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.1768ms)
+  ✖ the problem type is idempotency-key-reused (0.2443ms)
+  ✔ no second history entry is written (0.0643ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (368.3739ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.2011ms)
+  ✖ the response is not the first request's result (0.1441ms)
+  ✔ neither request gains a history entry (6.3654ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (386.1444ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✖ it is not refused as a different payload (0.1794ms)
+  ✔ no second history entry is written (0.0684ms)
+✖ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (373.3583ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.3481ms)
+  ✔ the stale request is refused with 412 (0.1374ms)
+  ✔ the request is unchanged (0.4388ms)
+  ✔ no history entry is written (0.0908ms)
+  ✖ the problem body carries the current ETag (0.368ms)
+  ✔ nothing internal is returned (0.1204ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (1132.888ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.3168ms)
+  ✔ the failure is a generic 500 (0.0768ms)
+  ✔ the status change is rolled back (0.4569ms)
+  ✔ the history entry is rolled back (0.0735ms)
+  ✔ no event is published (0.0537ms)
+  ✔ the same key then succeeds (0.0931ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1103.3072ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (0.9223ms)
+  ✔ the refusal is problem details (0.1851ms)
+  ✔ the request is unchanged (0.5675ms)
+  ✔ no history entry is written (0.1149ms)
+  ✔ nothing internal is returned (0.1176ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (617.5014ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 25
+ℹ fail 15
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2896.6566
+
+✖ failing tests:
+
+test at tests\integration\idempotencyKey.integration.test.js:84:11
+✖ the replay has the same status code (0.5373ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  200 !== 201
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:85:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:84:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 201,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:88:11
+✖ the replay has the same body (0.4361ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  -   campusId: '6acd0871ef8f4fb685e3fec8',
+  -   categoryId: '6acd0871ef8f4fb685e3fec9',
+      fromStatus: 'Received',
+      historyId: '6acd0871ef8f4fb685e3fed7',
+      occurredAt: '2026-10-12T16:18:57.786Z',
+  +   replayed: true,
+  -   reference: 'CC-2026-404914',
+  -   reporterId: '6acd0871ef8f4fb685e3feca',
+      requestId: '6acd0871ef8f4fb685e3fecc',
+  -   securityCategory: false,
+      toStatus: 'Rejected',
+      version: 1
+    }
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:89:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:88:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { requestId: '6acd0871ef8f4fb685e3fecc', fromStatus: 'Received', toStatus: 'Rejected', occurredAt: '2026-10-12T16:18:57.786Z', version: 1, historyId: '6acd0871ef8f4fb685e3fed7', replayed: true },
+    expected: { requestId: '6acd0871ef8f4fb685e3fecc', fromStatus: 'Received', toStatus: 'Rejected', occurredAt: '2026-10-12T16:18:57.786Z', version: 1, historyId: '6acd0871ef8f4fb685e3fed7', reporterId: '6acd0871ef8f4fb685e3feca', categoryId: '6acd0871ef8f4fb685e3fec9', campusId: '6acd0871ef8f4fb685e3fec8', reference: 'CC-2026-404914', securityCategory: false },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:92:11
+✖ the replay is marked Idempotent-Replayed: true (0.1181ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  null !== 'true'
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:93:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:92:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 'true',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:113:11
+✖ the problem type is idempotency-key-reused (0.2443ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /idempotency-key-reused$/. Input:
+  
+  'https://civicconnect.example/problems/idempotency-conflict'
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:114:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:113:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'https://civicconnect.example/problems/idempotency-conflict',
+    expected: /idempotency-key-reused$/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:140:11
+✖ the request is refused with 422 (0.2011ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  200 !== 422
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:142:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:140:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 422,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:145:11
+✖ the response is not the first request's result (0.1441ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to:
+  
+  '6acd0872ef8f4fb685e3fefa'
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:146:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:145:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '6acd0872ef8f4fb685e3fefa',
+    expected: '6acd0872ef8f4fb685e3fefa',
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:171:11
+✖ it is not refused as a different payload (0.1794ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to: 422
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:172:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:171:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 422,
+    expected: 422,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\ifMatchConflict.integration.test.js:69:11
+✖ the problem body carries the current ETag (0.368ms)
+  AssertionError [ERR_ASSERTION]: no member of the 412 body is the current ETag "v1": {"type":"https://civicconnect.example/problems/precondition-failed","title":"PreconditionFailedError","status":412,"detail":"Request '6acd087079753949bf98d38e' is no longer at version 0","code":"PRECONDITION_FAILED","instance":"/api/v1/requests/6acd087079753949bf98d38e/transitions"}
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:71:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:69:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests\integration\wrongRoleTransition.integration.test.js:49:11
+✖ the request is refused with 403 (0.9223ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  422 !== 403
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:50:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:49:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 422,
+    expected: 403,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
