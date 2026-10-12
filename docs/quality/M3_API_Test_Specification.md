@@ -298,6 +298,27 @@ behaviour, show the named subtest fails, restore, re-run.
 | 3 | Drop `{ session }` from the insert in `historyRepository.append` | the history entry is rolled back |
 | 3 | Drop `{ session }` from `Request.updateOne` in `applyChange` | the status change is rolled back |
 
+**Findings from the first negative verification (12 October 2026).** The predictions above
+are kept as written. Two of them did not hold with the change as stated, because another
+guard stopped the write first:
+
+- **Case 1.** Removing only the version check does not make the named subtests fail. The
+  stale request reaches the transition rule, the request is already `Rejected` (a terminal
+  status), and the rule refuses it with `422`. The break is detected by "the stale request
+  is refused with 412" (`422` instead of `412`); "the request is unchanged" and "no history
+  entry is written" still pass. They fail once the transition rule is bypassed as well: the
+  stale request then returns `201`, changes the request and writes a second history entry.
+- **Case 2b.** Skipping only the idempotency lookup does not make "the replay writes
+  nothing" fail. The replay carries `If-Match: "v0"`, the request is at `v1`, and the
+  version check refuses it with `412`. Removing the version check too is still not enough:
+  the transition rule then refuses the replay with `422`. The subtest fails once the
+  lookup, the version check and the transition rule are all bypassed: the replay returns
+  `201` and writes a second history entry.
+
+With every application guard removed, the cluster accepted the duplicate history entries,
+so the unique indexes assumed in S5 did not act. That is logged as DEF-014. All runs,
+including the isolated ones, are in `docs/evidence/M3_API_Negative_Verification.txt`.
+
 ---
 
 ## 8. Evidence and defect handling
