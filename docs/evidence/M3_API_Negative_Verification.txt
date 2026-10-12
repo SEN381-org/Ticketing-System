@@ -1,0 +1,1936 @@
+M3 API/integration tests: negative verification (docs/quality/M3_API_Test_Specification.md §7)
+Date (UTC):   2026-10-12
+Branch:       task/M3-api-integration-tests, on top of commit c277357
+Node:         v26.0.0
+Environment:  Atlas project CivicConnect-Test, database civicconnect, credential civicconnect-app
+Command:      npm run test:integration   (the committed package.json script)
+
+Method. For each case: one change is made to src/, the whole suite is run, the output is
+recorded, and src/ is restored with `git checkout -- src`. Restoration is confirmed by an
+empty `git status --porcelain -- src` and an empty `git diff HEAD -- src`. No broken code was
+committed at any point. The clean run made after all five restorations is
+docs/evidence/M3_API_Test_Run.txt.
+
+Baseline. The unbroken code already fails 9 assertions in 6 cases, all predicted and logged
+as DEF-007 to DEF-011 (tests 40, pass 25, fail 15, skipped 0). A break is detected when a subtest that
+passes on the unbroken code fails. For each case this file gives the result of every
+subtest and then the full failure output of the subtests that changed. The baseline
+failures are not repeated; their output is in M3_API_Test_Run.txt.
+
+Summary
+  Case  Break                                          Detected  By the subtest §7 names
+  1     no version check (service and applyChange)     yes       no, see Case 1   
+  2a    missing Idempotency-Key accepted               yes       yes
+  2b    findByIdempotencyKey lookup skipped            yes       no, see Case 2b  
+  3a    history insert outside the transaction         yes       yes
+  3b    status update outside the transaction          yes       yes
+
+Update after review: both points below have been followed up. The named subtests for Cases 1
+and 2b are shown failing in the section "ISOLATED VERIFICATIONS" at the end of this file, and
+the index finding on (actorId, idempotencyKey) is logged as DEF-014. A second index finding,
+on (requestId, requestVersion), came out of the isolated runs and is logged as DEF-015. The
+original text is kept as first recorded.
+
+Two things in this record need a decision and are not resolved here:
+  - Cases 1 and 2b: the safety subtests §7 names ("the request is unchanged", "no history
+    entry is written", "the replay writes nothing") did not fail, because a second,
+    independent check stops the write. They have not been shown capable of failing.
+  - Case 2b: two history entries were written with the same (actorId, idempotencyKey), so
+    the unique index assumed in specification S5 did not act on the test cluster.
+
+================================================================================
+Case 1: no optimistic-concurrency check
+================================================================================
+
+BREAK APPLIED
+--------------------------------------------------------------------------------
+Removed the version comparison in statusTransitionService.js and the `version` member of the filter in requestRepository.applyChange.
+Subtest expected to fail: "the request is unchanged"; "no history entry is written" (specification §7)
+
+diff --git a/src/repositories/requestRepository.js b/src/repositories/requestRepository.js
+index f0a9814..cdb0008 100644
+--- a/src/repositories/requestRepository.js
++++ b/src/repositories/requestRepository.js
+@@ -36,7 +36,7 @@ export const requestRepository = {
+ 
+   applyChange: async (id, expectedVersion, $set, actor, { session } = {}) => {
+     const { matchedCount } = await Request.updateOne(
+-      { _id: id, version: expectedVersion, anonymisedAt: null },
++      { _id: id, anonymisedAt: null },
+       buildChangeUpdate($set, actor),
+       { session, runValidators: true },
+     );
+diff --git a/src/services/statusTransitionService.js b/src/services/statusTransitionService.js
+index d7ba5d9..b22462b 100644
+--- a/src/services/statusTransitionService.js
++++ b/src/services/statusTransitionService.js
+@@ -71,9 +71,6 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+       }
+ 
+       // DEC-015 / DEC-016 — optimistic concurrency, before any validation work.
+-      if (request.version !== expectedVersion) {
+-        throw new PreconditionFailedError(requestId, expectedVersion);
+-      }
+ 
+       const verdict = checkTransition(request.status, toStatus, actor.roles, {
+         hasResolution:    Boolean(resolutionSummary) || Boolean(request.resolution?.summary),
+
+TEST FAILURE OUTPUT
+--------------------------------------------------------------------------------
+Run at 2026-10-12T16:16:44.270Z, exit code 1: tests 40, pass 24, fail 16, skipped 0
+Subtests that pass on the unbroken code and fail here: 1
+  ✖ the stale request is refused with 412   (tests\integration\ifMatchConflict.integration.test.js:52:11)
+
+Result
+  DETECTED, but not by the subtests §7 names. The subtest that fails is "the stale request
+  is refused with 412": the stale request is answered 422 instead of 412.
+  "the request is unchanged" and "no history entry is written" still PASS. With the version
+  check gone, the stale request reaches checkTransition, and the request is already
+  Rejected, which is a terminal status (src/domain/requestStatus.js, TRANSITIONS), so the
+  transition rule refuses it before any write. On the only transition this route offers
+  from Received, a sequential stale write is therefore stopped by two independent checks,
+  and removing the first does not let a write through. The two subtests §7 names cannot be
+  made to fail by this break; §7's prediction for this row was wrong and is recorded here
+  rather than adjusted.
+
+Every subtest, as reported by the runner (unedited):
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.4565ms)
+  ✔ nothing is written (0.4819ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (551.8044ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.1854ms)
+  ✔ the replay writes nothing (0.0963ms)
+  ✖ the replay has the same status code (0.5258ms)
+  ✖ the replay has the same body (0.4533ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.1191ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (614.8785ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.341ms)
+  ✖ the problem type is idempotency-key-reused (0.4066ms)
+  ✔ no second history entry is written (0.1364ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (374.141ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.1868ms)
+  ✖ the response is not the first request's result (0.1403ms)
+  ✔ neither request gains a history entry (7.0662ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (404.5012ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✖ it is not refused as a different payload (0.1743ms)
+  ✔ no second history entry is written (0.072ms)
+✖ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (375.6931ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.5313ms)
+  ✖ the stale request is refused with 412 (0.527ms)
+  ✔ the request is unchanged (0.4538ms)
+  ✔ no history entry is written (0.1043ms)
+  ✖ the problem body carries the current ETag (0.1321ms)
+  ✔ nothing internal is returned (0.1499ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (652.9698ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.3326ms)
+  ✔ the failure is a generic 500 (0.0728ms)
+  ✔ the status change is rolled back (0.4618ms)
+  ✔ the history entry is rolled back (0.0719ms)
+  ✔ no event is published (0.0834ms)
+  ✔ the same key then succeeds (0.0973ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1123.7031ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (0.7256ms)
+  ✔ the refusal is problem details (0.1869ms)
+  ✔ the request is unchanged (0.4856ms)
+  ✔ no history entry is written (0.0669ms)
+  ✔ nothing internal is returned (0.1097ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (590.421ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 24
+ℹ fail 16
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2695.7039
+
+Failure output of the subtests that changed (unedited):
+
+test at tests\integration\ifMatchConflict.integration.test.js:52:11
+✖ the stale request is refused with 412 (0.527ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  422 !== 412
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:53:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:52:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 422,
+    expected: 412,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+CODE RESTORED
+--------------------------------------------------------------------------------
+git checkout -- src
+git status --porcelain -- src : empty
+git diff HEAD -- src          : empty
+
+================================================================================
+Case 2a: Idempotency-Key no longer required
+================================================================================
+
+BREAK APPLIED
+--------------------------------------------------------------------------------
+Removed the missing-key check in readCommand (src/routes/requestRoutes.js).
+Subtest expected to fail: "the request is refused with 400"
+
+diff --git a/src/routes/requestRoutes.js b/src/routes/requestRoutes.js
+index 3c58bee..f5b31b2 100644
+--- a/src/routes/requestRoutes.js
++++ b/src/routes/requestRoutes.js
+@@ -47,7 +47,6 @@ function readCommand(req) {
+   const ifMatch = req.get ? req.get('If-Match') : req.headers?.['if-match'];
+   const key     = req.get ? req.get('Idempotency-Key') : req.headers?.['idempotency-key'];
+ 
+-  if (!key || !String(key).trim()) throw new IdempotencyKeyRequiredError();
+ 
+   return {
+     expectedVersion:   versionFromIfMatch(ifMatch),
+
+TEST FAILURE OUTPUT
+--------------------------------------------------------------------------------
+Run at 2026-10-12T16:16:47.753Z, exit code 1: tests 40, pass 22, fail 18, skipped 0
+Subtests that pass on the unbroken code and fail here: 2
+  ✖ the request is refused with 400   (tests\integration\idempotencyKey.integration.test.js:48:11)
+  ✖ nothing is written   (tests\integration\idempotencyKey.integration.test.js:54:11)
+
+Result
+  DETECTED by the named subtest. "the request is refused with 400" fails (201 returned), and
+  "nothing is written" fails as well: the transition commits without a key.
+
+Every subtest, as reported by the runner (unedited):
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✖ the request is refused with 400 (0.957ms)
+  ✖ nothing is written (1.2416ms)
+✖ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (662.4754ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.255ms)
+  ✔ the replay writes nothing (0.1109ms)
+  ✖ the replay has the same status code (0.1591ms)
+  ✖ the replay has the same body (0.2271ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.1434ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (695.8341ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.2033ms)
+  ✖ the problem type is idempotency-key-reused (0.365ms)
+  ✔ no second history entry is written (0.064ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (396.6392ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.1968ms)
+  ✖ the response is not the first request's result (0.628ms)
+  ✔ neither request gains a history entry (8.8514ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (384.7591ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✖ it is not refused as a different payload (0.5879ms)
+  ✔ no second history entry is written (0.0999ms)
+✖ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (391.2126ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.3386ms)
+  ✔ the stale request is refused with 412 (0.1383ms)
+  ✔ the request is unchanged (0.44ms)
+  ✔ no history entry is written (0.0877ms)
+  ✖ the problem body carries the current ETag (0.3599ms)
+  ✔ nothing internal is returned (0.1112ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (687.1687ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.3139ms)
+  ✔ the failure is a generic 500 (0.0761ms)
+  ✔ the status change is rolled back (0.4446ms)
+  ✔ the history entry is rolled back (0.0899ms)
+  ✔ no event is published (0.0574ms)
+  ✔ the same key then succeeds (0.0943ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1167.5832ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (0.9473ms)
+  ✔ the refusal is problem details (0.2088ms)
+  ✔ the request is unchanged (0.4563ms)
+  ✔ no history entry is written (0.0699ms)
+  ✔ nothing internal is returned (0.0964ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (1109.8708ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 22
+ℹ fail 18
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2919.751
+
+Failure output of the subtests that changed (unedited):
+
+test at tests\integration\idempotencyKey.integration.test.js:48:11
+✖ the request is refused with 400 (0.957ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  201 !== 400
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:49:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:48:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 201,
+    expected: 400,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:54:11
+✖ nothing is written (1.2416ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      _id: '6acd07ed8374aa3fed4f7b1c',
+      anonymisedAt: null,
+      assignedAt: null,
+      assigneeId: null,
+  ...
+      closure: {
+  +     closedAt: '2026-10-12T16:16:45.657Z',
+  +     closedById: '6acd07ed8374aa3fed4f7b1a',
+  +     reason: 'no key'
+  -     closedAt: null,
+  -     closedById: null,
+  -     reason: null
+      },
+      description: 'Synthetic request for the M3 API/integration cases',
+      dueAt: null,
+  +   lastActorId: '6acd07ed8374aa3fed4f7b1a',
+  +   lastActorRole: 'Coordinator',
+  -   lastActorId: null,
+  -   lastActorRole: null,
+      location: 'Integration test',
+      reference: 'CC-2026-619346',
+      requesterId: '6acd07ed8374aa3fed4f7b1a',
+      resolution: {
+        recordedAt: null,
+  ...
+      securityCategory: false,
+  +   status: 'Rejected',
+  +   statusChangedAt: '2026-10-12T16:16:45.657Z',
+  -   status: 'Received',
+  -   statusChangedAt: '2026-10-12T16:16:45.355Z',
+      submittedAt: '2026-10-12T16:16:45.355Z',
+      submittedById: '6acd07ed8374aa3fed4f7b1a',
+  +   updatedAt: '2026-10-12T16:16:45.657Z',
+  +   version: 1
+  -   updatedAt: '2026-10-12T16:16:45.356Z',
+  -   version: 0
+    }
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:55:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:54:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { _id: '6acd07ed8374aa3fed4f7b1c', campusId: '6acd07ed8374aa3fed4f7b18', reference: 'CC-2026-619346', categoryId: '6acd07ed8374aa3fed4f7b19', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Rejected', requesterId: '6acd07ed8374aa3fed4f7b1a', submittedById: '6acd07ed8374aa3fed4f7b1a', submittedAt: '2026-10-12T16:16:45.355Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: 'no key', closedAt: '2026-10-12T16:16:45.657Z', closedById: '6acd07ed8374aa3fed4f7b1a' }, statusChangedAt: '2026-10-12T16:16:45.657Z', dueAt: null, version: 1, anonymisedAt: null, lastActorId: '6acd07ed8374aa3fed4f7b1a', lastActorRole: 'Coordinator', updatedAt: '2026-10-12T16:16:45.657Z' },
+    expected: { _id: '6acd07ed8374aa3fed4f7b1c', campusId: '6acd07ed8374aa3fed4f7b18', reference: 'CC-2026-619346', categoryId: '6acd07ed8374aa3fed4f7b19', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Received', requesterId: '6acd07ed8374aa3fed4f7b1a', submittedById: '6acd07ed8374aa3fed4f7b1a', submittedAt: '2026-10-12T16:16:45.355Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: null, closedAt: null, closedById: null }, statusChangedAt: '2026-10-12T16:16:45.355Z', dueAt: null, version: 0, anonymisedAt: null, lastActorId: null, lastActorRole: null, updatedAt: '2026-10-12T16:16:45.356Z' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+CODE RESTORED
+--------------------------------------------------------------------------------
+git checkout -- src
+git status --porcelain -- src : empty
+git diff HEAD -- src          : empty
+
+================================================================================
+Case 2b: replay lookup skipped
+================================================================================
+
+BREAK APPLIED
+--------------------------------------------------------------------------------
+The result of history.findByIdempotencyKey is replaced by null in statusTransitionService.js, so no earlier use of a key is ever found.
+Subtest expected to fail: "the replay writes nothing" (specification §7)
+
+diff --git a/src/services/statusTransitionService.js b/src/services/statusTransitionService.js
+index d7ba5d9..ff6221b 100644
+--- a/src/services/statusTransitionService.js
++++ b/src/services/statusTransitionService.js
+@@ -51,7 +51,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+     // DEC-015 — replay detection before anything is attempted. A client retry
+     // after a timeout must not write a second immutable history entry.
+     if (idempotencyKey) {
+-      const prior = await history.findByIdempotencyKey(actor.id, idempotencyKey);
++      const prior = null;
+       if (prior) {
+         if (prior.idempotencyFingerprint !== fingerprint) throw new IdempotencyConflictError();
+         return replayOf(prior);
+
+TEST FAILURE OUTPUT
+--------------------------------------------------------------------------------
+Run at 2026-10-12T16:16:51.236Z, exit code 1: tests 40, pass 26, fail 14, skipped 0
+Subtests that pass on the unbroken code and fail here: 2
+  ✖ the request is refused with 422   (tests\integration\idempotencyKey.integration.test.js:109:11)
+  ✖ neither request gains a history entry   (tests\integration\idempotencyKey.integration.test.js:149:11)
+Subtests that fail on the unbroken code and pass here: 2
+  ✔ the response is not the first request's result   (tests\integration\idempotencyKey.integration.test.js:145:11)
+  ✔ it is not refused as a different payload   (tests\integration\idempotencyKey.integration.test.js:171:11)
+
+Result
+  DETECTED, but not by the subtest §7 names. "the replay writes nothing" still PASSES: the
+  replay carries If-Match "v0", the request is by then at v1, and the version check refuses
+  it with 412 before any write. The break shows in the status codes instead: 2b's replay
+  returns 412, and 2c returns 412 where 422 is expected.
+
+  It is also detected in case 2d, and that result is a finding in its own right. With the
+  lookup skipped, the same key and actor sent to a second request returned 201 and wrote a
+  history entry, so two requestHistory documents now exist with the same
+  (actorId, idempotencyKey). The unique index {actorId: 1, idempotencyKey: 1} that
+  specification S5 assumes on the test cluster did not refuse the second insert. Either the
+  index is not present on the cluster or it is not unique. The application role cannot list
+  indexes, so this run cannot say which. On the unbroken code the lookup prevents the
+  second write, so no released behaviour is affected, but the concurrent-duplicate path of
+  DEC-015 §3 relies on that index.
+
+  2d "the response is not the first request's result" and 2e "it is not refused as a
+  different payload" pass under this break only because the replay path that DEF-009
+  describes is not reached. That is not a correction of DEF-009.
+
+Every subtest, as reported by the runner (unedited):
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.5562ms)
+  ✔ nothing is written (0.4385ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (622.6998ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.2972ms)
+  ✔ the replay writes nothing (0.1322ms)
+  ✖ the replay has the same status code (0.6862ms)
+  ✖ the replay has the same body (0.5339ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.1407ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (712.2808ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✖ the request is refused with 422 (0.236ms)
+  ✖ the problem type is idempotency-key-reused (0.2158ms)
+  ✔ no second history entry is written (0.0601ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (385.4281ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.2333ms)
+  ✔ the response is not the first request's result (0.4604ms)
+  ✖ neither request gains a history entry (0.218ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (435.4431ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✔ it is not refused as a different payload (0.1175ms)
+  ✔ no second history entry is written (0.0778ms)
+✔ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (395.7041ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.3479ms)
+  ✔ the stale request is refused with 412 (0.1584ms)
+  ✔ the request is unchanged (0.4426ms)
+  ✔ no history entry is written (0.086ms)
+  ✖ the problem body carries the current ETag (0.3538ms)
+  ✔ nothing internal is returned (0.1073ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (677.9712ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.6869ms)
+  ✔ the failure is a generic 500 (0.0828ms)
+  ✔ the status change is rolled back (0.4374ms)
+  ✔ the history entry is rolled back (0.0673ms)
+  ✔ no event is published (0.054ms)
+  ✔ the same key then succeeds (0.0929ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1072.9202ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (0.8272ms)
+  ✔ the refusal is problem details (0.2056ms)
+  ✔ the request is unchanged (0.4473ms)
+  ✔ no history entry is written (0.0611ms)
+  ✔ nothing internal is returned (0.0969ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (625.3366ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 26
+ℹ fail 14
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2921.4432
+
+Failure output of the subtests that changed (unedited):
+
+test at tests\integration\idempotencyKey.integration.test.js:109:11
+✖ the request is refused with 422 (0.236ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  412 !== 422
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:110:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:109:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 412,
+    expected: 422,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:149:11
+✖ neither request gains a history entry (0.218ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:151:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:149:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+CODE RESTORED
+--------------------------------------------------------------------------------
+git checkout -- src
+git status --porcelain -- src : empty
+git diff HEAD -- src          : empty
+
+================================================================================
+Case 3a: history insert outside the transaction
+================================================================================
+
+BREAK APPLIED
+--------------------------------------------------------------------------------
+Dropped `{ session }` from RequestHistory.create in historyRepository.append.
+Subtest expected to fail: "the history entry is rolled back"
+
+diff --git a/src/repositories/historyRepository.js b/src/repositories/historyRepository.js
+index 4246f70..296c267 100644
+--- a/src/repositories/historyRepository.js
++++ b/src/repositories/historyRepository.js
+@@ -21,7 +21,7 @@ import RequestHistory from '../models/RequestHistory.js';
+ export const historyRepository = {
+   /** Array form is required when passing options, so the insert joins the transaction (R-14). */
+   append: async (entry, { session } = {}) => {
+-    const [created] = await RequestHistory.create([entry], { session });
++    const [created] = await RequestHistory.create([entry]);
+     return created;
+   },
+
+TEST FAILURE OUTPUT
+--------------------------------------------------------------------------------
+Run at 2026-10-12T16:16:54.511Z, exit code 1: tests 40, pass 22, fail 18, skipped 0
+Subtests that pass on the unbroken code and fail here: 2
+  ✖ the history entry is rolled back   (tests\integration\transactionBoundary.integration.test.js:116:11)
+  ✖ the same key then succeeds   (tests\integration\transactionBoundary.integration.test.js:125:11)
+
+Result
+  DETECTED by the named subtest. "the history entry is rolled back" fails: the entry
+  survives the aborted transaction. "the same key then succeeds" fails as a consequence,
+  because the surviving entry makes the retry a replay.
+
+Every subtest, as reported by the runner (unedited):
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.6228ms)
+  ✔ nothing is written (0.5487ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (559.0932ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.2313ms)
+  ✔ the replay writes nothing (0.1125ms)
+  ✖ the replay has the same status code (0.5379ms)
+  ✖ the replay has the same body (0.4394ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.1192ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (617.2265ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.1366ms)
+  ✖ the problem type is idempotency-key-reused (0.1748ms)
+  ✔ no second history entry is written (0.0463ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (379.0099ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.5319ms)
+  ✖ the response is not the first request's result (0.185ms)
+  ✔ neither request gains a history entry (5.262ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (402.4286ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✖ it is not refused as a different payload (0.3957ms)
+  ✔ no second history entry is written (0.0826ms)
+✖ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (386.3399ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.3664ms)
+  ✔ the stale request is refused with 412 (0.1463ms)
+  ✔ the request is unchanged (0.4424ms)
+  ✔ no history entry is written (0.0914ms)
+  ✖ the problem body carries the current ETag (0.3629ms)
+  ✔ nothing internal is returned (0.1113ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (634.3378ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.3253ms)
+  ✔ the failure is a generic 500 (0.1027ms)
+  ✔ the status change is rolled back (0.4477ms)
+  ✖ the history entry is rolled back (0.4853ms)
+  ✔ no event is published (0.0643ms)
+  ✖ the same key then succeeds (0.1509ms)
+✖ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1096.6616ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (1.0093ms)
+  ✔ the refusal is problem details (0.1898ms)
+  ✔ the request is unchanged (0.4429ms)
+  ✔ no history entry is written (0.0826ms)
+  ✔ nothing internal is returned (0.0981ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (594.3426ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 22
+ℹ fail 18
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2720.6553
+
+Failure output of the subtests that changed (unedited):
+
+test at tests\integration\transactionBoundary.integration.test.js:116:11
+✖ the history entry is rolled back (0.4853ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:117:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:116:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\transactionBoundary.integration.test.js:125:11
+✖ the same key then succeeds (0.1509ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  200 !== 201
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:126:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:125:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 201,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+CODE RESTORED
+--------------------------------------------------------------------------------
+git checkout -- src
+git status --porcelain -- src : empty
+git diff HEAD -- src          : empty
+
+================================================================================
+Case 3b: status update outside the transaction
+================================================================================
+
+BREAK APPLIED
+--------------------------------------------------------------------------------
+Dropped `session` from the options of Request.updateOne in requestRepository.applyChange.
+Subtest expected to fail: "the status change is rolled back"
+
+diff --git a/src/repositories/requestRepository.js b/src/repositories/requestRepository.js
+index f0a9814..1bea7eb 100644
+--- a/src/repositories/requestRepository.js
++++ b/src/repositories/requestRepository.js
+@@ -38,7 +38,7 @@ export const requestRepository = {
+     const { matchedCount } = await Request.updateOne(
+       { _id: id, version: expectedVersion, anonymisedAt: null },
+       buildChangeUpdate($set, actor),
+-      { session, runValidators: true },
++      { runValidators: true },
+     );
+     if (matchedCount === 0) throw new PreconditionFailedError(id, expectedVersion);
+     return { version: expectedVersion + 1 };
+
+TEST FAILURE OUTPUT
+--------------------------------------------------------------------------------
+Run at 2026-10-12T16:16:57.889Z, exit code 1: tests 40, pass 21, fail 19, skipped 0
+Subtests that pass on the unbroken code and fail here: 3
+  ✖ the fault fires after the first write   (tests\integration\transactionBoundary.integration.test.js:99:11)
+  ✖ the status change is rolled back   (tests\integration\transactionBoundary.integration.test.js:110:11)
+  ✖ the same key then succeeds   (tests\integration\transactionBoundary.integration.test.js:125:11)
+
+Result
+  DETECTED by the named subtest. "the status change is rolled back" fails: the request stays
+  Rejected at version 1 after the transaction aborts. "the fault fires after the first
+  write" and "the same key then succeeds" fail as consequences.
+
+Every subtest, as reported by the runner (unedited):
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.4477ms)
+  ✔ nothing is written (0.4858ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (568.4808ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.1905ms)
+  ✔ the replay writes nothing (0.0893ms)
+  ✖ the replay has the same status code (0.5321ms)
+  ✖ the replay has the same body (0.4514ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.1322ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (768.7078ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.1526ms)
+  ✖ the problem type is idempotency-key-reused (0.1841ms)
+  ✔ no second history entry is written (0.0486ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (369.7205ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.1956ms)
+  ✖ the response is not the first request's result (0.1498ms)
+  ✔ neither request gains a history entry (6.1832ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (391.556ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✖ it is not refused as a different payload (0.1761ms)
+  ✔ no second history entry is written (0.069ms)
+✖ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (359.1053ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (1.1394ms)
+  ✔ the stale request is refused with 412 (0.2052ms)
+  ✔ the request is unchanged (0.6373ms)
+  ✔ no history entry is written (0.1091ms)
+  ✖ the problem body carries the current ETag (0.4183ms)
+  ✔ nothing internal is returned (0.115ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (1077.8811ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✖ the fault fires after the first write (1.4159ms)
+  ✔ the failure is a generic 500 (0.119ms)
+  ✖ the status change is rolled back (0.9898ms)
+  ✔ the history entry is rolled back (0.0706ms)
+  ✔ no event is published (0.0545ms)
+  ✖ the same key then succeeds (0.1164ms)
+✖ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1078.2804ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (0.7892ms)
+  ✔ the refusal is problem details (0.2457ms)
+  ✔ the request is unchanged (0.4433ms)
+  ✔ no history entry is written (0.0675ms)
+  ✔ nothing internal is returned (0.1008ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (609.2916ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 21
+ℹ fail 19
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2831.8011
+
+Failure output of the subtests that changed (unedited):
+
+test at tests\integration\transactionBoundary.integration.test.js:99:11
+✖ the fault fires after the first write (1.4159ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Received'
+  - 'Rejected'
+       ^
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:100:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:99:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Received',
+    expected: 'Rejected',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\transactionBoundary.integration.test.js:110:11
+✖ the status change is rolled back (0.9898ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      _id: '6acd07f7b370725c2a62e54b',
+      anonymisedAt: null,
+      assignedAt: null,
+      assigneeId: null,
+  ...
+      closure: {
+  +     closedAt: '2026-10-12T16:16:55.820Z',
+  +     closedById: '6acd07f7b370725c2a62e549',
+  +     reason: 'fault injection'
+  -     closedAt: null,
+  -     closedById: null,
+  -     reason: null
+      },
+      description: 'Synthetic request for the M3 API/integration cases',
+      dueAt: null,
+  +   lastActorId: '6acd07f7b370725c2a62e549',
+  +   lastActorRole: 'Coordinator',
+  -   lastActorId: null,
+  -   lastActorRole: null,
+      location: 'Integration test',
+      reference: 'CC-2026-694057',
+      requesterId: '6acd07f7b370725c2a62e549',
+      resolution: {
+        recordedAt: null,
+  ...
+      securityCategory: false,
+  +   status: 'Rejected',
+  +   statusChangedAt: '2026-10-12T16:16:55.820Z',
+  -   status: 'Received',
+  -   statusChangedAt: '2026-10-12T16:16:55.534Z',
+      submittedAt: '2026-10-12T16:16:55.534Z',
+      submittedById: '6acd07f7b370725c2a62e549',
+  +   updatedAt: '2026-10-12T16:16:55.821Z',
+  +   version: 1
+  -   updatedAt: '2026-10-12T16:16:55.536Z',
+  -   version: 0
+    }
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:111:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:110:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { _id: '6acd07f7b370725c2a62e54b', campusId: '6acd07f7b370725c2a62e547', reference: 'CC-2026-694057', categoryId: '6acd07f7b370725c2a62e548', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Rejected', requesterId: '6acd07f7b370725c2a62e549', submittedById: '6acd07f7b370725c2a62e549', submittedAt: '2026-10-12T16:16:55.534Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: 'fault injection', closedAt: '2026-10-12T16:16:55.820Z', closedById: '6acd07f7b370725c2a62e549' }, statusChangedAt: '2026-10-12T16:16:55.820Z', dueAt: null, version: 1, anonymisedAt: null, lastActorId: '6acd07f7b370725c2a62e549', lastActorRole: 'Coordinator', updatedAt: '2026-10-12T16:16:55.821Z' },
+    expected: { _id: '6acd07f7b370725c2a62e54b', campusId: '6acd07f7b370725c2a62e547', reference: 'CC-2026-694057', categoryId: '6acd07f7b370725c2a62e548', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Received', requesterId: '6acd07f7b370725c2a62e549', submittedById: '6acd07f7b370725c2a62e549', submittedAt: '2026-10-12T16:16:55.534Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: null, closedAt: null, closedById: null }, statusChangedAt: '2026-10-12T16:16:55.534Z', dueAt: null, version: 0, anonymisedAt: null, lastActorId: null, lastActorRole: null, updatedAt: '2026-10-12T16:16:55.536Z' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\transactionBoundary.integration.test.js:125:11
+✖ the same key then succeeds (0.1164ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  412 !== 201
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:126:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/transactionBoundary.integration.test.js:125:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 412,
+    expected: 201,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+CODE RESTORED
+--------------------------------------------------------------------------------
+git checkout -- src
+git status --porcelain -- src : empty
+git diff HEAD -- src          : empty
+
+================================================================================
+After the last restoration
+================================================================================
+
+The suite was run again on the restored code. Output: docs/evidence/M3_API_Test_Run.txt.
+It reports the baseline again: tests 40, pass 25, fail 15, skipped 0, with the same result for every subtest as the baseline.
+
+================================================================================
+ISOLATED VERIFICATIONS for Cases 1 and 2b (added after review)
+================================================================================
+
+Cases 1 and 2b above were detected, but not by the safety subtests §7 names, because a
+second guard stopped the write. The breaks below also remove the guards that stood in, so
+that the named subtests are shown capable of failing. Same method, command and environment
+as above; src/ restored with `git checkout -- src` after each run and confirmed identical to
+HEAD. Baseline for comparison: tests 40, pass 25, fail 15.
+
+  Verification   Guards removed                                      Named subtest fails
+  1              version check, transition rule                      yes
+  2b, attempt 1  replay lookup, version check                        no (transition rule refuses, 422)
+  2b             replay lookup, version check, transition rule       yes
+
+What this shows about the code as it stands: a sequential stale write and a sequential
+replay are each stopped by more than one guard. From Received the only transition is to
+Rejected, which is terminal, so the transition rule also refuses a second attempt. That
+will not hold for a non-terminal target status once the assignments route exists.
+
+What it shows about the test cluster: with the application guards removed, MongoDB accepted
+a second history entry with the same (actorId, idempotencyKey) and with the same
+(requestId, requestVersion). Logged as DEF-014.
+
+================================================================================
+ISOLATED VERIFICATION, Case 1: no version check and no transition rule
+================================================================================
+
+BREAK APPLIED
+--------------------------------------------------------------------------------
+As Case 1 (version comparison removed in statusTransitionService.js, `version` removed from the filter in requestRepository.applyChange), and in addition the transition guard in statusTransitionService.js never throws, so the result of checkTransition is ignored.
+Subtest expected to fail: "the request is unchanged"; "no history entry is written" (specification §7)
+
+diff --git a/src/repositories/requestRepository.js b/src/repositories/requestRepository.js
+index f0a9814..cdb0008 100644
+--- a/src/repositories/requestRepository.js
++++ b/src/repositories/requestRepository.js
+@@ -36,7 +36,7 @@ export const requestRepository = {
+ 
+   applyChange: async (id, expectedVersion, $set, actor, { session } = {}) => {
+     const { matchedCount } = await Request.updateOne(
+-      { _id: id, version: expectedVersion, anonymisedAt: null },
++      { _id: id, anonymisedAt: null },
+       buildChangeUpdate($set, actor),
+       { session, runValidators: true },
+     );
+diff --git a/src/services/statusTransitionService.js b/src/services/statusTransitionService.js
+index d7ba5d9..dd7cc8e 100644
+--- a/src/services/statusTransitionService.js
++++ b/src/services/statusTransitionService.js
+@@ -71,9 +71,6 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+       }
+ 
+       // DEC-015 / DEC-016 — optimistic concurrency, before any validation work.
+-      if (request.version !== expectedVersion) {
+-        throw new PreconditionFailedError(requestId, expectedVersion);
+-      }
+ 
+       const verdict = checkTransition(request.status, toStatus, actor.roles, {
+         hasResolution:    Boolean(resolutionSummary) || Boolean(request.resolution?.summary),
+@@ -85,7 +82,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+         // closure.closedAt, and PROC-001 would never anonymise it (CON-007).
+         securityCategory: Boolean(request.securityCategory),
+       });
+-      if (!verdict.allowed) throw new TransitionError(verdict.reason);
++      if (false) throw new TransitionError(verdict.reason);
+ 
+       const fromStatus = request.status;
+       const occurredAt = clock();
+
+TEST FAILURE OUTPUT
+--------------------------------------------------------------------------------
+Run at 2026-10-12T16:29:46.329Z, exit code 1: tests 40, pass 19, fail 21, skipped 0
+Subtests that pass on the unbroken code and fail here: 6
+  ✖ the stale request is refused with 412   (tests\integration\ifMatchConflict.integration.test.js:52:11)
+  ✖ the request is unchanged   (tests\integration\ifMatchConflict.integration.test.js:58:11)
+  ✖ no history entry is written   (tests\integration\ifMatchConflict.integration.test.js:64:11)
+  ✖ the refusal is problem details   (tests\integration\wrongRoleTransition.integration.test.js:53:11)
+  ✖ the request is unchanged   (tests\integration\wrongRoleTransition.integration.test.js:58:11)
+  ✖ no history entry is written   (tests\integration\wrongRoleTransition.integration.test.js:64:11)
+
+Result
+  DETECTED by the subtests §7 names. With the transition rule no longer standing in for the
+  version check, the stale request is processed: it returns 201 where 412 is expected,
+  "the request is unchanged" fails (closure.reason becomes 'second', version becomes 2) and
+  "no history entry is written" fails (2 entries where 1 is expected). The lost update of
+  A2 §3.4 happens and the case reports it.
+
+  Case 4 (wrong-role transition) also fails three more subtests here. That is a side effect
+  of ignoring checkTransition, which is the guard case 4 exercises. It is not part of this
+  verification.
+
+  Further observation on DEF-014. Under this break applyChange returns expectedVersion + 1,
+  so the second history entry is written with requestVersion 1, the same as the first. The
+  insert was accepted. The unique index {requestId: 1, requestVersion: 1} that specification
+  S5 also assumes therefore did not act on the test cluster either.
+
+Every subtest, as reported by the runner (unedited):
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.5061ms)
+  ✔ nothing is written (0.5223ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (576.0875ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.1943ms)
+  ✔ the replay writes nothing (0.2126ms)
+  ✖ the replay has the same status code (0.6635ms)
+  ✖ the replay has the same body (0.4485ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.1281ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (789.3043ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.1636ms)
+  ✖ the problem type is idempotency-key-reused (0.1901ms)
+  ✔ no second history entry is written (0.0528ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (374.8382ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.2173ms)
+  ✖ the response is not the first request's result (0.1464ms)
+  ✔ neither request gains a history entry (7.1805ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (394.8992ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✖ it is not refused as a different payload (0.1823ms)
+  ✔ no second history entry is written (0.0709ms)
+✖ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (368.949ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.4638ms)
+  ✖ the stale request is refused with 412 (0.514ms)
+  ✖ the request is unchanged (0.8823ms)
+  ✖ no history entry is written (0.1369ms)
+  ✖ the problem body carries the current ETag (0.1278ms)
+  ✔ nothing internal is returned (0.1424ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (1168.0608ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.3282ms)
+  ✔ the failure is a generic 500 (0.0769ms)
+  ✔ the status change is rolled back (0.4321ms)
+  ✔ the history entry is rolled back (0.0679ms)
+  ✔ no event is published (0.0542ms)
+  ✔ the same key then succeeds (0.0888ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (703.4747ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (1.1803ms)
+  ✖ the refusal is problem details (0.4008ms)
+  ✖ the request is unchanged (0.9906ms)
+  ✖ no history entry is written (0.1146ms)
+  ✔ nothing internal is returned (0.1137ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (634.7374ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 19
+ℹ fail 21
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2887.771
+
+Failure output of the subtests that changed (unedited):
+
+test at tests\integration\ifMatchConflict.integration.test.js:52:11
+✖ the stale request is refused with 412 (0.514ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  201 !== 412
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:53:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:52:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 201,
+    expected: 412,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\ifMatchConflict.integration.test.js:58:11
+✖ the request is unchanged (0.8823ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      _id: '6acd0af86ded703ef7101881',
+      anonymisedAt: null,
+      assignedAt: null,
+      assigneeId: null,
+  ...
+      closure: {
+  +     closedAt: '2026-10-12T16:29:44.759Z',
+  -     closedAt: '2026-10-12T16:29:44.250Z',
+        closedById: '6acd0af86ded703ef710187f',
+  +     reason: 'second'
+  -     reason: 'first'
+      },
+      description: 'Synthetic request for the M3 API/integration cases',
+      dueAt: null,
+      lastActorId: '6acd0af86ded703ef710187f',
+      lastActorRole: 'Coordinator',
+  ...
+      status: 'Rejected',
+  +   statusChangedAt: '2026-10-12T16:29:44.759Z',
+  -   statusChangedAt: '2026-10-12T16:29:44.250Z',
+      submittedAt: '2026-10-12T16:29:44.018Z',
+      submittedById: '6acd0af86ded703ef710187f',
+  +   updatedAt: '2026-10-12T16:29:44.759Z',
+  +   version: 2
+  -   updatedAt: '2026-10-12T16:29:44.251Z',
+  -   version: 1
+    }
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:59:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:58:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { _id: '6acd0af86ded703ef7101881', campusId: '6acd0af76ded703ef710187d', reference: 'CC-2026-256036', categoryId: '6acd0af76ded703ef710187e', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Rejected', requesterId: '6acd0af86ded703ef710187f', submittedById: '6acd0af86ded703ef710187f', submittedAt: '2026-10-12T16:29:44.018Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: 'second', closedAt: '2026-10-12T16:29:44.759Z', closedById: '6acd0af86ded703ef710187f' }, statusChangedAt: '2026-10-12T16:29:44.759Z', dueAt: null, version: 2, anonymisedAt: null, lastActorId: '6acd0af86ded703ef710187f', lastActorRole: 'Coordinator', updatedAt: '2026-10-12T16:29:44.759Z' },
+    expected: { _id: '6acd0af86ded703ef7101881', campusId: '6acd0af76ded703ef710187d', reference: 'CC-2026-256036', categoryId: '6acd0af76ded703ef710187e', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Rejected', requesterId: '6acd0af86ded703ef710187f', submittedById: '6acd0af86ded703ef710187f', submittedAt: '2026-10-12T16:29:44.018Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: 'first', closedAt: '2026-10-12T16:29:44.250Z', closedById: '6acd0af86ded703ef710187f' }, statusChangedAt: '2026-10-12T16:29:44.250Z', dueAt: null, version: 1, anonymisedAt: null, lastActorId: '6acd0af86ded703ef710187f', lastActorRole: 'Coordinator', updatedAt: '2026-10-12T16:29:44.251Z' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\ifMatchConflict.integration.test.js:64:11
+✖ no history entry is written (0.1369ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:65:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:64:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\wrongRoleTransition.integration.test.js:53:11
+✖ the refusal is problem details (0.4008ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^application\/problem\+json/. Input:
+  
+  'application/json; charset=utf-8'
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:54:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:53:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'application/json; charset=utf-8',
+    expected: /^application\/problem\+json/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests\integration\wrongRoleTransition.integration.test.js:58:11
+✖ the request is unchanged (0.9906ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      _id: '6acd0af7501924a7a6e48b8b',
+      anonymisedAt: null,
+      assignedAt: null,
+      assigneeId: null,
+  ...
+      closure: {
+  +     closedAt: '2026-10-12T16:29:44.221Z',
+  +     closedById: '6acd0af7501924a7a6e48b89',
+  +     reason: 'not mine to reject'
+  -     closedAt: null,
+  -     closedById: null,
+  -     reason: null
+      },
+      description: 'Synthetic request for the M3 API/integration cases',
+      dueAt: null,
+  +   lastActorId: '6acd0af7501924a7a6e48b89',
+  +   lastActorRole: 'Technician',
+  -   lastActorId: null,
+  -   lastActorRole: null,
+      location: 'Integration test',
+      reference: 'CC-2026-764051',
+      requesterId: '6acd0af7501924a7a6e48b89',
+      resolution: {
+        recordedAt: null,
+  ...
+      securityCategory: false,
+  +   status: 'Rejected',
+  +   statusChangedAt: '2026-10-12T16:29:44.221Z',
+  -   status: 'Received',
+  -   statusChangedAt: '2026-10-12T16:29:43.934Z',
+      submittedAt: '2026-10-12T16:29:43.934Z',
+      submittedById: '6acd0af7501924a7a6e48b89',
+  +   updatedAt: '2026-10-12T16:29:44.222Z',
+  +   version: 1
+  -   updatedAt: '2026-10-12T16:29:43.935Z',
+  -   version: 0
+    }
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:59:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:58:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { _id: '6acd0af7501924a7a6e48b8b', campusId: '6acd0af7501924a7a6e48b87', reference: 'CC-2026-764051', categoryId: '6acd0af7501924a7a6e48b88', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Rejected', requesterId: '6acd0af7501924a7a6e48b89', submittedById: '6acd0af7501924a7a6e48b89', submittedAt: '2026-10-12T16:29:43.934Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: 'not mine to reject', closedAt: '2026-10-12T16:29:44.221Z', closedById: '6acd0af7501924a7a6e48b89' }, statusChangedAt: '2026-10-12T16:29:44.221Z', dueAt: null, version: 1, anonymisedAt: null, lastActorId: '6acd0af7501924a7a6e48b89', lastActorRole: 'Technician', updatedAt: '2026-10-12T16:29:44.222Z' },
+    expected: { _id: '6acd0af7501924a7a6e48b8b', campusId: '6acd0af7501924a7a6e48b87', reference: 'CC-2026-764051', categoryId: '6acd0af7501924a7a6e48b88', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Received', requesterId: '6acd0af7501924a7a6e48b89', submittedById: '6acd0af7501924a7a6e48b89', submittedAt: '2026-10-12T16:29:43.934Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: null, closedAt: null, closedById: null }, statusChangedAt: '2026-10-12T16:29:43.934Z', dueAt: null, version: 0, anonymisedAt: null, lastActorId: null, lastActorRole: null, updatedAt: '2026-10-12T16:29:43.935Z' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\wrongRoleTransition.integration.test.js:64:11
+✖ no history entry is written (0.1146ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:65:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:64:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+CODE RESTORED
+--------------------------------------------------------------------------------
+git checkout -- src
+git status --porcelain -- src : empty
+git diff HEAD -- src          : empty
+
+================================================================================
+ISOLATED VERIFICATION, Case 2b, first attempt: no replay lookup and no version check
+================================================================================
+
+BREAK APPLIED
+--------------------------------------------------------------------------------
+As Case 2b (the result of history.findByIdempotencyKey replaced by null), and in addition the version comparison removed in statusTransitionService.js and `version` removed from the filter in requestRepository.applyChange.
+Subtest expected to fail: "the replay writes nothing" (specification §7)
+
+diff --git a/src/repositories/requestRepository.js b/src/repositories/requestRepository.js
+index f0a9814..cdb0008 100644
+--- a/src/repositories/requestRepository.js
++++ b/src/repositories/requestRepository.js
+@@ -36,7 +36,7 @@ export const requestRepository = {
+ 
+   applyChange: async (id, expectedVersion, $set, actor, { session } = {}) => {
+     const { matchedCount } = await Request.updateOne(
+-      { _id: id, version: expectedVersion, anonymisedAt: null },
++      { _id: id, anonymisedAt: null },
+       buildChangeUpdate($set, actor),
+       { session, runValidators: true },
+     );
+diff --git a/src/services/statusTransitionService.js b/src/services/statusTransitionService.js
+index d7ba5d9..ab1b621 100644
+--- a/src/services/statusTransitionService.js
++++ b/src/services/statusTransitionService.js
+@@ -51,7 +51,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+     // DEC-015 — replay detection before anything is attempted. A client retry
+     // after a timeout must not write a second immutable history entry.
+     if (idempotencyKey) {
+-      const prior = await history.findByIdempotencyKey(actor.id, idempotencyKey);
++      const prior = null;
+       if (prior) {
+         if (prior.idempotencyFingerprint !== fingerprint) throw new IdempotencyConflictError();
+         return replayOf(prior);
+@@ -71,9 +71,6 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+       }
+ 
+       // DEC-015 / DEC-016 — optimistic concurrency, before any validation work.
+-      if (request.version !== expectedVersion) {
+-        throw new PreconditionFailedError(requestId, expectedVersion);
+-      }
+ 
+       const verdict = checkTransition(request.status, toStatus, actor.roles, {
+         hasResolution:    Boolean(resolutionSummary) || Boolean(request.resolution?.summary),
+
+TEST FAILURE OUTPUT
+--------------------------------------------------------------------------------
+Run at 2026-10-12T16:29:49.732Z, exit code 1: tests 40, pass 24, fail 16, skipped 0
+Subtests that pass on the unbroken code and fail here: 2
+  ✖ neither request gains a history entry   (tests\integration\idempotencyKey.integration.test.js:149:11)
+  ✖ the stale request is refused with 412   (tests\integration\ifMatchConflict.integration.test.js:52:11)
+Subtests that fail on the unbroken code and pass here: 1
+  ✔ the response is not the first request's result   (tests\integration\idempotencyKey.integration.test.js:145:11)
+
+Result
+  NOT ISOLATED. "the replay writes nothing" still PASSES. With the lookup and the version
+  check both gone, the replay reaches checkTransition, the request is already Rejected, and
+  the transition rule refuses it with 422 before any write. This is the third guard, the
+  same one that masked Case 1. The replay returns 422 where the original returned 201; it
+  is not processed as a new request. The break is recorded as run; a further break follows.
+
+Every subtest, as reported by the runner (unedited):
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.4375ms)
+  ✔ nothing is written (0.4567ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (565.2812ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.1735ms)
+  ✔ the replay writes nothing (0.0914ms)
+  ✖ the replay has the same status code (0.536ms)
+  ✖ the replay has the same body (0.462ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.1226ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (749.9764ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.1606ms)
+  ✖ the problem type is idempotency-key-reused (0.1797ms)
+  ✔ no second history entry is written (0.0579ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (367.4193ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.1856ms)
+  ✔ the response is not the first request's result (0.1009ms)
+  ✖ neither request gains a history entry (0.1313ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (421.9863ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✖ it is not refused as a different payload (0.1613ms)
+  ✔ no second history entry is written (0.0679ms)
+✖ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (383.3768ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.3432ms)
+  ✖ the stale request is refused with 412 (0.4858ms)
+  ✔ the request is unchanged (0.4282ms)
+  ✔ no history entry is written (0.0882ms)
+  ✖ the problem body carries the current ETag (0.1617ms)
+  ✔ nothing internal is returned (0.1655ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (609.125ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.3728ms)
+  ✔ the failure is a generic 500 (0.1118ms)
+  ✔ the status change is rolled back (0.4788ms)
+  ✔ the history entry is rolled back (0.0738ms)
+  ✔ no event is published (0.0649ms)
+  ✔ the same key then succeeds (0.1124ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1047.42ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (1.0543ms)
+  ✔ the refusal is problem details (0.1925ms)
+  ✔ the request is unchanged (0.9969ms)
+  ✔ no history entry is written (0.0725ms)
+  ✔ nothing internal is returned (0.1215ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (567.2479ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 24
+ℹ fail 16
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2859.267
+
+Failure output of the subtests that changed (unedited):
+
+test at tests\integration\idempotencyKey.integration.test.js:149:11
+✖ neither request gains a history entry (0.1313ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:151:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:149:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\ifMatchConflict.integration.test.js:52:11
+✖ the stale request is refused with 412 (0.4858ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  422 !== 412
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:53:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:52:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 422,
+    expected: 412,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+CODE RESTORED
+--------------------------------------------------------------------------------
+git checkout -- src
+git status --porcelain -- src : empty
+git diff HEAD -- src          : empty
+
+================================================================================
+ISOLATED VERIFICATION, Case 2b: no replay lookup, no version check and no transition rule
+================================================================================
+
+BREAK APPLIED
+--------------------------------------------------------------------------------
+As the first attempt, and in addition the transition guard in statusTransitionService.js never throws, so the result of checkTransition is ignored.
+Subtest expected to fail: "the replay writes nothing" (specification §7)
+
+diff --git a/src/repositories/requestRepository.js b/src/repositories/requestRepository.js
+index f0a9814..cdb0008 100644
+--- a/src/repositories/requestRepository.js
++++ b/src/repositories/requestRepository.js
+@@ -36,7 +36,7 @@ export const requestRepository = {
+ 
+   applyChange: async (id, expectedVersion, $set, actor, { session } = {}) => {
+     const { matchedCount } = await Request.updateOne(
+-      { _id: id, version: expectedVersion, anonymisedAt: null },
++      { _id: id, anonymisedAt: null },
+       buildChangeUpdate($set, actor),
+       { session, runValidators: true },
+     );
+diff --git a/src/services/statusTransitionService.js b/src/services/statusTransitionService.js
+index d7ba5d9..0d0369e 100644
+--- a/src/services/statusTransitionService.js
++++ b/src/services/statusTransitionService.js
+@@ -51,7 +51,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+     // DEC-015 — replay detection before anything is attempted. A client retry
+     // after a timeout must not write a second immutable history entry.
+     if (idempotencyKey) {
+-      const prior = await history.findByIdempotencyKey(actor.id, idempotencyKey);
++      const prior = null;
+       if (prior) {
+         if (prior.idempotencyFingerprint !== fingerprint) throw new IdempotencyConflictError();
+         return replayOf(prior);
+@@ -71,9 +71,6 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+       }
+ 
+       // DEC-015 / DEC-016 — optimistic concurrency, before any validation work.
+-      if (request.version !== expectedVersion) {
+-        throw new PreconditionFailedError(requestId, expectedVersion);
+-      }
+ 
+       const verdict = checkTransition(request.status, toStatus, actor.roles, {
+         hasResolution:    Boolean(resolutionSummary) || Boolean(request.resolution?.summary),
+@@ -85,7 +82,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
+         // closure.closedAt, and PROC-001 would never anonymise it (CON-007).
+         securityCategory: Boolean(request.securityCategory),
+       });
+-      if (!verdict.allowed) throw new TransitionError(verdict.reason);
++      if (false) throw new TransitionError(verdict.reason);
+ 
+       const fromStatus = request.status;
+       const occurredAt = clock();
+
+TEST FAILURE OUTPUT
+--------------------------------------------------------------------------------
+Run at 2026-10-12T16:29:53.001Z, exit code 1: tests 40, pass 17, fail 23, skipped 0
+Subtests that pass on the unbroken code and fail here: 11
+  ✖ the replay writes nothing   (tests\integration\idempotencyKey.integration.test.js:78:11)
+  ✖ the request is refused with 422   (tests\integration\idempotencyKey.integration.test.js:109:11)
+  ✖ no second history entry is written   (tests\integration\idempotencyKey.integration.test.js:117:11)
+  ✖ neither request gains a history entry   (tests\integration\idempotencyKey.integration.test.js:149:11)
+  ✖ no second history entry is written   (tests\integration\idempotencyKey.integration.test.js:175:11)
+  ✖ the stale request is refused with 412   (tests\integration\ifMatchConflict.integration.test.js:52:11)
+  ✖ the request is unchanged   (tests\integration\ifMatchConflict.integration.test.js:58:11)
+  ✖ no history entry is written   (tests\integration\ifMatchConflict.integration.test.js:64:11)
+  ✖ the refusal is problem details   (tests\integration\wrongRoleTransition.integration.test.js:53:11)
+  ✖ the request is unchanged   (tests\integration\wrongRoleTransition.integration.test.js:58:11)
+  ✖ no history entry is written   (tests\integration\wrongRoleTransition.integration.test.js:64:11)
+Subtests that fail on the unbroken code and pass here: 3
+  ✔ the replay has the same status code   (tests\integration\idempotencyKey.integration.test.js:84:11)
+  ✔ the response is not the first request's result   (tests\integration\idempotencyKey.integration.test.js:145:11)
+  ✔ it is not refused as a different payload   (tests\integration\idempotencyKey.integration.test.js:171:11)
+
+Result
+  DETECTED by the subtest §7 names. The replay is processed as a new request: it returns 201
+  and "the replay writes nothing" fails (2 history entries where 1 is expected). The
+  duplicate that FR-6.7 and DEC-015 §3 exist to prevent is written and the case reports it.
+
+  "the replay has the same status code" passes here, because 201 equals 201. It passes for
+  the wrong reason, which is why "the replay writes nothing" is a separate subtest
+  (specification §5). The same applies to the other subtests listed below as passing here.
+
+  Cases 1, 2c, 2d, 2e and 4 fail further subtests as side effects of the three removed
+  guards. They are listed but are not part of this verification.
+
+  Further observation on DEF-014. The second entry has the same actorId and idempotencyKey
+  as the first, and the same requestId and requestVersion (1). Neither unique index refused
+  it.
+
+Every subtest, as reported by the runner (unedited):
+
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.4384ms)
+  ✔ nothing is written (0.4826ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (546.1654ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.5538ms)
+  ✖ the replay writes nothing (0.539ms)
+  ✔ the replay has the same status code (0.0653ms)
+  ✖ the replay has the same body (0.4853ms)
+  ✖ the replay is marked Idempotent-Replayed: true (0.137ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (641.8705ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✖ the request is refused with 422 (0.2475ms)
+  ✖ the problem type is idempotency-key-reused (0.1669ms)
+  ✖ no second history entry is written (0.095ms)
+✖ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (366.485ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✖ the request is refused with 422 (0.1966ms)
+  ✔ the response is not the first request's result (0.1077ms)
+  ✖ neither request gains a history entry (0.137ms)
+✖ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (403.6769ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✔ it is not refused as a different payload (0.1403ms)
+  ✖ no second history entry is written (0.1385ms)
+✖ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (392.2291ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.3396ms)
+  ✖ the stale request is refused with 412 (0.4832ms)
+  ✖ the request is unchanged (0.8927ms)
+  ✖ no history entry is written (0.4275ms)
+  ✖ the problem body carries the current ETag (0.2552ms)
+  ✔ nothing internal is returned (0.2357ms)
+✖ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (1121.3089ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.4495ms)
+  ✔ the failure is a generic 500 (0.0834ms)
+  ✔ the status change is rolled back (0.4309ms)
+  ✔ the history entry is rolled back (0.0722ms)
+  ✔ no event is published (0.059ms)
+  ✔ the same key then succeeds (0.0936ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (665.9933ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✖ the request is refused with 403 (0.7359ms)
+  ✖ the refusal is problem details (0.2496ms)
+  ✖ the request is unchanged (0.9386ms)
+  ✖ no history entry is written (0.1061ms)
+  ✔ nothing internal is returned (0.1269ms)
+✖ a role not permitted for the transition is refused with 403 — DEC-015 §4 (576.8133ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 17
+ℹ fail 23
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2725.7653
+
+Failure output of the subtests that changed (unedited):
+
+test at tests\integration\idempotencyKey.integration.test.js:78:11
+✖ the replay writes nothing (0.539ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:79:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:78:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:109:11
+✖ the request is refused with 422 (0.2475ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  201 !== 422
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:110:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:109:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 201,
+    expected: 422,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:117:11
+✖ no second history entry is written (0.095ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:118:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:117:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:149:11
+✖ neither request gains a history entry (0.137ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:151:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:149:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\idempotencyKey.integration.test.js:175:11
+✖ no second history entry is written (0.1385ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:176:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/idempotencyKey.integration.test.js:175:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\ifMatchConflict.integration.test.js:52:11
+✖ the stale request is refused with 412 (0.4832ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  201 !== 412
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:53:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:52:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 201,
+    expected: 412,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\ifMatchConflict.integration.test.js:58:11
+✖ the request is unchanged (0.8927ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      _id: '6acd0afe95e5e7950096cfcd',
+      anonymisedAt: null,
+      assignedAt: null,
+      assigneeId: null,
+  ...
+      closure: {
+  +     closedAt: '2026-10-12T16:29:51.546Z',
+  -     closedAt: '2026-10-12T16:29:51.087Z',
+        closedById: '6acd0afe95e5e7950096cfcb',
+  +     reason: 'second'
+  -     reason: 'first'
+      },
+      description: 'Synthetic request for the M3 API/integration cases',
+      dueAt: null,
+      lastActorId: '6acd0afe95e5e7950096cfcb',
+      lastActorRole: 'Coordinator',
+  ...
+      status: 'Rejected',
+  +   statusChangedAt: '2026-10-12T16:29:51.546Z',
+  -   statusChangedAt: '2026-10-12T16:29:51.087Z',
+      submittedAt: '2026-10-12T16:29:50.866Z',
+      submittedById: '6acd0afe95e5e7950096cfcb',
+  +   updatedAt: '2026-10-12T16:29:51.546Z',
+  +   version: 2
+  -   updatedAt: '2026-10-12T16:29:51.087Z',
+  -   version: 1
+    }
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:59:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:58:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { _id: '6acd0afe95e5e7950096cfcd', campusId: '6acd0afe95e5e7950096cfc9', reference: 'CC-2026-039963', categoryId: '6acd0afe95e5e7950096cfca', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Rejected', requesterId: '6acd0afe95e5e7950096cfcb', submittedById: '6acd0afe95e5e7950096cfcb', submittedAt: '2026-10-12T16:29:50.866Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: 'second', closedAt: '2026-10-12T16:29:51.546Z', closedById: '6acd0afe95e5e7950096cfcb' }, statusChangedAt: '2026-10-12T16:29:51.546Z', dueAt: null, version: 2, anonymisedAt: null, lastActorId: '6acd0afe95e5e7950096cfcb', lastActorRole: 'Coordinator', updatedAt: '2026-10-12T16:29:51.546Z' },
+    expected: { _id: '6acd0afe95e5e7950096cfcd', campusId: '6acd0afe95e5e7950096cfc9', reference: 'CC-2026-039963', categoryId: '6acd0afe95e5e7950096cfca', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Rejected', requesterId: '6acd0afe95e5e7950096cfcb', submittedById: '6acd0afe95e5e7950096cfcb', submittedAt: '2026-10-12T16:29:50.866Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: 'first', closedAt: '2026-10-12T16:29:51.087Z', closedById: '6acd0afe95e5e7950096cfcb' }, statusChangedAt: '2026-10-12T16:29:51.087Z', dueAt: null, version: 1, anonymisedAt: null, lastActorId: '6acd0afe95e5e7950096cfcb', lastActorRole: 'Coordinator', updatedAt: '2026-10-12T16:29:51.087Z' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\ifMatchConflict.integration.test.js:64:11
+✖ no history entry is written (0.4275ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:65:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/ifMatchConflict.integration.test.js:64:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\wrongRoleTransition.integration.test.js:53:11
+✖ the refusal is problem details (0.2496ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^application\/problem\+json/. Input:
+  
+  'application/json; charset=utf-8'
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:54:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:53:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'application/json; charset=utf-8',
+    expected: /^application\/problem\+json/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests\integration\wrongRoleTransition.integration.test.js:58:11
+✖ the request is unchanged (0.9386ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      _id: '6acd0afe2b6920fe78813fcb',
+      anonymisedAt: null,
+      assignedAt: null,
+      assigneeId: null,
+  ...
+      closure: {
+  +     closedAt: '2026-10-12T16:29:51.004Z',
+  +     closedById: '6acd0afe2b6920fe78813fc9',
+  +     reason: 'not mine to reject'
+  -     closedAt: null,
+  -     closedById: null,
+  -     reason: null
+      },
+      description: 'Synthetic request for the M3 API/integration cases',
+      dueAt: null,
+  +   lastActorId: '6acd0afe2b6920fe78813fc9',
+  +   lastActorRole: 'Technician',
+  -   lastActorId: null,
+  -   lastActorRole: null,
+      location: 'Integration test',
+      reference: 'CC-2026-776115',
+      requesterId: '6acd0afe2b6920fe78813fc9',
+      resolution: {
+        recordedAt: null,
+  ...
+      securityCategory: false,
+  +   status: 'Rejected',
+  +   statusChangedAt: '2026-10-12T16:29:51.004Z',
+  -   status: 'Received',
+  -   statusChangedAt: '2026-10-12T16:29:50.735Z',
+      submittedAt: '2026-10-12T16:29:50.735Z',
+      submittedById: '6acd0afe2b6920fe78813fc9',
+  +   updatedAt: '2026-10-12T16:29:51.005Z',
+  +   version: 1
+  -   updatedAt: '2026-10-12T16:29:50.736Z',
+  -   version: 0
+    }
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:59:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:58:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { _id: '6acd0afe2b6920fe78813fcb', campusId: '6acd0afe2b6920fe78813fc7', reference: 'CC-2026-776115', categoryId: '6acd0afe2b6920fe78813fc8', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Rejected', requesterId: '6acd0afe2b6920fe78813fc9', submittedById: '6acd0afe2b6920fe78813fc9', submittedAt: '2026-10-12T16:29:50.735Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: 'not mine to reject', closedAt: '2026-10-12T16:29:51.004Z', closedById: '6acd0afe2b6920fe78813fc9' }, statusChangedAt: '2026-10-12T16:29:51.004Z', dueAt: null, version: 1, anonymisedAt: null, lastActorId: '6acd0afe2b6920fe78813fc9', lastActorRole: 'Technician', updatedAt: '2026-10-12T16:29:51.005Z' },
+    expected: { _id: '6acd0afe2b6920fe78813fcb', campusId: '6acd0afe2b6920fe78813fc7', reference: 'CC-2026-776115', categoryId: '6acd0afe2b6920fe78813fc8', location: 'Integration test', description: 'Synthetic request for the M3 API/integration cases', securityCategory: false, status: 'Received', requesterId: '6acd0afe2b6920fe78813fc9', submittedById: '6acd0afe2b6920fe78813fc9', submittedAt: '2026-10-12T16:29:50.735Z', assigneeId: null, assignedAt: null, resolution: { summary: null, recordedAt: null, recordedById: null }, closure: { reason: null, closedAt: null, closedById: null }, statusChangedAt: '2026-10-12T16:29:50.735Z', dueAt: null, version: 0, anonymisedAt: null, lastActorId: null, lastActorRole: null, updatedAt: '2026-10-12T16:29:50.736Z' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\integration\wrongRoleTransition.integration.test.js:64:11
+✖ no history entry is written (0.1061ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:65:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at TestContext.test (node:internal/test_runner/test:377:20)
+      at TestContext.<anonymous> (file:///C:/Projects/SEN381/Repo/Ticketing-System/tests/integration/wrongRoleTransition.integration.test.js:64:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+CODE RESTORED
+--------------------------------------------------------------------------------
+git checkout -- src
+git status --porcelain -- src : empty
+git diff HEAD -- src          : empty
+
+================================================================================
+After the isolated verifications
+================================================================================
+
+The suite was run again on the restored code: exit code 1, tests 40, pass 25, fail 15, skipped 0, with the same result for every
+subtest as the baseline. docs/evidence/M3_API_Test_Run.txt is unchanged.
+
+Note (2026-10-12): In the isolated runs recorded above, the unique index gap on (requestId, requestVersion) was initially attributed to DEF-014. Following review and defect splitting, this second index gap is formally logged as DEF-015. DEF-014 strictly covers the (actorId, idempotencyKey) index.

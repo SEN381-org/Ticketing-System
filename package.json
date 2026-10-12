@@ -10,6 +10,7 @@
     "start": "node src/server.js",
     "start:dev": "node --env-file=.env src/server.js",
     "test": "node --test",
+    "test:integration": "node --env-file=.env --import \"data:text/javascript,import dns from 'node:dns';dns.setServers(['8.8.8.8','1.1.1.1']);\" --test \"tests/integration/*.test.js\"",
     "lint": "eslint .",
     "build:client": "npm --prefix client run build"
   },

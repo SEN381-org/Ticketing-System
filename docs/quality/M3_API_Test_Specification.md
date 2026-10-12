@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | **Artefact** | Test specification for the three API/integration cases of M3 Assessment Area D |
-| **Version** | 0.1 |
+| **Version** | 0.2 |
 | **Author** | Robert van der Merwe (Member B) |
 | **Date** | 12 October 2026 |
-| **Status** | Proposed. Written before the tests exist and before any of them has been run |
-| **Test basis** | DEC-015 v0.1 (API semantics), DEC-016 v0.1 (transaction boundary), AC-NFR-1.10 v0.3 (CR-001) |
+| **Status** | Executed. Written before the tests existed; the tests have since been implemented and run on 12 October 2026. Run output: `docs/evidence/M3_API_Test_Run.txt`. Negative verifications (§7): `docs/evidence/M3_API_Negative_Verification.txt`. Failures are logged as DEF-007 to DEF-011 |
+| **Test basis** | DEC-015 v0.1 (API semantics), DEC-016 v0.1 (transaction boundary), AC-NFR-1.10 v0.3 (proposed under CR-001, not yet baselined) |
 | **Code examined** | `feat/m3-phase0-composition-root` at `5a64a7c` (PR #83). The transition route, service and error classes it contains are unchanged from `dev` |
 | **Traces to** | FR-6.2, FR-6.3, FR-6.7, AC-FR-6.7, NFR-1.10, CON-017 |
 
@@ -18,8 +18,9 @@ output. This was agreed with the DEC-015 implementer on 12/10/2026: all four dif
 §2 are to be corrected in the code and in `docs/api/openapi.yaml`, in a separate PR after
 PR #83 merges, and DEC-015 does not change.
 
-Every "Predicted" column below is a prediction from reading the code. Nothing has been
-executed yet.
+Every "Predicted" column below is a prediction from reading the code, made before anything
+was executed. The predictions are left as written; the observed results are in
+`docs/evidence/M3_API_Test_Run.txt`.
 
 ---
 
@@ -28,7 +29,7 @@ executed yet.
 | # | Decision | Reason |
 |---|---|---|
 | S1 | The cases drive the system over real HTTP: `createApp` listening on an ephemeral port, called with `fetch` | Cases 1 and 2 are about headers and status codes, which exist only at the route |
-| S2 | They run with the `civicconnect-app` credential only. Fixtures are created fresh with unique identifiers and left behind | It is the role the application runs as. That role cannot delete from `requestHistory` or drop the database (DB-01 layer 3), so clean-up is not possible with it |
+| S2 | They run with the `civicconnect-app` credential only. Fixtures are created fresh with unique identifiers and left behind | It is the role the application runs as. That role cannot delete from `requestHistory` or drop the database (DB-01 layer 3), so clean-up is not possible with it (contradicts DEC-003's Test row; logged as DEF-006) |
 | S3 | Files live in `tests/integration/` and are skipped, with a printed reason, when `MONGODB_URI` is unset | CI has no cluster credential. A skipped case must never read as a verified one |
 | S4 | Assertions follow DEC-015 and DEC-016 as written | M3 brief §11: expected results are derived before execution from authoritative project evidence |
 | S5 | The unique indexes `{requestId: 1, requestVersion: 1}` and `{actorId: 1, idempotencyKey: 1}` (partial, string keys) are assumed to exist on the test cluster, created by hand | The application role cannot create or list indexes, so the suite cannot check for them |
@@ -68,21 +69,26 @@ tests/integration/
   transactionBoundary.integration.test.js   Case 3
 ```
 
-`package.json` gains `"test:integration": "node --env-file=.env.test --test tests/integration/"`.
+`package.json` gains `"test:integration": "node --env-file=.env --import \"data:text/javascript,import dns from 'node:dns';dns.setServers(['8.8.8.8','1.1.1.1']);\" --test \"tests/integration/*.test.js\""`.
+The `--import` sets public DNS resolvers so that the `mongodb+srv` lookup works on a machine whose only resolver is loopback.
 `npm test` also discovers these files; without `MONGODB_URI` they report as skipped.
 
 ### 3.2 Skip rule
 
 ```js
-export const skip = process.env.MONGODB_URI
-  ? false
-  : 'MONGODB_URI is not set: integration cases were NOT run';
+// false when the host in MONGODB_URI contains 'civicconnecttest'; otherwise the reason, which the runner prints
+export const skip = skipReason(process.env.MONGODB_URI);
 
 before(async () => { if (!skip) await connectDatabase(process.env.MONGODB_URI); });
 after(async ()  => { if (!skip) await disconnectDatabase(); });
 
 test('…', { skip }, async (t) => { /* … */ });
 ```
+
+The suite is opt-in. It leaves fixtures behind that the application role cannot remove, so
+it refuses to run unless the host parsed from `MONGODB_URI` contains `civicconnecttest`. A URI
+that is unset, that cannot be parsed, or whose host does not name the test cluster, skips
+every case with the reason printed and connects to nothing.
 
 ### 3.3 Fixture, created per test
 
@@ -221,10 +227,12 @@ replay or receive `409`. That path depends on the index assumed in S5.
 
 | Field | Entry |
 |---|---|
-| **Test basis** | AC-NFR-1.10 v0.3 (CR-001); DEC-016 decisions 1 and 3; FR-6.3; FR-6.7; CON-017 |
+| **Test basis** | Proposed AC-NFR-1.10 v0.3 under CR-001 (not yet baselined); DEC-016 decisions 1 and 3; FR-6.3; FR-6.7; CON-017 |
 | **Why selected** | The audit argument rests on the status change and its history entry committing together. The M2 test for this asserted only the order of the writes, and still passed with the history write outside the transaction |
 | **Technique / level** | Fault injection. API integration: real HTTP, real cluster, the real `requestRepository` and `createUnitOfWork()` |
 | **Precondition** | Request R at `v0`, status `Received`. The Coordinator is logged in |
+
+**Note.** Test basis: Proposed AC-NFR-1.10 v0.3 under CR-001 (not yet baselined).
 
 **Fault.** A wrapper around the real `historyRepository`. It performs the real insert
 inside the transaction, reads the request back through the same session, and then throws.
@@ -291,6 +299,27 @@ behaviour, show the named subtest fails, restore, re-run.
 | 2b | Skip the `findByIdempotencyKey` lookup | the replay writes nothing |
 | 3 | Drop `{ session }` from the insert in `historyRepository.append` | the history entry is rolled back |
 | 3 | Drop `{ session }` from `Request.updateOne` in `applyChange` | the status change is rolled back |
+
+**Findings from the first negative verification (12 October 2026).** The predictions above
+are kept as written. Two of them did not hold with the change as stated, because another
+guard stopped the write first:
+
+- **Case 1.** Removing only the version check does not make the named subtests fail. The
+  stale request reaches the transition rule, the request is already `Rejected` (a terminal
+  status), and the rule refuses it with `422`. The break is detected by "the stale request
+  is refused with 412" (`422` instead of `412`); "the request is unchanged" and "no history
+  entry is written" still pass. They fail once the transition rule is bypassed as well: the
+  stale request then returns `201`, changes the request and writes a second history entry.
+- **Case 2b.** Skipping only the idempotency lookup does not make "the replay writes
+  nothing" fail. The replay carries `If-Match: "v0"`, the request is at `v1`, and the
+  version check refuses it with `412`. Removing the version check too is still not enough:
+  the transition rule then refuses the replay with `422`. The subtest fails once the
+  lookup, the version check and the transition rule are all bypassed: the replay returns
+  `201` and writes a second history entry.
+
+With every application guard removed, the cluster accepted the duplicate history entries,
+so the unique indexes assumed in S5 did not act. That is logged as DEF-014 and DEF-015. All runs,
+including the isolated ones, are in `docs/evidence/M3_API_Negative_Verification.txt`.
 
 ---
 
