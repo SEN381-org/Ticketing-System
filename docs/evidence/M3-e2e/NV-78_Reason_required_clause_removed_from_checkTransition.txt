@@ -1,0 +1,74 @@
+Negative verification NV-78 - Domain: the reason-required clause removed from checkTransition
+M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+
+Run on : 2026-10-12T21:25:23.398Z (UTC, start of the Playwright run)
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 43a53a7 (HEAD). e2e/ and other working-tree changes are UNCOMMITTED (see INDEX.txt). The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Environment : Atlas test cluster (database civicconnect, credential civicconnect-app). No connection string is recorded.
+Command : npm run test:e2e   (one run for this NV; exit code 1)
+
+CLAIM
+  FR-6.6 / AC-FR-6.6: a Rejected transition without a reason is refused by the server.
+
+1. The protected behaviour was broken in src/domain/requestStatus.js (never in a test).
+     --- src/domain/requestStatus.js (original)
+     +++ src/domain/requestStatus.js (sabotaged)
+     -  if (REASON_REQUIRED.includes(to) && !context.hasReason) {
+     +  if (false) {
+
+2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+     E2E-1 fails at step 3: the no-reason POST returns 201 instead of 422. E2E-2a and E2E-2b unaffected (their body carries a reason; the role refusal comes earlier).
+
+3. Result of `npm run test:e2e` with the sabotage applied:
+
+     Running 3 tests using 1 worker
+       x  1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (1.5s)
+       ok 2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.4s)
+       x  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.5s)
+
+       1) [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request › 3. Rejected with no reason: the server refuses and nothing is written 
+     
+         Error: expect(received).toBe(expected) // Object.is equality
+     
+         Expected: 422
+         Received: 201
+     
+           84 |       page.getByRole('button', { name: 'Submit transition' }).click(),
+           85 |     ]);
+         > 86 |     expect(response.status()).toBe(422);               // DEC-015 §4 row 422; AC-FR-6.6 first attempt refused
+              |                               ^
+           87 |     expect((await response.json()).code).toBe('INVALID_TRANSITION');
+           88 |     await expect(page.getByRole('alert')).toContainText('INVALID_TRANSITION');
+           89 |
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:86:31
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:78:3
+
+       1 failed
+         [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request ──────────────
+       2 passed (11.1s)
+
+     Per-test outcome from e2e/test-results/results.json (stats: expected 2, unexpected 1, skipped 0, flaky 0):
+       E2E-1: expected=passed, outcome=unexpected, result=failed
+       E2E-2a: expected=passed, outcome=expected, result=passed
+       E2E-2b: expected=failed, outcome=expected, result=failed
+
+   Actual vs expected:
+     E2E-1 failed at step 3: "Expected: 422 / Received: 201". E2E-2a passed; E2E-2b expected failure (403/422). Side effect on the cluster: the fixture's request was set to Rejected (version 1) with one history entry and no reason (DEF-006: stays).
+   Outcome: CAUGHT (as predicted).
+
+4. Restore. The file(s) were restored by writing back the original content.
+   SHA-256 of src/domain/requestStatus.js
+     before : 0c70052cc99023d363f2739670d2ee1ea3801cb358af2b0459d05f509a172ac7
+     after  : 0c70052cc99023d363f2739670d2ee1ea3801cb358af2b0459d05f509a172ac7
+   SHA-256 over src/, client/src/, e2e/ sources (path + content, excluding node_modules, dist, test-results) and shared/:
+     before : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+     after  : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+   Identical to the values recorded before the run. `git diff --stat -- src client shared` shows nothing after restore (e2e/ is untracked, so its hash above is the check).
+   A green re-run is NOT repeated after this NV; the final recorded run (E2E_local_run_2026-10-12.txt) is the restored-state confirmation. See INDEX.txt.
+
+INTERPRETATION
+  What this shows: E2E-1 step 3 detects a server that accepts a missing reason.
+  What this does NOT show: whitespace-only reasons (plan D12), or the same break for Closed.
+
+VERDICT: CAUGHT by E2E-1 (step 3: 201 instead of 422)

@@ -1,0 +1,79 @@
+Negative verification NV-73 - Narrowed "no request data in a refusal" check: 401 problem body also carries a reference
+M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+
+Run on : 2026-10-12T21:23:21.651Z (UTC, start of the Playwright run)
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 43a53a7 (HEAD). e2e/ and other working-tree changes are UNCOMMITTED (see INDEX.txt). The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Environment : Atlas test cluster (database civicconnect, credential civicconnect-app). No connection string is recorded.
+Command : npm run test:e2e   (one run for this NV; exit code 1)
+
+CLAIM
+  expectNoRequestData (e2e/support/ui.js), narrowed to allow the RFC 9457 numeric `status` member, still catches a real leak: a request `reference` in the refusal body.
+
+1. The protected behaviour was broken in src/middleware/errorHandler.js (never in a test).
+     --- src/middleware/errorHandler.js (original)
+     +++ src/middleware/errorHandler.js (sabotaged)
+          if (req?.originalUrl) problem.instance = req.originalUrl;
+     +    if (problem.code === 'UNAUTHENTICATED') problem.reference = 'REF-LEAK-STANDIN';
+     (The handler does not know the request's real reference at the 401 point, so a fixed stand-in value is used. The assertion is on the property's presence, not.toHaveProperty('reference'), so the value does not matter to it. The separate page-text check for the real reference is not what failed here.)
+
+2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+     E2E-1 fails at step 1 (signed out: prompt shown in place, nothing disclosed) inside expectNoRequestData, with a message about the "reference" path. E2E-2a and E2E-2b unchanged (their refusals are 422, not UNAUTHENTICATED).
+
+3. Result of `npm run test:e2e` with the sabotage applied:
+
+     Running 3 tests using 1 worker
+       x  1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (537ms)
+       ok 2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.5s)
+       x  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.4s)
+
+       1) [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request › 1. signed out: prompt shown in place, nothing disclosed 
+     
+         Error: expect(received).not.toHaveProperty(path)
+     
+         Expected path: not "reference"
+     
+         Received value: "REF-LEAK-STANDIN"
+     
+            at support\ui.js:38
+     
+           36 |  */
+           37 | export function expectNoRequestData(body, httpStatus) {
+         > 38 |   expect(body).not.toHaveProperty('reference');
+              |                    ^
+           39 |   expect(body).not.toHaveProperty('version');
+           40 |   if ('status' in body) expect(body.status).toBe(httpStatus);
+           41 | }
+             at expectNoRequestData (C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\support\ui.js:38:20)
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:46:5
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:40:3
+
+       1 failed
+         [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request ──────────────
+       2 passed (10.0s)
+
+     Per-test outcome from e2e/test-results/results.json (stats: expected 2, unexpected 1, skipped 0, flaky 0):
+       E2E-1: expected=passed, outcome=unexpected, result=failed
+       E2E-2a: expected=passed, outcome=expected, result=passed
+       E2E-2b: expected=failed, outcome=expected, result=failed
+
+   Actual vs expected:
+     E2E-1 failed at step 1: "expect(received).not.toHaveProperty(path) / Expected path: not \"reference\" / Received value: \"REF-LEAK-STANDIN\"". E2E-2a passed; E2E-2b expected failure with its usual 403/422 message.
+   Outcome: CAUGHT (as predicted).
+
+4. Restore. The file(s) were restored by writing back the original content.
+   SHA-256 of src/middleware/errorHandler.js
+     before : d9aae0f9c60fc94a3d0188ebc68dac1a3e257b521d58cdcd794325bd42d11458
+     after  : d9aae0f9c60fc94a3d0188ebc68dac1a3e257b521d58cdcd794325bd42d11458
+   SHA-256 over src/, client/src/, e2e/ sources (path + content, excluding node_modules, dist, test-results) and shared/:
+     before : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+     after  : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+   Identical to the values recorded before the run. `git diff --stat -- src client shared` shows nothing after restore (e2e/ is untracked, so its hash above is the check).
+   A green re-run is NOT repeated after this NV; the final recorded run (E2E_local_run_2026-10-12.txt) is the restored-state confirmation. See INDEX.txt.
+
+INTERPRETATION
+  What this shows: the narrowing of expectNoRequestData did not lose the `reference` check.
+  What this does NOT show: a leak of the real reference under a differently named key on the 401 body (the page-text and leafValues checks cover the browser-visible and other cases, but this run did not exercise a renamed key).
+
+VERDICT: CAUGHT by E2E-1 (step 1)

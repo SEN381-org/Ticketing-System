@@ -1,0 +1,73 @@
+Negative verification NV-81 - ROLE.TECHNICIAN added to the disposition roles
+M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+
+Run on : 2026-10-12T21:26:37.380Z (UTC, start of the Playwright run)
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 43a53a7 (HEAD). e2e/ and other working-tree changes are UNCOMMITTED (see INDEX.txt). The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Environment : Atlas test cluster (database civicconnect, credential civicconnect-app). No connection string is recorded.
+Command : npm run test:e2e   (one run for this NV; exit code 1)
+
+CLAIM
+  FR-6.4 / AC-FR-6.4, NFR-3.3: a Technician may not reject. This is the evidence for splitting E2E-2a (ordinary test) from E2E-2b (test.fail).
+
+1. The protected behaviour was broken in src/domain/requestStatus.js (never in a test).
+     --- src/domain/requestStatus.js (original)
+     +++ src/domain/requestStatus.js (sabotaged)
+     -const DISPOSITION_ROLES = Object.freeze([ROLE.COORDINATOR, ROLE.MANAGER]);
+     +const DISPOSITION_ROLES = Object.freeze([ROLE.COORDINATOR, ROLE.MANAGER, ROLE.TECHNICIAN]);
+
+2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+     E2E-2a FAILS (the Technician's Rejected POST returns 201, status Rejected). E2E-2b remains reported as an expected failure (201 is not 403). E2E-1 unaffected (Coordinator).
+
+3. Result of `npm run test:e2e` with the sabotage applied:
+
+     Running 3 tests using 1 worker
+       ok 1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (1.8s)
+       x  2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.5s)
+       x  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.2s)
+
+       1) [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written 
+     
+         Error: expect(received).toBeGreaterThanOrEqual(expected)
+     
+         Expected: >= 400
+         Received:    201
+     
+           50 |   const { fixture, requestId, response } = await technicianPostsRejected(page, 'e2e-2a');
+           51 |
+         > 52 |   expect(response.status()).toBeGreaterThanOrEqual(400);   // AC-FR-6.4, AC-NFR-3.3
+              |                             ^
+           53 |   expect(response.headers()['content-type']).toMatch(PROBLEM_JSON);
+           54 |   const body = await response.json();
+           55 |   expectNoRequestData(body, response.status());
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\wrong-role.spec.js:52:29
+
+       1 failed
+         [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written 
+       2 passed (12.0s)
+
+     Per-test outcome from e2e/test-results/results.json (stats: expected 2, unexpected 1, skipped 0, flaky 0):
+       E2E-1: expected=passed, outcome=expected, result=passed
+       E2E-2a: expected=passed, outcome=unexpected, result=failed
+       E2E-2b: expected=failed, outcome=expected, result=failed
+
+   Actual vs expected:
+     E2E-2a failed: "expect(received).toBeGreaterThanOrEqual(expected) / Expected: >= 400 / Received: 201". E2E-2b: expected failure, failing with "Expected: 403 / Received: 201". E2E-1 passed. Two Rejected requests with history entries were written (DEF-006).
+   Outcome: CAUGHT by E2E-2a. Under a single test.fail() test this regression would have been reported green ("expected failure"), which is why 2a and 2b are split.
+
+4. Restore. The file(s) were restored by writing back the original content.
+   SHA-256 of src/domain/requestStatus.js
+     before : 0c70052cc99023d363f2739670d2ee1ea3801cb358af2b0459d05f509a172ac7
+     after  : 0c70052cc99023d363f2739670d2ee1ea3801cb358af2b0459d05f509a172ac7
+   SHA-256 over src/, client/src/, e2e/ sources (path + content, excluding node_modules, dist, test-results) and shared/:
+     before : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+     after  : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+   Identical to the values recorded before the run. `git diff --stat -- src client shared` shows nothing after restore (e2e/ is untracked, so its hash above is the check).
+   A green re-run is NOT repeated after this NV; the final recorded run (E2E_local_run_2026-10-12.txt) is the restored-state confirmation. See INDEX.txt.
+
+INTERPRETATION
+  What this shows: a real authorisation regression turns E2E-2a red while the run summary still lists 2b as an expected failure, so the split is necessary.
+  What this does NOT show: any role other than Technician.
+
+VERDICT: CAUGHT by E2E-2a (201); E2E-2b stays an expected failure (201, not 403)

@@ -1,0 +1,76 @@
+Negative verification NV-72 - NV-43 second variant: query service wired to a repository that has findById but the wrong collection
+M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+
+Run on : 2026-10-12T21:22:57.892Z (UTC, start of the Playwright run)
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 43a53a7 (HEAD). e2e/ and other working-tree changes are UNCOMMITTED (see INDEX.txt). The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Environment : Atlas test cluster (database civicconnect, credential civicconnect-app). No connection string is recorded.
+Command : npm run test:e2e   (one run for this NV; exit code 1)
+
+CLAIM
+  The catch in NV-71 does not rely on a crash: a repository whose findById succeeds on the wrong collection is also caught.
+
+1. The protected behaviour was broken in src/composition.js (never in a test).
+     --- src/composition.js (original)
+     +++ src/composition.js (sabotaged)
+     -     requestQueryService: createRequestQueryService({ requests: requestRepository }),
+     +     requestQueryService: createRequestQueryService({ requests: userRepository }),
+     (userRepository.findById = User.findById(id).lean(), src/repositories/userRepository.js line 16; already imported in composition.js.)
+
+2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+     E2E-1 fails at step 2 with a 404: the lookup succeeds against the users collection and finds no document with a request id. E2E-2a fails at its GET-200 precondition for the same reason; E2E-2b is reported as an expected failure (not meaningful here, see NV-71).
+
+3. Result of `npm run test:e2e` with the sabotage applied:
+
+     Running 3 tests using 1 worker
+       x  1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (1.4s)
+       x  2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.2s)
+       x  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.2s)
+
+       1) [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request › 2. sign in: the read returns exactly {reference, status, version} (NV-43) 
+     
+         Error: expect(received).toBe(expected) // Object.is equality
+     
+         Expected: 200
+         Received: 404
+     
+           68 |     const { signIn, get } = await signInViaForm(page, requestId, fixture);
+           69 |     expect(signIn.status()).toBe(201);                 // DEC-018 §5
+         > 70 |     expect(get.status()).toBe(200);
+              |                          ^
+           71 |     etag = get.headers().etag;
+           72 |     expect(etag).toBe('"v0"');                         // DEC-015 §2: ETag "v<version>"
+           73 |     expect(await get.json()).toEqual({ reference, status: STATUS.RECEIVED, version: 0 });
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:70:26
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:67:3
+
+       2 failed
+         [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request ──────────────
+         [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written 
+       1 passed (12.3s)
+
+     Per-test outcome from e2e/test-results/results.json (stats: expected 1, unexpected 2, skipped 0, flaky 0):
+       E2E-1: expected=passed, outcome=unexpected, result=failed
+       E2E-2a: expected=passed, outcome=unexpected, result=failed
+       E2E-2b: expected=failed, outcome=expected, result=failed
+
+   Actual vs expected:
+     E2E-1 failed at step 2 with "Expected: 200 / Received: 404". E2E-2a failed at its precondition (404). E2E-2b reported an expected failure at the same precondition (404).
+   Outcome: CAUGHT (E2E-1 step 2, 404, as predicted).
+
+4. Restore. The file(s) were restored by writing back the original content.
+   SHA-256 of src/composition.js
+     before : 19172b208717a8eda7899fe8a238dc57df75cbe415b45629c4c54faeebcdc660
+     after  : 19172b208717a8eda7899fe8a238dc57df75cbe415b45629c4c54faeebcdc660
+   SHA-256 over src/, client/src/, e2e/ sources (path + content, excluding node_modules, dist, test-results) and shared/:
+     before : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+     after  : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+   Identical to the values recorded before the run. `git diff --stat -- src client shared` shows nothing after restore (e2e/ is untracked, so its hash above is the check).
+   A green re-run is NOT repeated after this NV; the final recorded run (E2E_local_run_2026-10-12.txt) is the restored-state confirmation. See INDEX.txt.
+
+INTERPRETATION
+  What this shows: the NV-43 catch does not depend on the read path crashing; a clean "not found" from the wrong collection also fails step 2.
+  What this does NOT show: that a wrong repository over the SAME collection with different semantics is caught. As with NV-71, nothing here runs in CI, so NV-43 REMAINS NOT CAUGHT in npm test and CI.
+
+VERDICT: CAUGHT by E2E-1 (step 2: GET 404). NV-43 itself stays NOT CAUGHT in npm test and CI

@@ -1,0 +1,74 @@
+Negative verification NV-80 - Client fakes sign-out (shows the prompt without calling DELETE)
+M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+
+Run on : 2026-10-12T21:25:55.452Z (UTC, start of the Playwright run)
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 43a53a7 (HEAD). e2e/ and other working-tree changes are UNCOMMITTED (see INDEX.txt). The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Environment : Atlas test cluster (database civicconnect, credential civicconnect-app). No connection string is recorded.
+Command : npm run test:e2e   (one run for this NV; exit code 1)
+
+CLAIM
+  DEC-018 section 5: sign-out calls DELETE /sessions/current, and E2E-1 step 5 requires the 204.
+
+1. The protected behaviour was broken in client/src/RequestDetail.jsx (never in a test).
+     --- client/src/RequestDetail.jsx (original)
+     +++ client/src/RequestDetail.jsx (sabotaged), in onSignOut
+     -    try { await signOut(); } catch (e) { handle(e); return; }
+     +    /* sabotage: DELETE not sent */
+     (The prompt is still shown afterwards: setRequest(null); setEtag(null); setNeedSignIn(true) are untouched.)
+
+2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+     E2E-1 fails at step 5. The brief expected the reload GET to return 200. Analysis made before the run: step 5 first waits for a DELETE response in the same Promise.all as the click; no DELETE is sent, so the failure should come at that wait (timeout) before the reload is reached.
+
+3. Result of `npm run test:e2e` with the sabotage applied:
+
+     Running 3 tests using 1 worker
+       x  1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (30.2s)
+       ok 2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.3s)
+       x  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.2s)
+
+       1) [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request › 5. sign out: session ended, nothing disclosed after reload 
+     
+         Test timeout of 30000ms exceeded.
+     
+         Error: page.waitForResponse: Test timeout of 30000ms exceeded.
+     
+           129 |   await test.step('5. sign out: session ended, nothing disclosed after reload', async () => {
+           130 |     const [del] = await Promise.all([
+         > 131 |       page.waitForResponse((r) => r.request().method() === 'DELETE' && new URL(r.url()).pathname === '/api/v1/sessions/current'),
+               |            ^
+           132 |       page.getByRole('button', { name: 'Sign out' }).click(),
+           133 |     ]);
+           134 |     expect(del.status()).toBe(204);                    // DEC-018 §5
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:131:12
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:129:3
+
+       1 failed
+         [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request ──────────────
+       2 passed (39.6s)
+
+     Per-test outcome from e2e/test-results/results.json (stats: expected 2, unexpected 1, skipped 0, flaky 0):
+       E2E-1: expected=passed, outcome=unexpected, result=timedOut
+       E2E-2a: expected=passed, outcome=expected, result=passed
+       E2E-2b: expected=failed, outcome=expected, result=failed
+
+   Actual vs expected:
+     E2E-1 timed out at step 5: "page.waitForResponse: Test timeout of 30000ms exceeded" at the DELETE wait (journey.spec.js line 131). The reload "GET 200" assertion was never reached. Steps 1-4 passed, so a history entry was written (DEF-006). E2E-2a passed; E2E-2b expected failure (403/422).
+   Outcome: CAUGHT, at the DELETE wait rather than at the reload as the brief expected.
+
+4. Restore. The file(s) were restored by writing back the original content.
+   SHA-256 of client/src/RequestDetail.jsx
+     before : 5eb4a9dd8eacd03df33eeb2b2970d21a6f64debd15f88eb1729aefa8fd4f74f9
+     after  : 5eb4a9dd8eacd03df33eeb2b2970d21a6f64debd15f88eb1729aefa8fd4f74f9
+   SHA-256 over src/, client/src/, e2e/ sources (path + content, excluding node_modules, dist, test-results) and shared/:
+     before : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+     after  : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+   Identical to the values recorded before the run. `git diff --stat -- src client shared` shows nothing after restore (e2e/ is untracked, so its hash above is the check).
+   A green re-run is NOT repeated after this NV; the final recorded run (E2E_local_run_2026-10-12.txt) is the restored-state confirmation. See INDEX.txt.
+
+INTERPRETATION
+  What this shows: a client that shows the prompt without ending the session is detected.
+  What this does NOT show: that the reload check (session really ended server-side) works; it was not reached, so a server that fails to end the session is unverified by this NV. The two checks are in series and only the first was exercised.
+
+VERDICT: CAUGHT by E2E-1 (step 5: no DELETE observed; test timeout)
