@@ -59,14 +59,17 @@ export async function createRequest({ campusId, categoryId, user }) {
   return request;
 }
 
-/** One Coordinator authorised for one category, and one request in it. All synthetic. */
-export async function createFixture() {
+/**
+ * One member of staff authorised for one category, and one request in it. All synthetic.
+ * A Coordinator unless the case needs another role.
+ */
+export async function createFixture({ roles = [ROLE.COORDINATOR] } = {}) {
   const campusId = new mongoose.Types.ObjectId();
   const categoryId = new mongoose.Types.ObjectId();
   const email = `it-${randomBytes(6).toString('hex')}@example.test`;
   const password = randomBytes(18).toString('base64url');
   const [user] = await User.create([{
-    campusId, email, displayName: 'Integration test', roles: [ROLE.COORDINATOR],
+    campusId, email, displayName: 'Integration test', roles,
     categoryAuthorisations: [categoryId], passwordHash: await hashPassword(password),
   }]);
   const request = await createRequest({ campusId, categoryId, user });
