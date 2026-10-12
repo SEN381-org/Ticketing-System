@@ -37,9 +37,9 @@ function documented() {
   const ops = new Set();
   let path = null;
   for (const line of section.split('\n')) {
-    const p = /^  (\/\S*):\s*$/.exec(line);
+    const p = /^ {2}(\/\S*):\s*$/.exec(line);
     if (p) { path = p[1]; continue; }
-    const m = /^    (get|put|post|delete|options|head|patch|trace):\s*$/.exec(line);
+    const m = /^ {4}(get|put|post|delete|options|head|patch|trace):\s*$/.exec(line);
     if (m && path) ops.add(`${m[1].toUpperCase()} ${prefix}${path}`);
   }
   return ops;
@@ -59,5 +59,7 @@ test('every route the composed application registers is documented in openapi.ya
 test('every operation documented in openapi.yaml is registered in the composed application — DEC-015', () => {
   const reg = registered();
   assert.ok(reg.size > 0, 'no routes were read from the application');
-  assert.deepEqual([...documented()].filter((o) => !reg.has(o)).sort(), [], 'documented but not registered');
+  const docs = documented();
+  assert.ok(docs.size > 0, 'no operations were read from openapi.yaml');
+  assert.deepEqual([...docs].filter((o) => !reg.has(o)).sort(), [], 'documented but not registered');
 });
