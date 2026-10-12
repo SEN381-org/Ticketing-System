@@ -12,7 +12,8 @@
     "test": "node --test",
     "test:integration": "node --env-file=.env.test --import \"data:text/javascript,import dns from 'node:dns';dns.setServers(['8.8.8.8','1.1.1.1']);\" --test \"tests/integration/*.test.js\"",
     "lint": "eslint .",
-    "build:client": "npm --prefix client run build"
+    "build:client": "npm --prefix client run build",
+    "test:e2e": "npm --prefix e2e test"
   },
   "dependencies": {
     "express": "^4.22.3",

@@ -10,7 +10,7 @@ import react from 'eslint-plugin-react';
 
 export default [
   {
-    ignores: ['docs/**', 'extras/**', 'node_modules/**', 'client/dist/**'],
+    ignores: ['docs/**', 'extras/**', 'node_modules/**', 'client/dist/**', 'e2e/test-results/**', 'e2e/playwright-report/**'],
   },
 
   js.configs.recommended,
