@@ -1,0 +1,47 @@
+Negative verification NV-41 — Requester holding a staff role is treated as a plain Requester
+M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  Only a Requester holding NO staff role is given 404; a user who is a Requester and also staff, refused, gets 403 (project-lead decision).
+
+1. The protected behaviour was broken in src/services/requestQueryService.js.
+     --- src/services/requestQueryService.js (original)
+     +++ src/services/requestQueryService.js (sabotaged)
+     @@ line 29 @@
+               // not disclosed. Anyone else refused gets 403.
+       -       if (roles.includes(ROLE.REQUESTER) && !isStaff) throw new NotFoundError(requestId);
+       +       if (roles.includes(ROLE.REQUESTER)) throw new NotFoundError(requestId);
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     (no test failed)
+     # tests 152
+     # pass 152
+     # fail 0
+
+   Expected to fail (derived before execution from the claim above):
+     (no existing test was expected to catch this; the run was to find out)
+   Outcome: NOT CAUGHT
+
+3. src/services/requestQueryService.js was restored by writing back its original content. SHA-256 after restore:
+     83d6a63769c8d882a7bba9d5eb434e93ac4d91d85c7b101acfececca8fe40fdc
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  NOT CAUGHT. No existing test fails when this behaviour is broken, so nothing in the suite is evidence for it.
+  What this does NOT show: Nothing exercises an actor holding both Requester and a staff role: all harness users hold exactly one role. FR-1.2 permits several roles per user.
+  Proposed test (not added; reported to the project lead first): A service test with actorOf([ROLE.REQUESTER, ROLE.TECHNICIAN], ['other-cat']) on baseRequest expecting AuthorisationError (not NotFoundError).
+
+LATER RE-RUN
+  Re-run against the service and HTTP tests added afterwards (tests/requestRead.test.js)
+  as NV-49: CAUGHT. This record stays as the NOT CAUGHT history.

@@ -1,0 +1,167 @@
+M3 read endpoint (GET /api/v1/requests/{id}) and shared/domainValues.js — negative verification index (project instructions §6)
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on that commit
+         (src/services/requestQueryService.js, shared/, tests/requestRead.test.js and
+         tests/domainValues.test.js are untracked; the rest are unstaged modifications).
+
+Each entry broke one protected behaviour in the code (never in a test), ran the full
+suite, recorded the failing test names and counts, restored the file by writing back its
+exact original content, confirmed the SHA-256 equals the value taken before the run, and
+re-ran the full suite. Expected failures were written down before the run; they are in
+each file. The run was scripted so that every sabotage was applied and reverted
+mechanically. Git was not used to restore anything.
+
+Baseline before and after: 152 tests, 152 pass, 0 fail.
+
+NV-27  CAUGHT      Guard removed from GET /requests/:id  (NV-27_Guard_removed_from_GET_by_id.txt)
+NV-28  CAUGHT      Status returned raw instead of through visibleStatusFor  (NV-28_Status_returned_raw_not_via_visibleStatusFor.txt)
+NV-29  CAUGHT      An extra field added to the response body  (NV-29_Extra_field_added_to_the_result.txt)
+NV-30  CAUGHT      A refused Requester receives 403 instead of 404  (NV-30_Refused_Requester_gets_403_instead_of_404.txt)
+NV-31  CAUGHT      Earlier defect re-introduced: any non-staff actor gets 404  (NV-31_Earlier_defect_any_non_staff_actor_gets_404.txt)
+NV-32  CAUGHT      mayViewRequest bypassed (every actor allowed)  (NV-32_mayViewRequest_bypassed.txt)
+NV-33  CAUGHT      ETag emitted without the "v" prefix  (NV-33_ETag_without_the_v_prefix.txt)
+NV-34  CAUGHT      ETag emitted with a weak W/ prefix  (NV-34_ETag_emitted_as_a_weak_validator.txt)
+NV-35  CAUGHT      Static import added to shared/domainValues.js  (NV-35_Static_import_added_to_shared_domainValues.txt)
+NV-36  CAUGHT      Dynamic import() added to shared/domainValues.js  (NV-36_Dynamic_import_added_to_shared_domainValues.txt)
+NV-37  CAUGHT      require() added to shared/domainValues.js  (NV-37_require_added_to_shared_domainValues.txt)
+NV-38  CAUGHT      src/models/_shared.js given its own copy of STATUS  (NV-38_Second_copy_of_STATUS_in_models_shared.txt)
+NV-39  CAUGHT      One status value altered in shared/domainValues.js  (NV-39_One_status_value_altered_in_shared.txt)
+NV-40  NOT CAUGHT  GET /requests/{id} removed from docs/api/openapi.yaml  (NV-40_GET_requests_id_removed_from_openapi.txt)
+                   Re-run against the later contract test: NV-45, CAUGHT.
+NV-41  NOT CAUGHT  Requester who also holds a staff role treated as a plain Requester  (NV-41_Requester_who_also_holds_a_staff_role.txt)
+                   Re-run against the later tests: NV-49, CAUGHT.
+NV-42  CAUGHT      Composition root omits requestQueryService  (NV-42_Composition_omits_requestQueryService.txt)
+NV-43  NOT CAUGHT  Composition root wires the query service to the wrong repository  (NV-43_Composition_wires_the_wrong_repository.txt)
+                   STAYS NOT CAUGHT in npm test and in CI: a permanent open gap there. Only E2E-1 (local, against
+                   the Atlas test cluster, and on staging, but NOT in CI) could catch it. It is not covered by E2E-1
+                   in the automated suite.
+NV-44  CAUGHT      createApp does not pass requestQueryService to the router  (NV-44_app_does_not_pass_requestQueryService_to_the_router.txt)
+
+Follow-up run (tests added after the lead's review), 2026-10-12 UTC, against the same
+uncommitted tree; baseline for these records is 158 tests (152 + 6 new), 158 pass:
+
+NV-45  CAUGHT      Re-run of NV-40: GET /requests/{id} removed from openapi.yaml, against the new contract test  (NV-45_Rerun_of_NV_40_GET_removed_from_openapi.txt)
+NV-46  CAUGHT      An operation documented in openapi.yaml but not implemented  (NV-46_Documented_operation_that_is_not_registered.txt)
+NV-47  CAUGHT      A public route (GET /health) removed from openapi.yaml  (NV-47_Public_route_health_removed_from_openapi.txt)
+NV-48  CAUGHT      Route path drifts from the contract (/transitions renamed in code)  (NV-48_Route_path_drift_in_code.txt)
+NV-49  CAUGHT      Re-run of NV-41: Requester with a staff role treated as a plain Requester, against the new tests  (NV-49_Rerun_of_NV_41_Requester_with_staff_role.txt)
+NV-50  CAUGHT      If-Match parser regex changed alone  (NV-50_If_Match_parser_changed_alone.txt)
+NV-51  CAUGHT      etagFor changed alone  (NV-51_etagFor_changed_alone.txt)
+NV-52  CAUGHT      If-Match parser returns version + 1  (NV-52_If_Match_parser_off_by_one.txt)
+NV-53  CAUGHT      etagFor emits version + 1  (NV-53_etagFor_emits_version_plus_one.txt)
+NV-54  CAUGHT      A refused Requester's 404 differs from the missing-id 404 in a header only  (NV-54_Refusal_404_differs_from_missing_in_a_header.txt)
+
+New tests: tests/openapiRoutes.test.js (2 tests, registered <-> documented, METHOD + path,
+public routes included; the paths section is read with a line scan in the style of
+tests/openapiContract.test.js, no YAML parser is declared as a dependency); in
+tests/requestRead.test.js, a service test and an HTTP test for a Requester holding a staff
+role (403, not 404), two ETag round-trip tests (the real transition service over fake,
+version-conditional persistence), and the existing indistinguishability test widened to
+compare headers.
+
+Header comparison (task 4): no difference was found. The headers compared for both 404s
+were connection, content-length, content-type, etag (a weak tag Express derives from the
+identical body) and keep-alive. Only `date` is excluded, as it is the response clock. NV-54
+shows a header-only difference would fail the test.
+
+FLAKE, reported and not hidden: "login sets __Host-sid with HttpOnly, Secure, SameSite=Lax,
+Path=/ and no Domain" (tests/app.test.js) failed once in the green re-run of NV-54 and once
+in a later six-run loop. The failure message was not captured either time; it did not fail
+in about 175 further full-suite runs. The test and the code it exercises are not part of
+this change. Cause unknown. It was not re-run until green at any point. Logged as DEF-013.
+
+Three sabotages (NV-40, NV-41, NV-43) were NOT caught when first run. NV-40 and NV-41 were later
+closed by new tests (NV-45, NV-49) and their records stay as history. NV-43 remains NOT CAUGHT.
+
+Notes on individual records
+
+NV-27 also failed "the request router guards every route it registers", which was not
+predicted but is the same protection at router level. NV-39 also failed two tests in other
+files that assert the status set (not predicted, same protection). NV-44 failed seven more
+HTTP tests than predicted: any 200 or refusal path needs the service, so a missing wiring
+fails them all.
+
+NV-33 / NV-34 ETag and the If-Match parser. The transition route accepts If-Match only in
+the form /^"v(\d+)"$/ (src/routes/requestRoutes.js, versionFromIfMatch, line 29). The GET
+emits etagFor(result.version) = "v<version>" (same file, etagFor, line 25; GET handler line
+71). One-off check, run against the real readCommand (not a test, nothing kept):
+
+  "v3"      -> expectedVersion 3
+  3         -> rejected: PreconditionRequiredError
+  W/"v3"    -> rejected: PreconditionRequiredError
+
+So the format the GET emits is accepted, and the two mutated formats would be refused when
+a client sent them back. NOTE: no test links the two. If someone changed the regex in
+versionFromIfMatch (or etagFor) the ETag test would still pass. Proposed (not added): a
+round-trip test that takes the ETag header from a real GET response and passes it as
+If-Match to readCommand, expecting the same version.
+
+Citation review of the new and changed tests (task 1)
+
+Wrong citation, corrected (comment/name only, no assertion touched):
+  tests/requestRead.test.js, service Administrator test and HTTP Administrator test. Cited
+  FR-6.7 (service) and DEC-015 §4 (HTTP). FR-6.7 forbids altering or deleting recorded
+  history entries; it says nothing about reads. DEC-015 §4 row 403 is "operation not
+  permitted for role (function level)", and request:read is permitted to every role, so the
+  row does not cover an Administrator refused at object level; DEC-015 is silent on that case.
+  Both now read "project-lead decision; DEC-015 §4 is silent, FR-1.3".
+  The honest basis is a lead decision recorded in the code and openapi.yaml, not a requirement.
+
+Imprecise citation, corrected by adding the requirement that actually describes the read:
+  "staff not authorised for the category" (service and HTTP) and "a Coordinator authorised
+  ... gets 200" cited FR-4.1, which is the staff request LIST (AC-FR-4.1 is about the list).
+  The single-request read is FR-4.2 ("full detail ... to a staff user authorised to view
+  it"), which is Proposed (OI-01). Both are now cited.
+  tests/domainValues.test.js, exact-values test: added AC-FR-6.1 (the criterion it is derived
+  from) to the name.
+
+Reported, not changed:
+  - tests/domainValues.test.js header cites "the M2 defect" with no identifier; there is no
+    DEF- number for it in the repository (only DEF-002, a different defect). It should cite
+    the Defect Register entry once one exists (M3 requires that register).
+    Resolved afterwards: the defect predates the Defect Register, so no retrospective DEF is
+    raised. The header comment here and in src/models/_shared.js now cites the AI Usage
+    Register row that recorded it at the time (v0.12, row 48, 2026-10-01).
+  - The no-import test is titled with DEC-014. DEC-014 lives in Decision Log v0.7.xlsx, which
+    I could not read as text; project instructions describe it as the layered-monolith rule
+    ("a layer calls only the layer directly below"). Browser-safety of a shared module is not
+    evidently what it says. Treat the citation as unverified.
+  - tests/requestRead.test.js header: "see the report for this change" is a dangling
+    reference and will mean nothing to a later reader.
+  - "a requester viewing their own non-security request gets 200 — FR-3.6": FR-3.6 is a
+    prohibition (a requester cannot see another user's request); that a requester CAN see
+    their own is implied, not stated. Weak but not wrong.
+  - The 403 for a non-Security-Officer staff member on a security request (FR-1.5) refuses the
+    whole request. FR-1.5 and AC-FR-1.5 restrict the description, comment history and action
+    history, not knowledge that the request exists. The service refuses the entire read
+    because the endpoint returns no more than reference/status/version and it follows the
+    existing mayViewRequest rule; this is the same inference recorded as OI-15 for acting on
+    security requests. The test cites FR-1.5 for it, which supports the restriction in
+    principle but not the choice of 403 over returning the status alone.
+  - A requester viewing their own security request is OI-16 territory (FR-1.5 against
+    FR-3.5/FR-3.6). The test asserts the FR-3.5 mapped status; it does not claim OI-16 is
+    settled.
+
+Behaviour the tests do not pin down
+
+  - NV-43: the composed (production) application is never driven over HTTP for GET, so the
+    wiring of the read path in composeApplication is checked only by the service key names
+    (NV-42). Left to E2E-1, which runs locally and on staging only, not in CI, so this gap
+    stays open in npm test permanently.
+  - A user holding Requester plus a staff role, viewing a request they own, is not pinned.
+    The dual-role tests (NV-49) cover only a request the user does not own. Noted as a gap;
+    no test added.
+  - A malformed (non-ObjectId) id yields 500 INTERNAL_ERROR on both request routes. Logged as
+    DEF-012; not touched here. The new openapi.yaml entry documents a 24-hex pattern for the
+    id but lists no 400 for a malformed one.
+
+  Closed since first recorded: the openapi.yaml contract gap (NV-40, closed by NV-45), the
+  Requester-plus-staff-role gap for a request not owned (NV-41, closed by NV-49), and the
+  header comparison of the two 404 cases (closed, NV-54).
+
+These records cover the unit and HTTP-level tests, run without a database. They are not
+evidence of behaviour against a real cluster, of the real session store, or of a client
+bundle building shared/domainValues.js.

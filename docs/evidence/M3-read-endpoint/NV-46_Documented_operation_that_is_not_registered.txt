@@ -1,0 +1,46 @@
+Negative verification NV-46 — An operation documented in openapi.yaml but not implemented
+M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+
+Run on : 2026-10-12 09:59 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+Baseline: 158 tests, 158 pass (including the tests added in this follow-up).
+
+CLAIM
+  Every operation in the contract is implemented (DEC-015): the reverse direction of NV-45.
+
+1. The protected behaviour was broken in docs/api/openapi.yaml.
+     --- docs/api/openapi.yaml (original)
+     +++ docs/api/openapi.yaml (sabotaged)
+     @@ line 171 @@
+                       schema: { $ref: '#/components/schemas/Problem' }
+       +   /requests/{id}/comments:
+       +     post:
+       +       summary: Add a comment
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - every operation documented in openapi.yaml is registered in the composed application — DEC-015
+     # tests 158
+     # pass 157
+     # fail 1
+
+   Expected to fail (derived before execution from the claim above):
+     every operation documented in openapi.yaml is registered in the composed application
+   Outcome: CAUGHT — every expected test failed
+
+3. Each broken file was restored by writing back its original content. SHA-256 after restore:
+     152cdbda005d52f943afe4d80fa257901fc39dcb19cafa51823df01d23b60d1d  docs/api/openapi.yaml
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 158
+     # pass 158
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: A documented-only operation fails the reverse direction. Only that test fails, so the two directions are independently verified.
+  What this does NOT show: As NV-45.

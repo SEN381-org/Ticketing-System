@@ -1,0 +1,43 @@
+Negative verification NV-42 — Composition root omits requestQueryService
+M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  The composed (production) application has the read service wired, so GET /requests/:id is reachable (M3 integration goal).
+
+1. The protected behaviour was broken in src/composition.js.
+     --- src/composition.js (original)
+     +++ src/composition.js (sabotaged)
+     @@ line 39 @@
+             healthService: createHealthService({ pingDatabase }),
+       -     requestQueryService: createRequestQueryService({ requests: requestRepository }),
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - composition performs no I/O: the graph builds with no database
+     # tests 152
+     # pass 151
+     # fail 1
+
+   Expected to fail (derived before execution from the claim above):
+     composition performs no I/O
+   Outcome: CAUGHT — every expected test failed
+
+3. src/composition.js was restored by writing back its original content. SHA-256 after restore:
+     19172b208717a8eda7899fe8a238dc57df75cbe415b45629c4c54faeebcdc660
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: Omitting the service from the composition is detected, but only through the list of service names in composition.test.js; no test sends HTTP to the composed app.
+  What this does NOT show: That the composed GET works end to end (needs a database or injectable repositories in composeApplication).

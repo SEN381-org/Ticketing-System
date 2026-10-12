@@ -1,0 +1,53 @@
+Negative verification NV-50 — If-Match parser regex changed alone (versionFromIfMatch)
+M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+
+Run on : 2026-10-12 09:59 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+Baseline: 158 tests, 158 pass (including the tests added in this follow-up).
+
+CLAIM
+  The ETag the GET emits is accepted verbatim as If-Match by the transition route (DEC-015 §3). Previously only convention held the two together.
+
+1. The protected behaviour was broken in src/routes/requestRoutes.js.
+     --- src/routes/requestRoutes.js (original)
+     +++ src/routes/requestRoutes.js (sabotaged)
+     @@ line 29 @@
+           if (!header) throw new PreconditionRequiredError();
+       -   const match = /^"v(\d+)"$/.exec(header.trim());
+       +   const match = /^v(\d+)$/.exec(header.trim());
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - with a session the transition reaches the service with the session actor — DEC-018 §4
+     not ok - the ETag from GET, used verbatim as If-Match on the transition route, is accepted — DEC-015 §3
+     not ok - an ETag read before another writer changed the version is refused 412, and a fresh one is accepted — DEC-015 §3, DEC-016
+     not ok - a malformed If-Match is refused rather than parsed loosely
+     not ok - a well-formed command carries the version, key and fingerprint
+     not ok - the body fields are the DEC-015 names — N-3
+     not ok - the same key with a different body gives a different fingerprint — DEC-015
+     # tests 158
+     # pass 151
+     # fail 7
+
+   Expected to fail (derived before execution from the claim above):
+     the ETag from GET, used verbatim as If-Match on the transition route, is accepted
+     an ETag read before another writer changed the version is refused 412, and a fresh one is accepted
+   Also failed (not predicted): with a session the transition reaches the service with the session actor — DEC-018 §4 | a malformed If-Match is refused rather than parsed loosely | a well-formed command carries the version, key and fingerprint | the body fields are the DEC-015 names — N-3 | the same key with a different body gives a different fingerprint — DEC-015
+   Outcome: CAUGHT — every expected test failed
+
+3. Each broken file was restored by writing back its original content. SHA-256 after restore:
+     b4d8cf24ebcbbe84f18d181cee47c8faffe354248c82a69c5de743191920fc6a  src/routes/requestRoutes.js
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 158
+     # pass 158
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: Changing only the parser, so that it no longer accepts what the GET emits, fails the round-trip test (428 in place of 201). This is the contract no ETag-string test could see.
+  What this does NOT show: Which side is right; the test says only that they disagree. Other tests that send a literal If-Match also fail here (listed above), but they would have passed had the parser and a literal been changed together; the round-trip test is the one that ties the real GET output to the parser.

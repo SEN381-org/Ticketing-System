@@ -1,0 +1,58 @@
+Negative verification NV-32 — mayViewRequest bypassed (every actor allowed)
+M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  Object-level access is enforced in the service via mayViewRequest (FR-3.6, FR-4.1, FR-1.5, DEC-012 enforcement point 2).
+
+1. The protected behaviour was broken in src/services/requestQueryService.js.
+     --- src/services/requestQueryService.js (original)
+     +++ src/services/requestQueryService.js (sabotaged)
+     @@ line 23 @@
+         
+       -     if (!mayViewRequest(request, actor)) {
+       +     if (false && !mayViewRequest(request, actor)) {
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - service: staff not authorised for the category get AuthorisationError — FR-4.2 (provisional, OI-01), FR-4.1, DEC-012
+     not ok - service: non-Security-Officer staff on a security request get AuthorisationError — FR-1.5
+     not ok - service: a requester asking for another requester's request gets NotFoundError — FR-3.6, DEC-015 §4
+     not ok - service: an Administrator-only actor is refused with AuthorisationError, not 404 — project-lead decision; DEC-015 §4 is silent, FR-1.3
+     not ok - staff not authorised for the category get 403 with no request data — FR-4.2 (provisional, OI-01), FR-4.1, DEC-012
+     not ok - a security request viewed by non-Security-Officer staff is 403 — FR-1.5
+     not ok - an Administrator-only actor viewing an existing request is 403 with no request data — project-lead decision; DEC-015 §4 is silent, FR-1.3
+     not ok - another user's request is indistinguishable from a missing id — FR-3.6, DEC-015 §4
+     # tests 152
+     # pass 144
+     # fail 8
+
+   Expected to fail (derived before execution from the claim above):
+     service: staff not authorised for the category
+     service: non-Security-Officer staff on a security request
+     service: a requester asking for another requester's request
+     service: an Administrator-only actor
+     staff not authorised for the category get 403
+     a security request viewed by non-Security-Officer staff is 403
+     an Administrator-only actor viewing an existing request is 403
+     another user's request is indistinguishable from a missing id
+   Outcome: CAUGHT — every expected test failed
+
+3. src/services/requestQueryService.js was restored by writing back its original content. SHA-256 after restore:
+     83d6a63769c8d882a7bba9d5eb434e93ac4d91d85c7b101acfececca8fe40fdc
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: Every refusal path (category, security category, other requester, Administrator) is individually detected at both service and HTTP level, each asserting that no request data is returned.
+  What this does NOT show: That mayViewRequest itself is correct; its own tests are elsewhere (NV-24 covers its Security Officer clause).

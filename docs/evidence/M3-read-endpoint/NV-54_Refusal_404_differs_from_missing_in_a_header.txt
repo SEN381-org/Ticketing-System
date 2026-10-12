@@ -1,0 +1,61 @@
+Negative verification NV-54 — A refused Requester's 404 differs from the missing-id 404 in a header only
+M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+
+Run on : 2026-10-12 09:59 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+Baseline: 158 tests, 158 pass (including the tests added in this follow-up).
+
+CLAIM
+  The two 404s are indistinguishable in headers as well as status and body (FR-3.6, AC-FR-3.6, DEC-015 §4). Status and body are unchanged by this sabotage, so only the header comparison can detect it.
+
+1. The protected behaviour was broken in src/services/requestQueryService.js and src/middleware/errorHandler.js.
+     --- src/services/requestQueryService.js (original)
+     +++ src/services/requestQueryService.js (sabotaged)
+     @@ line 29 @@
+               // not disclosed. Anyone else refused gets 403.
+       -       if (roles.includes(ROLE.REQUESTER) && !isStaff) throw new NotFoundError(requestId);
+       +       if (roles.includes(ROLE.REQUESTER) && !isStaff) { const e = new NotFoundError(requestId); e.refused = true; throw e; }
+     --- src/middleware/errorHandler.js (original)
+     +++ src/middleware/errorHandler.js (sabotaged)
+     @@ line 42 @@
+         
+       +     if (error.refused) res.set('X-Request-Exists', '1');
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - another user's request is indistinguishable from a missing id, in status, body and headers — FR-3.6, DEC-015 §4
+     # tests 158
+     # pass 157
+     # fail 1
+
+   Expected to fail (derived before execution from the claim above):
+     another user's request is indistinguishable from a missing id, in status, body and headers
+   Outcome: CAUGHT — every expected test failed
+
+3. Each broken file was restored by writing back its original content. SHA-256 after restore:
+     83d6a63769c8d882a7bba9d5eb434e93ac4d91d85c7b101acfececca8fe40fdc  src/services/requestQueryService.js
+     d9aae0f9c60fc94a3d0188ebc68dac1a3e257b521d58cdcd794325bd42d11458  src/middleware/errorHandler.js
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 158
+     # pass 157
+     # fail 1
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: The widened comparison detects a header-only existence leak that the previous status-and-body test could not have seen.
+  What this does NOT show: Differences below the header level, or timing.
+
+NOTE ON THE GREEN RE-RUN IN SECTION 3
+  That re-run reported 157 of 158: one unrelated test failed,
+  "login sets __Host-sid with HttpOnly, Secure, SameSite=Lax, Path=/ and no Domain"
+  (tests/app.test.js). The restore hash matched, and the sabotage run itself had exactly
+  one failure, the target test. The failing test is a FLAKE: it failed once more in a
+  later six-run loop (1 of 6) and did not fail in about 175 further full-suite runs. The
+  failure message was not captured on either occasion. It was not re-run until green to
+  produce this record; the 158/158 in the other records and the final run are separate
+  runs. See INDEX.txt.

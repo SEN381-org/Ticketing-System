@@ -1,0 +1,46 @@
+Negative verification NV-28 — Status returned raw instead of through visibleStatusFor
+M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  A requester viewing a security-category request is shown only Received, In Progress or Closed; the internal status is never returned (FR-3.5, AC-FR-3.5).
+
+1. The protected behaviour was broken in src/services/requestQueryService.js.
+     --- src/services/requestQueryService.js (original)
+     +++ src/services/requestQueryService.js (sabotaged)
+     @@ line 38 @@
+               reference: request.reference,
+       -       status:    visibleStatusFor(request.status, Boolean(request.securityCategory), actor),
+       +       status:    request.status,
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - service: status is visibleStatusFor output for a requester on a security request — FR-3.5
+     not ok - a requester viewing their own security request sees the mapped status — FR-3.5, DEC-012 point 3
+     # tests 152
+     # pass 150
+     # fail 2
+
+   Expected to fail (derived before execution from the claim above):
+     service: status is visibleStatusFor output for a requester on a security request
+     a requester viewing their own security request sees the mapped status
+   Outcome: CAUGHT — every expected test failed
+
+3. src/services/requestQueryService.js was restored by writing back its original content. SHA-256 after restore:
+     83d6a63769c8d882a7bba9d5eb434e93ac4d91d85c7b101acfececca8fe40fdc
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: The service-level and HTTP-level tests each use an input (Assigned on a security request) whose mapped value differs from the raw value, so passing the raw status through is detected at both levels.
+  What this does NOT show: The correctness of the FR-3.5 mapping table itself (accessRules tests), nor OI-16: whether a requester may see their own security request at all is unresolved.
