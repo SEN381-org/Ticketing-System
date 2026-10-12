@@ -27,7 +27,9 @@ Summary
 
 Update after review: both points below have been followed up. The named subtests for Cases 1
 and 2b are shown failing in the section "ISOLATED VERIFICATIONS" at the end of this file, and
-the index finding is logged as DEF-014. The original text is kept as first recorded.
+the index finding on (actorId, idempotencyKey) is logged as DEF-014. A second index finding,
+on (requestId, requestVersion), came out of the isolated runs and is logged as DEF-015. The
+original text is kept as first recorded.
 
 Two things in this record need a decision and are not resolved here:
   - Cases 1 and 2b: the safety subtests §7 names ("the request is unchanged", "no history
@@ -921,8 +923,8 @@ Rejected, which is terminal, so the transition rule also refuses a second attemp
 will not hold for a non-terminal target status once the assignments route exists.
 
 What it shows about the test cluster: with the application guards removed, MongoDB accepted
-a second history entry with the same (actorId, idempotencyKey) and with the same
-(requestId, requestVersion). Logged as DEF-014.
+a second history entry with the same (actorId, idempotencyKey), logged as DEF-014, and with
+the same (requestId, requestVersion), logged as DEF-015.
 
 ================================================================================
 ISOLATED VERIFICATION, Case 1: no version check and no transition rule
@@ -992,7 +994,7 @@ Result
   of ignoring checkTransition, which is the guard case 4 exercises. It is not part of this
   verification.
 
-  Further observation on DEF-014. Under this break applyChange returns expectedVersion + 1,
+  Further observation, logged as DEF-015. Under this break applyChange returns expectedVersion + 1,
   so the second history entry is written with requestVersion 1, the same as the first. The
   insert was accepted. The unique index {requestId: 1, requestVersion: 1} that specification
   S5 also assumes therefore did not act on the test cluster either.
@@ -1532,9 +1534,9 @@ Result
   Cases 1, 2c, 2d, 2e and 4 fail further subtests as side effects of the three removed
   guards. They are listed but are not part of this verification.
 
-  Further observation on DEF-014. The second entry has the same actorId and idempotencyKey
-  as the first, and the same requestId and requestVersion (1). Neither unique index refused
-  it.
+  Further observation on DEF-014 and DEF-015. The second entry has the same actorId and
+  idempotencyKey as the first (DEF-014), and the same requestId and requestVersion, 1
+  (DEF-015). Neither unique index refused it.
 
 Every subtest, as reported by the runner (unedited):
 
