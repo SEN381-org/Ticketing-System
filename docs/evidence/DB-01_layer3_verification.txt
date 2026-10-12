@@ -1,0 +1,114 @@
+Negative verification of DB-01 layer 3 (database privilege on requestHistory and auditLog)
+FR-6.7, AC-FR-6.7, NFR-1.4. DB-01 v0.3 section 4, DEC-003 v0.2
+
+Run on        : 2026-10-11 23:09 UTC
+Node          : v26.0.0
+Branch        : task/M3-db01-layer3-role (0b98abc)
+Driver        : native MongoClient (bundled with mongoose 8.24.4), no models loaded
+Database user : civicconnect-app
+Database      : civicconnect
+Roles         : civicconnect-app@admin
+Granted on requestHistory : find, insert
+Granted on auditLog       : find, insert
+Granted on sessions       : find, insert, remove, update
+Privileges reported       : 10
+Database-wide grants      : none
+
+1. Control. find on requestHistory with the application credential:
+     db.collection('requestHistory').findOne({})
+
+     allowed. One document read.
+
+2. Native-driver update on requestHistory, which layers 1 and 2 cannot see:
+     await db.collection('requestHistory').updateOne({}, { $set: { x: 1 } });
+
+     REFUSED by the database.
+     code    : 8000 (AtlasError)
+     message : user is not allowed to do action [update] on [civicconnect.requestHistory]
+
+3. Native-driver delete on requestHistory. The filter matches no document, so nothing is lost if it is accepted:
+     await db.collection('requestHistory').deleteOne({ _id: 'layer3-probe-309d17376875' });
+
+     REFUSED by the database.
+     code    : 8000 (AtlasError)
+     message : user is not allowed to do action [remove] on [civicconnect.requestHistory]
+
+4. Control. find on auditLog with the application credential:
+     db.collection('auditLog').findOne({})
+
+     allowed. One document read.
+
+5. Native-driver update on auditLog, which layers 1 and 2 cannot see:
+     await db.collection('auditLog').updateOne({}, { $set: { x: 1 } });
+
+     REFUSED by the database.
+     code    : 8000 (AtlasError)
+     message : user is not allowed to do action [update] on [civicconnect.auditLog]
+
+6. Native-driver delete on auditLog. The filter matches no document, so nothing is lost if it is accepted:
+     await db.collection('auditLog').deleteOne({ _id: 'layer3-probe-868e9556635e' });
+
+     REFUSED by the database.
+     code    : 8000 (AtlasError)
+     message : user is not allowed to do action [remove] on [civicconnect.auditLog]
+
+7. Control. The same role must still write sessions (DEC-018):
+     insertOne, updateOne, deleteOne on one probe document
+
+     allowed. Probe document inserted, updated and deleted.
+     Indexes on sessions: could not be listed: 8000 (AtlasError)
+
+8. No database-wide grant reaches requestHistory or auditLog with a destructive action.
+     Not attempted for real: a drop or rename that was wrongly allowed could not be undone.
+     Looked for: update, remove, dropCollection, renameCollectionSameDB, dropIndex, dropDatabase, collMod, convertToCapped, emptycapped
+
+     none found. Database-wide grants reported: 0.
+
+PASS  find on requestHistory is allowed
+PASS  update on requestHistory is refused
+PASS  delete on requestHistory is refused
+PASS  find on auditLog is allowed
+PASS  update on auditLog is refused
+PASS  delete on auditLog is refused
+PASS  insert, update and delete on sessions are allowed
+PASS  no database-wide grant carries a destructive action
+
+RESULT: VERIFIED
+
+The database refused an update and a delete on requestHistory and on auditLog
+that were issued with the application credential through the native
+driver. The same credential read both collections and wrote sessions in
+the same run, so the refusal is the missing privilege and not a failed
+login. The privileges the server reports for this connection include no
+database-wide grant of a destructive action. DB-01 layer 3 therefore
+holds for this credential on this cluster.
+
+What this does not show: that any other credential is restricted (the
+retention-operator user and Atlas project administrators are not), or
+that the same role exists in another environment. Each cluster has its
+own role and needs its own run.
+
+REVIEW NOTES
+  Added by hand after the run, in response to the review of PR #85. Everything
+  above this heading is the script's output, unaltered.
+
+  1. Environment Note: This run was executed on a workstation (Node v26)
+     against project CivicConnect-Test / database civicconnect, rather than
+     the project's baseline Node 22 or the CI runner environment defined in
+     DEC-003.
+
+  2. Error Code Note: DB-01 §4 expects an 'Unauthorized' refusal. Atlas
+     returns AtlasError code 8000 ('user is not allowed to do action'), which
+     satisfies this requirement.
+
+  3. Privilege Listing Note: The "Granted on <collection>" lines report only
+     grants whose `resource.collection` matches that collection. The refused
+     updates and deletes prove there is no database-wide grant of update or
+     remove. They do not rule out a database-wide grant of dropCollection,
+     renameCollection or dropIndex, which could destroy the audit trail
+     without an update or a remove. That gap is covered by step 8: the script
+     lists every grant whose resource has an empty collection name or reaches
+     every database, and the server reported none ("Database-wide grants:
+     none", 10 privileges reported in total). Step 8 rests on the server's
+     own report of this connection's privileges. Unlike steps 2, 3, 5 and 6,
+     it is not an attempted operation.
