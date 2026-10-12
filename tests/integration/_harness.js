@@ -14,7 +14,7 @@
  * a URI whose host does not name the test cluster, they are skipped with a
  * printed reason and nothing connects. A skipped case is not a verified one.
  *
- * Run:  npm run test:integration   (reads .env)
+ * Run:  npm run test:integration   (reads .env.test)
  */
 
 import { before, after } from 'node:test';
