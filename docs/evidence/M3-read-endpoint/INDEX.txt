@@ -170,3 +170,39 @@ Behaviour the tests do not pin down
 These records cover the unit and HTTP-level tests, run without a database. They are not
 evidence of behaviour against a real cluster, of the real session store, or of a client
 bundle building shared/domainValues.js.
+
+Lint-driven regex change, verified after the fact (2026-10-12 UTC; baseline 167 tests, 167 pass).
+When the ESLint config from dev was merged, no-regex-spaces forced two regexes in
+tests/openapiRoutes.test.js to be rewritten from literal spaces to {n} quantifiers. The change was
+confirmed only by a green run. These entries are the after-the-fact verification.
+
+Equivalence, old vs new, over the real docs/api/openapi.yaml split exactly as the test splits it
+(slice from "\npaths:" to "\ncomponents:", split on "\n"; the file has CRLF endings, absorbed by \s*$ in both):
+  422 lines in the file, 279 in the paths section. Path regex: old matched 5, new matched 5.
+  Operation regex: old 5, new 5. Captures identical: paths /health, /sessions, /sessions/current,
+  /requests/{id}, /requests/{id}/transitions; operations get, post, delete, get, post.
+  Run over all 422 lines of the whole file as well: 0 disagreements.
+  Edge lines, old/new (P = path regex, O = operation regex). Old and new AGREED on all 22:
+    " /a:" 1 space              P no/no     "   /a:" 3 spaces          P no/no
+    "     /a:" 5 spaces         P no/no     "  /a:" 2 spaces           P /a / /a
+    "    /a:" path at 4 spaces  P no/no     tab "\t/a:"                P no/no
+    "  \t/a:" tab in indent     P no/no     "  /a:   " trailing spaces P /a / /a
+    "  /a:\r" trailing CR       P /a / /a   "  a:" no leading slash    P no/no
+    "  /:" root path            P / / /
+    " get:" 1, "   get:" 3, "     get:" 5, "      get:" 6 spaces      O no/no each
+    "    get:" 4 spaces         O get / get "    get:  " trailing sp    O get / get
+    "    post:\r" trailing CR   O post / post
+    "\tget:" tab                O no/no     "  get:" op at 2 spaces    O no/no
+    "    GET:" uppercase        O no/no     "    foo:" unknown verb     O no/no
+  The comparison script was kept outside the repository.
+
+NV-66  CAUGHT      Re-run of NV-45 against the rewritten regexes: GET /requests/{id} removed  (NV-66_Rerun_of_NV_45_GET_removed_from_openapi_after_regex_change.txt)
+NV-67  CAUGHT      Path regex broken ({2} -> {3}), matches nothing  (NV-67_Path_regex_quantifier_broken_2_to_3.txt)
+NV-68  CAUGHT      Operation regex broken ({4} -> {5}), matches nothing  (NV-68_Operation_regex_quantifier_broken_4_to_5.txt)
+                   NV-67/NV-68 finding: only the first test fails; the second passes vacuously on an
+                   empty documented set (no documented().size > 0 guard of its own). Reported, no
+                   assertion added. (Closed by NV-69, see below.)
+NV-69  CAUGHT      Path regex broken ({2} -> {3}) against the guarded second test: BOTH tests fail  (NV-69_Second_test_guard_path_regex_2_to_3.txt)
+NV-70  CAUGHT      Operation regex broken ({4} -> {5}) against the guarded second test: BOTH tests fail  (NV-70_Second_test_guard_operation_regex_4_to_5.txt)
+                   NV-67/NV-68 finding CLOSED by NV-69/NV-70: the docs.size > 0 guard was added to the
+                   second test; the original finding text above is kept as history.
