@@ -8,14 +8,19 @@ B-01_branch_safety_review_rules.png
   The rules applied to main, dev and staging:
   - a pull request is required, with 2 approvals
   - approval of the most recent reviewable push is required
-    (enabled 13/10/2026, so an approval no longer survives a new push)
+    (enabled 13/10/2026): the latest push must be approved by someone
+    other than the person who pushed it. Earlier approvals are not
+    dismissed ("Dismiss stale pull request approvals" is off), so they
+    still count towards the two
   - deletions are restricted
   - force pushes are blocked
 
 B-02_branch_safety_ruleset_targets.png
   The ruleset is Active, the bypass list is empty, and it targets main,
   dev and staging. No member, including the repo owner, can merge without
-  meeting the rules.
+  meeting the rules. The staging branch is stale (initial commit only);
+  staging is an environment deployed from a release tag (DEC-003 v0.3),
+  not a branch (PED M3.4.1).
 
 Required status checks (Build and test, Secret scan, Static analysis,
 Dependency audit, CodeQL) are in the separate "dev rule" ruleset. That
@@ -53,12 +58,17 @@ B-04_pr_history_m3.png
   The M3 work went into dev as separate, scoped PRs by all three members:
   #82 (records), #83 (composition root), #84 (env files), #85 (DB-01),
   #86 (CI gates), #87 and #88 (API tests).
+  #88 shows "Review required": its last four commits were pushed after
+  both approvals and were not re-approved before it merged. The
+  most-recent-push rule did not exist yet; it would now block that merge
+  (PED M3.4.2).
   #90 is the deliberate layer-boundary breach. It was blocked by CI
   (4/6, review required) and closed without merging (GATE-01).
 
 What this does not show
   - The most-recent-push approval rule was turned on during M3
-    (13/10/2026). PRs merged before that date were not under it.
+    (13/10/2026). PRs merged before that date were not under it, and #88
+    merged with its last push unreviewed.
   - The screenshots show that reviews happened and changed the code.
     They do not show what each reviewer ran locally.
   - The secret handling (.env files, the least-privilege

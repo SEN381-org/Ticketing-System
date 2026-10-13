@@ -1964,14 +1964,17 @@ impact and ADR or change-request reference.
 
 The branching model is unchanged from DEC-008 (§11.1). Work is done on a short-lived
 branch cut from `dev` (`task/…`, `feat/…`, `fix/…`, `docs/…`) and enters `dev` only through
-a pull request. `dev` merges to `main` at a baseline point. A `staging` branch is protected
-the same way for the staging deployment (M3.8).
+a pull request. `dev` merges to `main` at a baseline point. Staging is an environment
+deployed from a release tag (DEC-003 v0.3), not a branch. A `staging` branch does exist and
+Branch Safety targets it, but it holds only the initial commit of 31/08/2026, is 163
+commits behind `dev`, and plays no part in DEC-008's model or in deployment. It is recorded
+here as stale.
 
 Protection is held in two repository rulesets.
 
 | Ruleset | Applies to | Rules |
 |---|---|---|
-| Branch Safety | `main`, `dev`, `staging` | Pull request required, with **2 approvals**; **approval of the most recent reviewable push** required; force pushes blocked; deletion restricted; **bypass list empty** |
+| Branch Safety | `main`, `dev` (and the stale `staging` branch) | Pull request required, with **2 approvals**; **approval of the most recent reviewable push** required; force pushes blocked; deletion restricted; **bypass list empty** |
 | dev rule | `dev`, `main` | The five CI checks in M3.5 are **required status checks** |
 
 The bypass list is empty, so no member can merge around a failing check or a missing
@@ -1979,12 +1982,14 @@ review, including the repository owner. The consequence is accepted: an urgent f
 waits for two reviewers. With three members and no production system yet, that delay costs
 less than one unreviewed merge.
 
-**Change made at M3: approval of the most recent push (13/10/2026).** Before this date,
-an approval stayed valid when new commits were pushed to the pull request, so a branch
-could merge with code that neither reviewer had seen. From 13/10/2026 a new push needs a
-new approval. Pull requests merged before that date were not under this rule. This is a
-repository configuration change, not an architecture decision, and is recorded here rather
-than as an ADR.
+**Change made at M3: approval of the most recent push (13/10/2026).** From this date the
+most recent push to a pull request must be approved by someone other than the person who
+pushed it. Earlier approvals are not dismissed ("Dismiss stale pull request approvals" is
+off, B-01), so they still count towards the two required: after a new push, one fresh
+approval from someone other than the pusher is enough. Before this date a pull request could
+merge with its last push unreviewed; PR #88 did (M3.4.2). Pull requests merged before
+13/10/2026 were not under the rule. This is a repository configuration change, not an
+architecture decision, and is recorded here rather than as an ADR.
 
 ### M3.4.2 Review evidence
 
@@ -1995,11 +2000,11 @@ reviewer understood of the change (Bacchelli and Bird, 2013), so the pull reques
 | Evidence | What it shows | Where |
 |---|---|---|
 | PR #85, DB-01 layer 3 role (R. van der Merwe) | Two reviewers requested changes independently. Round 1: one blocker (the `auditLog` restriction was claimed but untested), four corrections and an out-of-date README section. Round 2: one sentence overclaimed what the evidence proved, fixed by adding a database-wide-grant check (check 8) instead of softening the wording. Both reviewers re-checked the latest push before approving. DEF-005 was raised by a reviewer during the review | PR #85; `docs/evidence/M3-B/B-03a` to `B-03d` |
-| PR #88, integration tests (R. van der Merwe) | Merged on four conditions set in review, all met before merge. Squash-merged on purpose so that a commit containing local tool paths never entered `dev`'s history. One approval (C. Burger) was given while four of those problems were still present. The second reviewer found them, which is the failure the two-approval rule exists to catch | PR #88 |
+| PR #88, integration tests (R. van der Merwe) | Merged on four conditions set in review, and squash-merged so it lands on `dev` as one commit. One approval (C. Burger) was given while four of those problems were still present; the second reviewer found them, which is the failure the two-approval rule exists to catch. **Its last four commits were pushed after both approvals and were not re-approved**, so GitHub records its review decision as "Review required", as B-04 shows. The approval-of-most-recent-push rule (M3.4.1) did not exist yet; it would now block that merge | PR #88; `docs/evidence/M3-B/B-04_pr_history_m3.png` |
 | PR #91, CI follow-ups (C. Burger) | The reviewer re-ran the changes locally instead of reading them: the layer-check pattern against 15 import variants, the split-formatting-run fix and the fallback for a corrupt zip. He also reported five non-blocking gaps, each confirmed and recorded in M3.5.4 | PR #91 |
-| PR #62 (M2) | 22-comment review with four blocking findings | PR #62 |
+| PR #62 (M2) | Review by R. van der Merwe with four blocking findings | PR #62 |
 | PR #90 / GATE-01 | A pull request blocked by a required check and closed unmerged (M3.5.3) | `docs/evidence/M3-CI/GATE-01_layer_boundary_demonstration.txt` |
-| M3 pull request history | Scoped pull requests from all three members, not one final upload. The screenshot shows #82 to #90; #91 and #92 were opened after it | `docs/evidence/M3-B/B-04_pr_history_m3.png` |
+| M3 pull request history | Scoped pull requests from all three members, not one final upload. The screenshot shows #82 to #90; #91 onwards were opened after it | `docs/evidence/M3-B/B-04_pr_history_m3.png` |
 | Ruleset configuration | The rules in M3.4.1 as configured on 13/10/2026 | `docs/evidence/M3-B/B-01`, `B-02`; `docs/evidence/M3-CI/GATE-01_1_required_checks_ruleset.png` |
 
 The index of these files is `docs/evidence/M3-B/B_collaboration_evidence_index.txt`.
@@ -2018,11 +2023,16 @@ string, password or key is held in the repository (NFR-3.5).
 | Secrets kept out of logs | Startup prints the database user, not the host. A configuration error never echoes the connection string | `docs/evidence/M3-P0/SMOKE-01_phase0_reachability.txt`; NV-22 |
 | Committed secrets detected | Every pull request's history is scanned, including the text inside Office documents | M3.5 |
 
-**Known gap.** The `civicconnect-app` role has no `createIndex` privilege, and no deploy
-step builds the indexes another way. The schemas' declared indexes are therefore absent on
-the test cluster (DEF-014, DEF-015, DEF-017), and the same would apply to staging and
-production. This is TD-004, raised in PR #89 (in review at this version). It has to be
-resolved before the staging deployment.
+**Known gap.** The schemas' declared indexes are absent on the test cluster (DEF-014,
+DEF-015, DEF-017). That absence is observed. DEC-003's grant list gives `civicconnect-app`
+no `createIndex`, which is the likely cause, but the defect records keep the cause as
+inferred: nobody has watched an index build being refused. The same would apply to staging
+and production. This is TD-004 (Technical Debt Register v0.2, PR
+#89). DEC-003 v0.3 (PR #92) adds the repayment as deployment step 5: a temporary
+`civicconnect-temp-provisioner` user, limited to `createIndex` and `listIndexes`, builds and
+lists the indexes before the application starts and is then deleted. The step is a
+procedure, not yet evidence: it has not been run, so TD-004 stays open until it is run on
+staging.
 
 ### M3.4.4 Construction notes
 
@@ -2034,7 +2044,7 @@ resolved before the staging deployment.
 - **Layer rule.** Enforced on every pull request by the layer check (M3.5). The `src/`
   folders follow the layers, not yet the seven business modules in §6A.6 (issue #51, still
   open).
-- **Browser client (PR #89, in review at this version).** A thin React client in `client/`
+- **Browser client (PR #89, merged 13/10/2026).** A thin React client in `client/`
   for the E2E cases. It takes status and role values from `shared/` and does no
   rule-checking of its own. `tests/clientBoundary.test.js` fails if it imports from
   `src/`.
@@ -2052,23 +2062,26 @@ resolved before the staging deployment.
 ### M3.5.1 Pipeline
 
 `.github/workflows/ci.yml` runs on every pull request into `dev` or `main` and on every
-push to `dev`. M2 had two jobs (§11.1). M3 adds three (PR #86) and changes two (PR #91). All
-five are required status checks in the "dev rule" ruleset, so a pull request cannot merge
-while any of them fails.
+push to `dev`. M2 had two jobs (§11.1). M3 adds three (PR #86) and changes two (PR #91);
+PR #95 (in review at this version) adds the client build and audit and the fail-closed
+fixes in M3.5.4. All five jobs are required status checks in the "dev rule" ruleset, so a
+pull request cannot merge while any of them fails.
 
 | Check | What it runs | Fails when | Protects |
 |---|---|---|---|
-| Build and test (Node 22) | `npm ci`, `npm test`, then the layer check | A test fails, or a file in `src/routes` or `src/middleware` imports from `models/` or `repositories/` in any import form | Route-table authorisation (NFR-3.3, DEC-012), lifecycle rules, NFR-1.7 and RSK-016 |
+| Build and test (Node 22) | `npm ci`, `npm test`, then the layer check | A test fails, or a file in `src/routes` or `src/middleware` imports from `models/` or `repositories/` (static, re-export, side-effect or dynamic `import()`) | Route-table authorisation (NFR-3.3, DEC-012), lifecycle rules, NFR-1.7 and RSK-016 |
 | Secret scan (full history) | Gitleaks 8.18.4 over every commit in the pull request's history, then over the extracted text of every version of every Office document | Any finding not listed in `.gitleaksignore` | NFR-3.5 |
 | Static analysis (ESLint) | `npm run lint`, defect-catching rules only | Any lint error | Code quality gate (M3 brief §9) |
 | Dependency audit (npm) | `npm audit --omit=dev --audit-level=high` | A high or critical advisory in a production dependency | Known-vulnerable dependencies |
-| CodeQL analysis | GitHub CodeQL for JavaScript | The pull request introduces a new code-scanning alert | Common security flaws in the source |
+| CodeQL analysis | GitHub CodeQL for JavaScript | The analysis itself fails. Alerts it raises appear under Security → Code scanning but do **not** block a merge: the separate "CodeQL" code-scanning check is not a required check | Reports common security flaws in the source; reviewers must read the alerts |
 
 A second workflow, `secret-scan-all-branches.yml`, scans every branch every Monday at 06:00
 UTC and can be run by hand. It is not a required check (M3.5.2). GitHub notifies only the
 last person to edit a schedule when a scheduled run fails, so C. Burger owns checking it.
-Until PR #89 merges it is expected to fail: it scans #89's branch, while the ignore file
-that exempts #89's six hash lines is not yet on `dev`.
+It failed while PR #89 was open, because it scanned #89's branch while the ignore file that
+exempts #89's six hash lines was not on `dev`. #89 merged on 13/10/2026 with a merge commit,
+so the fingerprints still match and the scan is expected to pass; this is not yet confirmed
+by a run.
 
 This follows the staged adoption recorded at M2: integrate and test on every change first,
 and add checks when there is code for them to protect (Humble and Farley, 2010; Shahin,
@@ -2104,8 +2117,8 @@ M3 brief §9 asks for a failed check and what the team did with it.
 |---|---|---|---|
 | PR #86 | The secret-scan job failed on the pull request that added the new gates (exit code 126). | Fixed on the branch. The PR merged only after all checks passed | Run 38226655226 |
 | GATE-01, PR #90 | Deliberate layer breach in `src/routes/healthRoutes.js`. Build and test failed at the layer step while the tests passed. Merging was blocked | PR closed unmerged, branch deleted | `docs/evidence/M3-CI/GATE-01_layer_boundary_demonstration.txt`; run 38357191208 |
-| Unplanned, same run | Secret scan failed on findings from another member's unmerged branch | Root cause found. PR #91 limits the required scan to the PR's history (83 commits scanned instead of 110, no findings), adds the weekly all-branch scan, and widens the layer check | GATE-01 record; PR #91 |
-| PR #92 | Same cross-branch failure, on a pull request opened before #91 merged | Merge #91, then update the #92 branch. No change to #92's own commit | PR #92 |
+| Unplanned, same run | Secret scan failed on findings from another member's unmerged branch | Root cause found. PR #91 limits the required scan to the PR's history (83 commits scanned instead of 110, no findings), adds the weekly all-branch scan, and widens the layer check | GATE-01 record (110); PR #91, run 38363171917 (83) |
+| PR #92 | Same cross-branch failure, on a pull request opened before #91 merged | #91 merged; the #92 branch was updated from `dev` and passed, with no change to its own commit | PR #92 |
 
 ### M3.5.4 What CI does not cover
 
@@ -2113,23 +2126,24 @@ M3 brief §9 asks for a failed check and what the team did with it.
   in CI by design, and the test output says why: CI has no `MONGODB_URI`, and the cluster
   only accepts listed IP addresses (DEC-003). They run locally against the test cluster
   (`docs/evidence/M3_API_Test_Run.txt`).
-- **End-to-end tests.** The Playwright cases (PR #89) run locally and against staging, not
-  in CI (M3.7).
-- **The layer check is a text match.** It catches an import across the boundary in any
-  form. It does not catch one module reading another module's collection, which stays a
-  reviewer responsibility (§11.1).
+- **End-to-end tests.** The Playwright cases (PR #89) run locally, and on staging once it
+  exists (DEC-019); not in CI (M3.7).
+- **The layer check is a text match.** It catches the static, re-export, side-effect and
+  dynamic `import()` forms. It does not catch `require` or `createRequire`, or one module
+  reading another module's collection; those stay a reviewer responsibility (§11.1).
 - **Intermittent tests.** DEF-013 and DEF-016 record two tests in `tests/app.test.js` that
   sometimes fail. A flaky test in a required check can block a correct pull request, or
   teach the team to re-run until it goes green (Luo *et al.*, 2014). Both are recorded as
   they happened, not re-run to green.
-- **The client.** The `client/` package's dependency audit and build are not yet in CI.
-  They are added once PR #89 is merged.
+- **The client.** At this version the `client/` package's dependency audit and build are
+  not in CI. PR #95 (in review) adds them as steps in the existing jobs; DEC-019 records a
+  client-build job as a later change.
 - **Secrets in other files.** Images and PDFs are not scanned. An Office file that is not
   a zip (a password-protected workbook, or an Office lock file such as `~$….xlsx`) is
   scanned as raw bytes, which cannot find text inside an encrypted file.
 - **Fail-open cases found in review of PR #91 (R. van der Merwe).** The layer step passed
   if `src/routes` or `src/middleware` did not exist, and the extraction script exited 0
-  on an invalid revision. Both are being fixed on `task/M3-ci-fail-closed`. Each Office finding
+  on an invalid revision. Both are fixed in PR #95 (in review). Each Office finding
   is reported twice (the `.xml` and its `.text` copy), so exempting one needs two
   `.gitleaksignore` entries.
 - **Coverage.** No coverage percentage is reported. Coverage shows which lines ran, not
