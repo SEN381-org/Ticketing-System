@@ -1,4 +1,4 @@
-M3 Phase 0 — negative verification index (DEC-018, project instructions §6)
+M3 Phase 0 — negative verification index (DEC-018; method as docs/evidence/R-01_negative_verification.txt)
 
 Run on : 2026-10-11 15:34 UTC
 Node   : v22.20.0
