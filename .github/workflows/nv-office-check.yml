@@ -1,0 +1,70 @@
+# One-off check for PR #98 (handover item 4). DEMO ONLY: this file lives on
+# demo/nv-office-check and its pull request is closed unmerged.
+# Question: do NV-83 to NV-90 already appear inside any committed Office document
+# (.xlsx/.xlsm/.docx/.pptx), in any version, on any branch? git grep cannot see
+# inside Office files, so every version is extracted with the repository's own
+# scripts/ci/extract-office-documents.sh (--all) and the extracted text searched.
+# Controls: OI-20 is known to exist only inside a workbook, so it must be found
+# (proves the search can see inside Office files); OI-99 was never used, so it
+# must not be found (proves the search does not match everything).
+name: NV ID check in Office files (do not merge)
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  nv-office-check:
+    name: NV-83 to NV-90 in Office files, all branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch every branch
+        run: |
+          git fetch --no-tags --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          echo "Remote branches: $(git branch -r | grep -vc HEAD)"
+          git branch -r | grep -v HEAD | sed 's/^ */  /'
+
+      - name: Extract every version of every Office document on every branch
+        run: scripts/ci/extract-office-documents.sh . "$RUNNER_TEMP/office" --all
+
+      - name: Search the extracted text, with controls
+        run: |
+          D="$RUNNER_TEMP/office"
+          M="$D/MANIFEST.txt"
+          # Search the tag-stripped text and any raw (non-zip) blobs.
+          hits() {
+            grep -rlE "$1" "$D" --include='*.text' --include='*.raw' 2>/dev/null \
+              | sed -E "s|^$D/||; s|/.*||; s|\.raw$||" | sort -u \
+              | while read -r sha; do grep "^$sha " "$M" | cut -d' ' -f3-; done | sort -u
+          }
+          report() {
+            local label="$1" pattern="$2"
+            local found; found="$(hits "$pattern")"
+            local n; n=$(printf '%s' "$found" | grep -c . || true)
+            echo "$label: $n document path(s)"
+            [ -n "$found" ] && printf '%s\n' "$found" | sed 's/^/    /'
+            return 0
+          }
+          echo "--- Controls"
+          report "OI-20 (positive control, must be found)" 'OI-20([^0-9]|$)'
+          report "OI-99 (negative control, must not be found)" 'OI-99([^0-9]|$)'
+          echo "--- The question"
+          report "NV-83 to NV-90" 'NV-(8[3-9]|90)([^0-9]|$)'
+          echo "--- Context: every NV number that does appear inside an Office file"
+          grep -rhoE 'NV-[0-9]+' "$D" --include='*.text' --include='*.raw' 2>/dev/null | sort -t- -k2 -n | uniq -c || true
+          # Assertions
+          [ -n "$(hits 'OI-20([^0-9]|$)')" ] || { echo "::error::Positive control OI-20 not found: the search cannot be trusted"; exit 1; }
+          [ -z "$(hits 'OI-99([^0-9]|$)')" ] || { echo "::error::Negative control OI-99 found: the search cannot be trusted"; exit 1; }
+          if [ -n "$(hits 'NV-(8[3-9]|90)([^0-9]|$)')" ]; then
+            echo "::error::NV-83 to NV-90 already appear inside a committed Office file (listed above)"
+            exit 1
+          fi
+          echo "RESULT: NV-83 to NV-90 appear in no committed Office file on any branch."
