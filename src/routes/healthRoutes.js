@@ -5,6 +5,8 @@
 
 import express from 'express';
 
+export { default as User } from '../models/User.js';
+
 export const HEALTH_PATH = '/api/v1/health';
 
 export function createHealthRouter({ healthService }) {
