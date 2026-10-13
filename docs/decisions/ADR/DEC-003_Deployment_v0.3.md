@@ -82,13 +82,13 @@ environment name, the project name and the hostname were the same string. They a
 | Environment | Environment name | App runs on | Atlas project | Cluster hostname | Data |
 |---|---|---|---|---|---|
 | Development | `civicconnect-dev` | Developer machine | `civicconnect-dev` as recorded in v0.2; not re-checked | Not recorded | Synthetic |
-| Test | `civicconnect-test` | Per DEC-019, the E2E cases run "locally and on staging" | `CivicConnect-Test` (free cluster, database dropped per run) | `[Pending: Exact Atlas Hostname]`. Evidence: Atlas UI connection string | Synthetic |
+| Test | `civicconnect-test` | Per DEC-019, the E2E cases run "locally and on staging" | `CivicConnect-Test` (free cluster, database dropped per run) | `civicconnecttest.mj4fl0p.mongodb.net`. Evidence: Atlas UI connection string | Synthetic |
 | Staging | `civicconnect-staging` | VPS, `civicconnect-staging` unit, `staging.` subdomain | `civicconnect-staging` as recorded in v0.2; not yet created | To be recorded when the cluster is created | Synthetic, production-shaped |
 | Production | `civicconnect-prod` | VPS, `civicconnect-prod` unit | `civicconnect-prod` as recorded in v0.2; not re-checked | Not recorded | Real (POPIA scope) |
 
 For the test environment the three names differ and must not be substituted for one another:
 the environment is `civicconnect-test`, the Atlas project is `CivicConnect-Test`, and the
-cluster hostname is `[Pending: Exact Atlas Hostname]` (evidence: Atlas UI connection
+cluster hostname is `civicconnecttest.mj4fl0p.mongodb.net` (evidence: Atlas UI connection
 string). The hostname contains `civicconnecttest`, with no hyphen, so anything that matches
 on the hostname must use the unhyphenated form. The integration suite's safety guard
 (`tests/integration/_harness.js`) does: it runs only when the host in `MONGODB_URI` contains
