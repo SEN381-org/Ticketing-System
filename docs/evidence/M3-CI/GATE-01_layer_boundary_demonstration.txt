@@ -53,6 +53,15 @@ Fixed in task/M3-ci-follow-ups: the required PR scan now reads only the history 
 (what the PR would merge), and every branch is scanned weekly by the non-blocking
 secret-scan-all-branches.yml workflow.
 
+Screenshots 
+GATE-01_1_required_checks_ruleset.png      "dev rule" ruleset: the five required status checks
+GATE-01_2_pr90_checks_merge_blocked.png    PR #90: Build and test and Secret scan failed, all five
+                                           checks Required, "Merging is blocked"
+GATE-01_3_layer_check_log.png              Build and test log: test suite passed, layer check
+                                           failed on src/routes/healthRoutes.js:8
+GATE-01_4_secret_scan_log.png              Secret scan log: six generic-api-key findings in
+                                           commit de84ab19 (author email redacted)
+
 What this does not show
 - That the layer check catches every bypass. The pattern used in this run matched
   `from '…/models|repositories/'` only, so a side-effect import (import '../models/X.js'),
