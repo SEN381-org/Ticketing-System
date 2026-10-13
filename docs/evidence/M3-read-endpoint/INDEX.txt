@@ -1,4 +1,5 @@
 M3 read endpoint (GET /api/v1/requests/{id}) and shared/domainValues.js — negative verification index (method as docs/evidence/R-01_negative_verification.txt)
+Citations and two step labels reworded 13/10/2026 (commit ca368bb, PR #89): references to uncommitted local files replaced by committed sources. No result, count or verdict changed.
 
 Run on : 2026-10-12 09:48 UTC
 Node   : v22.20.0

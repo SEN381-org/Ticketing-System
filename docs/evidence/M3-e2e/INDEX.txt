@@ -1,4 +1,5 @@
 M3 end-to-end suite (e2e/: E2E-1, E2E-2a, E2E-2b) and its negative verifications - index (method as docs/evidence/R-01_negative_verification.txt)
+Citations reworded 13/10/2026 (commit ca368bb, PR #89): references to uncommitted local files replaced by committed sources. No result, count or verdict changed.
 
 Run on : 2026-10-12 (UTC). Runs between 21:22 and 21:27 UTC, apart from the unplanned run below, which was earlier the same day.
 Node   : v22.20.0

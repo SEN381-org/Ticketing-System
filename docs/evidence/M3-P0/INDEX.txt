@@ -1,4 +1,5 @@
 M3 Phase 0 — negative verification index (DEC-018; method as docs/evidence/R-01_negative_verification.txt)
+Citation reworded 13/10/2026 (commit fd92121, PR #94): the method citation now points to docs/evidence/R-01_negative_verification.txt. No result, count or verdict changed.
 
 Run on : 2026-10-11 15:34 UTC
 Node   : v22.20.0

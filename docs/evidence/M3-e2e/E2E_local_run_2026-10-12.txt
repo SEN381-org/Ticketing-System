@@ -54,7 +54,7 @@ What it shows (as scoped in the headers of e2e/journey.spec.js and e2e/wrong-rol
   - E2E-2a: a Technician bypassing the UI is refused (status >= 400, problem+json, no request data in the body), nothing is written (AC-FR-6.4, AC-NFR-3.3, AC-FR-1.3 first two clauses).
   - E2E-2b: the expected failure for DEF-011 is live. DEC-015 section 4 requires 403 FORBIDDEN; the code returns 422. The text above is the 422. When DEF-011 is fixed this test reports 'Expected to fail, but passed' and the run goes red until the mark is removed (shown by NV-82).
 What it does NOT show:
-  - The vite preview stands in for Nginx. Nginx/TLS and the real same-origin deployment are not exercised.
+  - The vite preview stands in for Nginx. Nginx/TLS and the real same-origin deployment are not exercised. DEC-003 v0.3 (Deployment procedure, Prerequisite) requires a staging run before a production release tag.
   - Chromium only; no other browser (NFR-1.1 is not claimed).
   - Local run, NOT in CI (DEC-019 section 2). It writes fixtures to the cluster.
   - AC-FR-6.6 'displays it in the history' is not covered: no history is displayed by the client.
