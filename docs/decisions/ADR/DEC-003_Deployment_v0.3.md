@@ -5,10 +5,10 @@
 | **ID** | DEC-003 (closed at M2 in the Decision Log v0.4. This ADR is the full structured record Master Brief §13 requires, replacing the one-row log entry as the authoritative rationale) |
 | **Version** | 0.3 (13/10/2026). v0.2 (11/10/2026) and v0.1 (29/09/2026) are preserved in `Outdated/` |
 | **Changes from v0.1** | For DEC-018: the `civicconnect-app` role gains CRUD on `sessions`; the *Sessions / state* row names the store; the *Edge* row records the application settings that depend on the proxy. The `find`+`insert`-only grants on `requestHistory` and `auditLog` are **unchanged**, and the *Database users* row now states that the role's grants are per collection with no database-wide role, so the restriction cannot be undone by an additive grant. No other content changes |
-| **Changes from v0.2** | The deploy procedure is written out as numbered steps (*Deployment procedure*) and gains two: a client build step (DEC-019's Consequences bullet and its Evidence still required item 3) and an index provisioning step (TD-004 repayment). The *Database users* row names the temporary index-provisioning user. The *Environment map* separates the Atlas project name from the cluster hostname and records the test environment's actual names (OI-19). No other content changes; in particular the Test row's "database dropped per run" is unchanged and remains the subject of DEF-006 |
+| **Changes from v0.2** | The deploy procedure is written out as numbered steps (*Deployment procedure*) and gains two: a client build step (DEC-019's Consequences bullet and its Evidence still required item 3) and an index provisioning step (TD-004 repayment). A new rollback rule: a rollback must rebuild the client (step 3), because `client/dist` is gitignored and checking out the previous tag does not replace it. A new prerequisite: a staging run is required before a production release tag. The *Database users* row names the temporary index-provisioning user. The *Environment map* separates the Atlas project name from the cluster hostname and records the test environment's actual names (OI-19). No other content changes; in particular the Test row's "database dropped per run" is unchanged and remains the subject of DEF-006 |
 | **Date** | 29/09/2026 |
 | **Owner** | Robert van der Merwe (technology stack and deployment compatibility) |
-| **Status** | Decided (v0.3). Plan-specific evidence items outstanding (see *Evidence still required*) |
+| **Status** | Proposed (v0.3). Plan-specific evidence items outstanding (see *Evidence still required*) |
 | **Affects** | CON-003, CON-006, CON-007, CON-008, CON-010, CON-014, CON-015, CON-016, CON-019, NFR-1.5, NFR-1.6, NFR-1.8, NFR-1.9, NFR-2.4, NFR-2.5, NFR-2.7, NFR-3.2, NFR-3.5, NFR-3.7, SCP-014, SCP-015, DEC-002, DEC-010, RSK-008, RSK-015 |
 | **Supersedes** | The DEC-003 deferment recorded at v1.0 (preserved in the log) |
 
@@ -44,6 +44,8 @@ networking implications, and what is deliberately left for M3.
 
 ### Deployment procedure (v0.3)
 
+**Prerequisite.** A staging run is required before a production release tag.
+
 Run by the deploy script on the VPS, for one environment at a time, in this order:
 
 1. Fetch the release tag (DEC-008).
@@ -56,6 +58,8 @@ Run by the deploy script on the VPS, for one environment at a time, in this orde
    package, which is why that package needs its own install; the root install in step 2 is
    unaffected. This resolves DEC-019's Consequences bullet and its Evidence still required item 3: until v0.3
    nothing put `client/dist` on the VPS.
+   **Warning:** Ensure `NODE_ENV` is not set to `production` in the deployment shell,
+   otherwise `npm ci` will skip dev dependencies and Vite will not install.
 4. Run migrations (forward-only and additive within a release).
 5. **Provision indexes** *(new in v0.3; repays TD-004)*. The indexes the schemas declare are
    created and then listed, before the application starts. `civicconnect-app` is granted neither
@@ -68,10 +72,11 @@ Run by the deploy script on the VPS, for one environment at a time, in this orde
    step 5 has completed.
 7. Health check: `/api/v1/health` (NFR-1.6).
 
-Rollback redeploys the previous tag and runs steps 1, 2, 4, 6 and 7 for it. It does NOT run
-step 3 (client build) or step 5 (index provisioning): the indexes already provisioned stay
-in place, and `client/dist` is left as it is. Step 3 is run in a rollback only when the
-previous client version is deliberately being deployed as well.
+Rollback redeploys the previous tag and runs steps 1, 2, 3, 4, 6 and 7 for it. Step 3
+(client build) is INCLUDED: `client/dist` is gitignored, so checking out the old tag does
+not replace it, and a rollback MUST rebuild the client. Otherwise the previous API would be
+served with the newer client. Step 5 (index provisioning) is not run: the indexes already
+provisioned stay in place.
 
 ### Environment map (CON-016 / NFR-1.8)
 
@@ -82,13 +87,13 @@ environment name, the project name and the hostname were the same string. They a
 | Environment | Environment name | App runs on | Atlas project | Cluster hostname | Data |
 |---|---|---|---|---|---|
 | Development | `civicconnect-dev` | Developer machine | `civicconnect-dev` as recorded in v0.2; not re-checked | Not recorded | Synthetic |
-| Test | `civicconnect-test` | Per DEC-019, the E2E cases run "locally and on staging" | `CivicConnect-Test` (free cluster, database dropped per run) | `civicconnecttest.mj4fl0p.mongodb.net`. Evidence: Atlas UI connection string | Synthetic |
+| Test | `civicconnect-test` | Developer machine | `CivicConnect-Test` (free cluster, database dropped per run) | `civicconnecttest.[redacted].mongodb.net`. Evidence: Atlas UI connection string | Synthetic |
 | Staging | `civicconnect-staging` | VPS, `civicconnect-staging` unit, `staging.` subdomain | `civicconnect-staging` as recorded in v0.2; not yet created | To be recorded when the cluster is created | Synthetic, production-shaped |
 | Production | `civicconnect-prod` | VPS, `civicconnect-prod` unit | `civicconnect-prod` as recorded in v0.2; not re-checked | Not recorded | Real (POPIA scope) |
 
 For the test environment the three names differ and must not be substituted for one another:
 the environment is `civicconnect-test`, the Atlas project is `CivicConnect-Test`, and the
-cluster hostname is `civicconnecttest.mj4fl0p.mongodb.net` (evidence: Atlas UI connection
+cluster hostname is `civicconnecttest.[redacted].mongodb.net` (evidence: Atlas UI connection
 string). The hostname contains `civicconnecttest`, with no hyphen, so anything that matches
 on the hostname must use the unhyphenated form. The integration suite's safety guard
 (`tests/integration/_harness.js`) does: it runs only when the host in `MONGODB_URI` contains
