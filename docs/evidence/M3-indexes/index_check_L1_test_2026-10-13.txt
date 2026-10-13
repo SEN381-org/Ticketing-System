@@ -1,0 +1,172 @@
+Index check, check-only (L1): the provisioning script's first live run, on the test cluster before it is recreated
+Basis: TD-004; DEC-003 v0.3 deployment step 5; DEF-014, DEF-015, DEF-017; decisions D1, D3, D4, D8, D10
+
+Expected results written: 2026-10-13, before the run.
+Run on      : 2026-10-13, 17:32:46.141 to 17:32:46.629 UTC, one run. Exit code not captured: the shell the run
+              was made from did not display it. The script exits with the code its summary computes, which for
+              RESULT FAIL is 1 (unit test U13); that is the code path, not an observation of this run.
+Environment : Atlas test cluster (host contains the recorded marker civicconnecttest; host not recorded),
+              database civicconnect, as it stands before decision D4's recreation: it still holds the synthetic
+              data and the duplicate requestHistory entries recorded in docs/evidence/M3_API_Negative_Verification.txt.
+Credential  : civicconnect-temp-provisioner, a temporary (6-hour) Atlas database user restricted to the test cluster,
+              holding only the custom role civicconnect-index-provisioner: createIndex and listIndexes on each of the
+              ten declared collections of civicconnect. The role name is not yet in DEC-003. No connection string,
+              host, password or project-specific hostname part is recorded.
+Command     : node --env-file=.env.provision --import "<the DNS resolver override npm run test:integration uses>"
+                scripts/atlas/provision-indexes.js --env test --check-only --out <a path outside the repository>
+Code        : 019ebe5 (task/M3-index-provisioning). The script reported "working tree NOT clean": the only
+              uncommitted change was this evidence file (untracked); no code file differed from 019ebe5.
+
+WHY
+  The script's connection, command allow-list and privilege check have only been tested without a database.
+  This is their first live run, in --check-only mode, so it lists and compares and creates nothing. It is also
+  a tool-recorded observation of which declared indexes the test cluster lacks, to set beside the Atlas UI
+  listing made by hand (atlas_ui_index_listing_test_cluster.txt), which covered four collections.
+
+EXPECTED RESULTS (stated before the run)
+  1  Guards pass (environment test, host contains the marker, database civicconnect); the run connects.
+  2  No command outside the allow-list is started. If one is (most likely a handshake command the list does
+     not name), the run stops with exit 2 naming it: that is a finding about the allow-list, recorded as such.
+  3  Privilege check PASS: the server reports civicconnect-temp-provisioner with createIndex and listIndexes on
+     each of the ten declared collections of civicconnect, and nothing else.
+  4  No createIndexes command is issued (check-only): "Commands issued" shows none.
+  5  Before-listing, from the hand listing of 12/10/2026: requestHistory, requests and users hold _id_ only;
+     sessions holds _id_ and lastSeenAt_1 (TTL, value not recorded). The other six collections were never
+     listed: each either does not exist (reported, not an error) or holds _id_ only. Predicted: _id_ only or
+     absent, because civicconnect-app cannot create indexes and nothing else is known to have run.
+  6  Comparison: the 20 declared indexes outside sessions are MISSING (requestHistory 2, requests 7, users 1,
+     auditLog 3, categories 1, groups 1, notifications 3, reportingCounts 1, roles 1). sessions lastSeenAt_1 is
+     PRESENT if its TTL is 1800 s, DIFFERENT otherwise; its value is unknown, so either is a valid outcome and
+     the run records which. UNDECLARED: 0.
+  7  RESULT FAIL: 0 or 1 of 21 declared indexes present with matching options; exit code 1.
+
+OUTPUT (unedited; the --out transcript, identical to what the run printed)
+  Index provisioning (--check-only: lists and compares, creates nothing)
+  Started (UTC)   : 2026-10-13T17:32:46.141Z
+  Environment     : test (host not printed)
+  Database        : civicconnect
+  Server user     : civicconnect-temp-provisioner (expected civicconnect-temp-provisioner)
+  Commit          : 019ebe5; working tree NOT clean
+  Node v22.20.0; mongoose 8.24.4; driver mongodb 6.20.0; server 8.0.34
+  Declared        : 21 indexes over 10 collections (computed from src/models)
+
+  Privileges reported by the server:
+    civicconnect / roles : createIndex, listIndexes
+    civicconnect / notifications : createIndex, listIndexes
+    civicconnect / auditLog : createIndex, listIndexes
+    civicconnect / users : createIndex, listIndexes
+    civicconnect / categories : createIndex, listIndexes
+    civicconnect / groups : createIndex, listIndexes
+    civicconnect / reportingCounts : createIndex, listIndexes
+    civicconnect / sessions : createIndex, listIndexes
+    civicconnect / requests : createIndex, listIndexes
+    civicconnect / requestHistory : createIndex, listIndexes
+  Privilege check: passed
+
+  Before (as listed by the server):
+    auditLog
+      _id_  { _id: 1 }  (default)
+    categories: collection does not exist
+    groups: collection does not exist
+    notifications: collection does not exist
+    reportingCounts: collection does not exist
+    requestHistory
+      _id_  { _id: 1 }  (default)
+    requests
+      _id_  { _id: 1 }  (default)
+    roles: collection does not exist
+    sessions
+      _id_  { _id: 1 }  (default)
+      lastSeenAt_1  { lastSeenAt: 1 }  TTL 1800 s
+    users
+      _id_  { _id: 1 }  (default)
+
+  Created this run: 0
+
+  Comparison (declared indexes against what the server lists, per collection):
+    auditLog
+      MISSING   eventId_1  { eventId: 1 }
+      MISSING   requestId_1_occurredAt_1  { requestId: 1, occurredAt: 1 }
+      MISSING   recordedAt_1  { recordedAt: 1 }
+    categories
+      MISSING   campusId_1_code_1  { campusId: 1, code: 1 }
+    groups
+      MISSING   campusId_1_name_1  { campusId: 1, name: 1 }
+    notifications
+      MISSING   userId_1_read_1_createdAt_-1  { userId: 1, read: 1, createdAt: -1 }
+      MISSING   sourceHistoryId_1_userId_1  { sourceHistoryId: 1, userId: 1 }
+      MISSING   createdAt_1  { createdAt: 1 }
+    reportingCounts
+      MISSING   campusId_1_categoryId_1_status_1  { campusId: 1, categoryId: 1, status: 1 }
+    requestHistory
+      MISSING   requestId_1_requestVersion_1  { requestId: 1, requestVersion: 1 }
+      MISSING   actorId_1_idempotencyKey_1  { actorId: 1, idempotencyKey: 1 }
+    requests
+      MISSING   reference_1  { reference: 1 }
+      MISSING   campusId_1_requesterId_1_submittedAt_-1  { campusId: 1, requesterId: 1, submittedAt: -1 }
+      MISSING   campusId_1_status_1_submittedAt_-1  { campusId: 1, status: 1, submittedAt: -1 }
+      MISSING   campusId_1_categoryId_1_assigneeId_1_status_1  { campusId: 1, categoryId: 1, assigneeId: 1, status: 1 }
+      MISSING   campusId_1_assigneeId_1_status_1  { campusId: 1, assigneeId: 1, status: 1 }
+      MISSING   campusId_1_submittedAt_1_categoryId_1  { campusId: 1, submittedAt: 1, categoryId: 1 }
+      MISSING   description_text_location_text  { _fts: 'text', _ftsx: 1 }
+    roles
+      MISSING   code_1  { code: 1 }
+    sessions
+      PRESENT   lastSeenAt_1  { lastSeenAt: 1 }
+    users
+      MISSING   email_1  { email: 1 }
+
+  Commands issued (name and collection, with counts; endSessions on close is not included):
+    buildInfo x1
+    connectionStatus x1
+    listIndexes auditLog x1
+    listIndexes categories x1
+    listIndexes groups x1
+    listIndexes notifications x1
+    listIndexes reportingCounts x1
+    listIndexes requestHistory x1
+    listIndexes requests x1
+    listIndexes roles x1
+    listIndexes sessions x1
+    listIndexes users x1
+
+  Ended (UTC): 2026-10-13T17:32:46.629Z
+  RESULT FAIL: 1 of 21 declared indexes present with matching options (missing 20, different 0, undeclared 0)
+
+AFTERWARDS (done by E. Lindsay in the Atlas UI; times reported in SAST, UTC+2, and converted here)
+  17:44 UTC  civicconnect-temp-provisioner deleted (the provisioning runs are made after this branch merges,
+             at the merged commit, with a new temporary user)
+  17:45 UTC  .env.provision deleted from disk (as reported; not independently checked)
+  The custom role civicconnect-index-provisioner is kept, with no users assigned (decision D12).
+
+RESULT AGAINST EXPECTATIONS
+  1  Guards passed; connected.                                                          as expected
+  2  No command outside the allow-list was started; the run was not stopped.            as expected
+  3  Privilege check passed: createIndex and listIndexes on exactly the ten declared
+     collections of civicconnect, nothing else.                                         as expected
+  4  No createIndexes issued: the commands were buildInfo x1, connectionStatus x1 and
+     listIndexes x10, one per collection.                                               as expected
+  5  Before-listing: requestHistory, requests and users hold _id_ only, as the hand
+     listing of 12/10/2026 showed; sessions holds lastSeenAt_1 with TTL 1800 s; auditLog
+     exists with _id_ only; categories, groups, notifications, reportingCounts and roles
+     do not exist.                                                                      within the expected outcomes
+  6  20 MISSING, sessions lastSeenAt_1 PRESENT (its TTL is 1800 s), 0 DIFFERENT,
+     0 UNDECLARED.                                                                      one of the two expected outcomes
+  7  RESULT FAIL: 1 of 21 declared indexes present with matching options.              as expected (exit code: see Run on)
+
+WHAT THIS SHOWS / DOES NOT SHOW
+  Shows: the script's I/O, previously tested only without a database, works against the Atlas test cluster:
+  it connected, the allow-list let the run through without stopping it, and the privilege check read the
+  server's own report and passed only because the grants were exactly createIndex and listIndexes on the ten
+  declared collections. In --check-only mode it issued no createIndexes.
+  Shows: a tool-recorded listing of the test cluster's civicconnect database. 20 of the 21 declared indexes are
+  absent, including every unique index (DEF-014, DEF-015, DEF-017; TD-004), and five declared collections do
+  not exist. This extends the hand listing of 12/10/2026, which covered four collections.
+  Shows: the existing sessions TTL index has expireAfterSeconds 1800, which matches SESSION_IDLE_LIMIT_SECONDS,
+  so it does not conflict with the schema (decision D10 does not arise on this cluster). Who created it is
+  still not recorded.
+  Does NOT show: that the script creates indexes correctly (nothing was created; that is the provisioning run
+  after the database is recreated, decision D4); that the allow-list stops a disallowed command against a live
+  driver (no disallowed command was attempted; the stopping behaviour is covered only by the unit test and
+  NV-pending-H); which handshake commands the driver sends (none appeared among the monitored commands); this
+  run's exit code (not captured); anything about staging or production.
