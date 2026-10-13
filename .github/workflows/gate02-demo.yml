@@ -1,0 +1,109 @@
+# GATE-02 — staged demonstration of the fail-closed fixes in #95.
+# DEMO ONLY: this file lives on demo/gate02-fail-closed and its pull request is
+# closed unmerged, like GATE-01 (#90). It runs the OLD gate code (origin/dev)
+# and the NEW gate code (this branch) side by side, extracted from the real
+# files rather than copied, against three sabotaged conditions:
+#   A. a layer folder missing (both folders, one at a time) with a real breach
+#      in the other folder;
+#   B. an invalid revision passed to the Office extraction;
+#   C. non-zip Office files in history (the committed ~$ lock files).
+# Each sabotage exists only inside this job; nothing sabotaged is committed.
+name: GATE-02 demo (do not merge)
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  gate02:
+    name: GATE-02 fail-closed demonstration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract the OLD (origin/dev) and NEW (this branch) gate code
+        run: |
+          pip install --quiet pyyaml
+          G="$RUNNER_TEMP/g"; mkdir -p "$G"
+          echo "OLD = origin/dev at $(git rev-parse origin/dev)"
+          echo "NEW = this checkout at $(git rev-parse HEAD)"
+          git show origin/dev:.github/workflows/ci.yml > "$G/ci_old.yml"
+          git show origin/dev:scripts/ci/extract-office-documents.sh > "$G/extract_old.sh"
+          cp .github/workflows/ci.yml "$G/ci_new.yml"
+          cp scripts/ci/extract-office-documents.sh "$G/extract_new.sh"
+          python3 - "$G" <<'PY'
+          import sys, yaml
+          d = sys.argv[1]
+          for v in ("old", "new"):
+              y = yaml.safe_load(open(f"{d}/ci_{v}.yml"))
+              steps = y["jobs"]["build-and-test"]["steps"]
+              run = [s["run"] for s in steps if s.get("name", "").startswith("Layer boundary check")][0]
+              open(f"{d}/layer_{v}.sh", "w").write(run)
+          PY
+          sha256sum "$G"/layer_*.sh "$G"/extract_*.sh
+
+      - name: "Case A1: src/middleware missing, breach in src/routes"
+        run: |
+          G="$RUNNER_TEMP/g"
+          mv src/middleware src/middleware.gate02
+          printf "import U from '../models/User.js';\n" > src/routes/zz_gate02_breach.js
+          set +e
+          bash -e "$G/layer_old.sh"; old=$?
+          bash -e "$G/layer_new.sh"; new=$?
+          set -e
+          rm src/routes/zz_gate02_breach.js
+          mv src/middleware.gate02 src/middleware
+          echo "OLD exit $old (passed silently if 0)"
+          echo "NEW exit $new (fails closed if non-zero)"
+          [ "$old" -eq 0 ] && [ "$new" -ne 0 ]
+
+      - name: "Case A2: src/routes missing, breach in src/middleware"
+        run: |
+          G="$RUNNER_TEMP/g"
+          mv src/routes src/routes.gate02
+          printf "import R from '../repositories/requestRepository.js';\n" > src/middleware/zz_gate02_breach.js
+          set +e
+          bash -e "$G/layer_old.sh"; old=$?
+          bash -e "$G/layer_new.sh"; new=$?
+          set -e
+          rm src/middleware/zz_gate02_breach.js
+          mv src/routes.gate02 src/routes
+          echo "OLD exit $old (passed silently if 0)"
+          echo "NEW exit $new (fails closed if non-zero)"
+          [ "$old" -eq 0 ] && [ "$new" -ne 0 ]
+
+      - name: "Case B: invalid revision passed to the Office extraction"
+        run: |
+          G="$RUNNER_TEMP/g"
+          set +e
+          bash "$G/extract_old.sh" . "$RUNNER_TEMP/b_old" no-such-revision; old=$?
+          bash "$G/extract_new.sh" . "$RUNNER_TEMP/b_new" no-such-revision; new=$?
+          set -e
+          echo "OLD exit $old (reported success if 0)"
+          echo "NEW exit $new (fails closed if non-zero)"
+          [ "$old" -eq 0 ] && [ "$new" -ne 0 ]
+
+      - name: "Case C: non-zip Office files in history (HEAD), plus --all unchanged"
+        run: |
+          G="$RUNNER_TEMP/g"
+          bash "$G/extract_old.sh" . "$RUNNER_TEMP/c_old" HEAD > "$RUNNER_TEMP/c_old.log" 2>&1
+          bash "$G/extract_new.sh" . "$RUNNER_TEMP/c_new" HEAD > "$RUNNER_TEMP/c_new.log" 2>&1
+          echo "--- OLD output"; cat "$RUNNER_TEMP/c_old.log"
+          echo "--- NEW output"; cat "$RUNNER_TEMP/c_new.log"
+          old=$(grep -c 'is not a zip' "$RUNNER_TEMP/c_old.log" || true)
+          new=$(grep -c 'is not a zip' "$RUNNER_TEMP/c_new.log" || true)
+          echo "Non-zip warnings: OLD $old, NEW $new"
+          cmp "$RUNNER_TEMP/c_old/MANIFEST.txt" "$RUNNER_TEMP/c_new/MANIFEST.txt" && echo "HEAD manifests identical"
+          bash "$G/extract_old.sh" . "$RUNNER_TEMP/d_old" --all > /dev/null 2>&1
+          bash "$G/extract_new.sh" . "$RUNNER_TEMP/d_new" --all > /dev/null 2>&1
+          cmp "$RUNNER_TEMP/d_old/MANIFEST.txt" "$RUNNER_TEMP/d_new/MANIFEST.txt" && echo "--all manifests identical ($(wc -l < "$RUNNER_TEMP/d_new/MANIFEST.txt") entries)"
+          [ "$old" -eq 0 ] && [ "$new" -gt 0 ]
+
+      - name: "Control: the NEW layer check passes on the intact tree"
+        run: bash -e "$RUNNER_TEMP/g/layer_new.sh"
