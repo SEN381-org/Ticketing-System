@@ -33,7 +33,9 @@ function mount(app, path, router) {
   app.use(path, router);
 }
 
-export function createApp({ authService, healthService, statusTransitionService, log = console }) {
+export function createApp({
+  authService, healthService, statusTransitionService, requestQueryService, log = console,
+}) {
   const app = express();
   app.locals.mounts = [];
 
@@ -47,7 +49,7 @@ export function createApp({ authService, healthService, statusTransitionService,
   app.use('/api', createSessionMiddleware({ authService }));
 
   mount(app, SESSIONS_BASE, createSessionRouter({ authService }));
-  mount(app, REQUESTS_BASE, createRequestRouter({ statusTransitionService }));
+  mount(app, REQUESTS_BASE, createRequestRouter({ statusTransitionService, requestQueryService }));
 
   app.use((req, res, next) => next(new RouteNotFoundError()));
   app.use(createErrorHandler({ log }));

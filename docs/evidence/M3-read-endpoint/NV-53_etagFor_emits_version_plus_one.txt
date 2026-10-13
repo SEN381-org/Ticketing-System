@@ -1,0 +1,49 @@
+Negative verification NV-53 — etagFor emits version + 1
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:59 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+Baseline: 158 tests, 158 pass (including the tests added in this follow-up).
+
+CLAIM
+  The ETag carries the current version, not a shifted one.
+
+1. The protected behaviour was broken in src/routes/requestRoutes.js.
+     --- src/routes/requestRoutes.js (original)
+     +++ src/routes/requestRoutes.js (sabotaged)
+     @@ line 25 @@
+         /** DEC-015 — the ETag is a strong validator over the state version. */
+       - const etagFor = (version) => `"v${version}"`;
+       + const etagFor = (version) => `"v${version + 1}"`;
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - with a session the transition reaches the service with the session actor — DEC-018 §4
+     not ok - GET 200 body has exactly the three keys and ETag "v<version>" — DEC-015 §1
+     not ok - the ETag from GET, used verbatim as If-Match on the transition route, is accepted — DEC-015 §3
+     not ok - an ETag read before another writer changed the version is refused 412, and a fresh one is accepted — DEC-015 §3, DEC-016
+     # tests 158
+     # pass 154
+     # fail 4
+
+   Expected to fail (derived before execution from the claim above):
+     the ETag from GET, used verbatim as If-Match on the transition route, is accepted
+   Also failed (not predicted): with a session the transition reaches the service with the session actor — DEC-018 §4 | GET 200 body has exactly the three keys and ETag "v<version>" — DEC-015 §1 | an ETag read before another writer changed the version is refused 412, and a fresh one is accepted — DEC-015 §3, DEC-016
+   Outcome: CAUGHT — every expected test failed
+
+3. Each broken file was restored by writing back its original content. SHA-256 after restore:
+     b4d8cf24ebcbbe84f18d181cee47c8faffe354248c82a69c5de743191920fc6a  src/routes/requestRoutes.js
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 158
+     # pass 158
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: A well-formed but wrong number is detected: the format is still accepted by the parser, so only comparing against the stored version exposes it.
+  What this does NOT show: As NV-50.

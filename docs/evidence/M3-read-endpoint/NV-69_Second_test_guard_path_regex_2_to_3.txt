@@ -1,0 +1,64 @@
+Negative verification NV-69 - Path regex broken ({2} -> {3}) against the guarded second test
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint (PR #89)
+Commit : 190fb9c (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit.
+         The sabotage was applied to the working tree, then restored by writing back the original
+         bytes (a copy taken before the run). Git was not used.
+Baseline: 167 tests, 167 pass, 0 fail; npm run lint clean.
+
+CONTEXT
+  Closes the finding in NV-67/NV-68. The second test in tests/openapiRoutes.test.js
+  ("documented ... is registered") had no guard on the documented set and passed vacuously on an
+  empty one. The repository owner approved adding the guard
+    assert.ok(docs.size > 0, 'no operations were read from openapi.yaml');
+  (same message as the first test; the documented set is now held in a local `docs`). This record
+  re-runs the sabotage with the guard in place.
+CLAIM
+  If the path regex stops matching the real file, EACH of the two contract tests must fail on its
+  own, rather than only the first.
+
+1. The protected behaviour was broken in tests/openapiRoutes.test.js (the regex is the thing under
+   test). SHA-256 before: fbd4b39e3660d7f32fada8127d0f0c09914d2f65b8ed8f34da637e1a4b9a6f84
+     @@ line 40 @@
+     -    const p = /^ {2}(\/\S*):\s*$/.exec(line);
+     +    const p = /^ {3}(\/\S*):\s*$/.exec(line);
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok 86 - every route the composed application registers is documented in openapi.yaml - DEC-015
+       error: 'no operations were read from openapi.yaml'
+     not ok 87 - every operation documented in openapi.yaml is registered in the composed application - DEC-015
+       error: 'no operations were read from openapi.yaml'
+     # tests 167
+     # pass 165
+     # fail 2
+
+   Expected to fail (written from the claim before the run): BOTH tests, each with
+     'no operations were read from openapi.yaml' - the first via its existing guard, the second via
+     the new guard. Observed failures match exactly.
+   Outcome: CAUGHT
+
+3. The file was restored byte-for-byte. SHA-256 after restore:
+     fbd4b39e3660d7f32fada8127d0f0c09914d2f65b8ed8f34da637e1a4b9a6f84
+   Identical to the value taken before the run. The full suite was re-run:
+
+     # tests 167
+     # pass 167
+     # fail 0
+INTERPRETATION
+  Each of the two tests now fails independently when the documented set is empty. This closes the
+  vacuous-pass finding of NV-67.
+  What this shows: neither test can go green on an empty documented set.
+  What this does NOT show: that a regex matching too MUCH is detected, or that a partially-matching
+  regex (reading some but not all operations) is detected by the size guard alone; the
+  registered-vs-documented comparison covers that case.
+
+RUN NOTE (added after the run, recorded as it happened)
+  NV-70 was run before this record's break. The first attempt to apply this break (a text
+  substitution) did not change the file, so that run was of unbroken code and is not evidence.
+  The break was then re-applied to line 40 and the suite re-run; the output and verdict above
+  are from that run, and its two failures show the break was in place. The expected failures were written
+  before it.

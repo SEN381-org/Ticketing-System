@@ -1,0 +1,46 @@
+Negative verification NV-38 — src/models/_shared.js given its own copy of STATUS
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  There is exactly one definition of STATUS (shared/domainValues.js; the M2 defect was a second copy drifting into invented values, AI Usage Register v0.12 row 48).
+
+1. The protected behaviour was broken in src/models/_shared.js.
+     --- src/models/_shared.js (original)
+     +++ src/models/_shared.js (sabotaged)
+     @@ line 19 @@
+         
+       - export { STATUS, ROLE, TERMINAL_STATUSES } from '../../shared/domainValues.js';
+       + import { STATUS as SHARED_STATUS } from '../../shared/domainValues.js';
+       + export { ROLE, TERMINAL_STATUSES } from '../../shared/domainValues.js';
+       + export const STATUS = Object.freeze({ ...SHARED_STATUS });   // SABOTAGE: equal content, separate object
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - _shared.js re-exports the very same objects as shared/domainValues.js — one definition
+     # tests 152
+     # pass 151
+     # fail 1
+
+   Expected to fail (derived before execution from the claim above):
+     _shared.js re-exports the very same objects
+   Outcome: CAUGHT — every expected test failed
+
+3. src/models/_shared.js was restored by writing back its original content. SHA-256 after restore:
+     7f4e094fcf8dedf90943e15a66b65083d1e159ef1b494124d5c36957a9109a6b
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: A copy with identical content is detected, because the test asserts object identity. Equality-based tests (including the exact-value test) pass under this sabotage, so identity is the only thing that catches it.
+  What this does NOT show: That nothing else in the tree defines the values (a grep-style check would be needed); only the two modules are compared.

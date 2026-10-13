@@ -1,0 +1,74 @@
+Negative verification NV-75 - Client validates the reason itself (refuses an empty reason without sending)
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12T21:24:41.675Z (UTC, start of the Playwright run)
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 43a53a7 (HEAD). e2e/ and other working-tree changes are UNCOMMITTED (see INDEX.txt). The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Environment : Atlas test cluster (database civicconnect, credential civicconnect-app). No connection string is recorded.
+Command : npm run test:e2e   (one run for this NV; exit code 1)
+
+CLAIM
+  TD-003: the client does no rule checks; the server, not the client, refuses a missing reason, and E2E-1 step 3 notices if the client stops sending.
+
+1. The protected behaviour was broken in client/src/RequestDetail.jsx (never in a test).
+     --- client/src/RequestDetail.jsx (original)
+     +++ client/src/RequestDetail.jsx (sabotaged)
+     -    try { await transition(id, etag, toStatus, reason); await load(); } catch (err) { handle(err); }
+     +    if (!reason) { setError({ status: 0, problem: null, message: 'Reason required' }); return; } try { await transition(id, etag, toStatus, reason); await load(); } catch (err) { handle(err); }
+     (A first attempt at this NV aborted before any run because the multi-line search text did not match the file's CRLF line endings; nothing was changed and no cluster run was made. This record is the second, successful attempt.)
+
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
+     E2E-1 fails at step 3: no transition POST is sent, so page.waitForResponse(isTransition) never resolves and the test times out (30 s test timeout) at that wait. E2E-2a and E2E-2b unaffected (they POST directly).
+
+3. Result of `npm run test:e2e` with the sabotage applied:
+
+     Running 3 tests using 1 worker
+       x  1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (30.1s)
+       ok 2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.4s)
+       x  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.2s)
+
+       1) [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request › 3. Rejected with no reason: the server refuses and nothing is written 
+     
+         Test timeout of 30000ms exceeded.
+     
+         Error: page.waitForResponse: Test timeout of 30000ms exceeded.
+     
+           81 |     // If the client validated instead of sending, no response arrives and this wait fails the test (TD-003).
+           82 |     const [response] = await Promise.all([
+         > 83 |       page.waitForResponse(isTransition(requestId)),
+              |            ^
+           84 |       page.getByRole('button', { name: 'Submit transition' }).click(),
+           85 |     ]);
+           86 |     expect(response.status()).toBe(422);               // DEC-015 §4 row 422; AC-FR-6.6 first attempt refused
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:83:12
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:78:3
+
+       1 failed
+         [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request ──────────────
+       2 passed (39.5s)
+
+     Per-test outcome from e2e/test-results/results.json (stats: expected 2, unexpected 1, skipped 0, flaky 0):
+       E2E-1: expected=passed, outcome=unexpected, result=timedOut
+       E2E-2a: expected=passed, outcome=expected, result=passed
+       E2E-2b: expected=failed, outcome=expected, result=failed
+
+   Actual vs expected:
+     E2E-1 timed out at step 3: "page.waitForResponse: Test timeout of 30000ms exceeded", at journey.spec.js line 83. E2E-2a passed; E2E-2b expected failure (403/422).
+   Outcome: CAUGHT (as predicted; the mechanism is a timeout, not an assertion message).
+
+4. Restore. The file(s) were restored by writing back the original content.
+   SHA-256 of client/src/RequestDetail.jsx
+     before : 5eb4a9dd8eacd03df33eeb2b2970d21a6f64debd15f88eb1729aefa8fd4f74f9
+     after  : 5eb4a9dd8eacd03df33eeb2b2970d21a6f64debd15f88eb1729aefa8fd4f74f9
+   SHA-256 over src/, client/src/, e2e/ sources (path + content, excluding node_modules, dist, test-results) and shared/:
+     before : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+     after  : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+   Identical to the values recorded before the run. `git diff --stat -- src client shared` shows nothing after restore (e2e/ is untracked, so its hash above is the check).
+   A green re-run is NOT repeated after this NV; the final recorded run (E2E_local_run_2026-10-12.txt) is the restored-state confirmation. See INDEX.txt.
+
+INTERPRETATION
+  What this shows: client-side validation of the reason is detected, because step 3 requires an observed POST.
+  What this does NOT show: a client that sends the POST AND also validates something else; nor server behaviour (nothing was sent).
+
+VERDICT: CAUGHT by E2E-1 (step 3, no transition POST observed; test timeout)

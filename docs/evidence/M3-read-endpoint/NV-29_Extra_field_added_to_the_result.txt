@@ -1,0 +1,45 @@
+Negative verification NV-29 — An extra field added to the response body
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  The response body is exactly { reference, status, version } (DEC-015 §1; FR-1.5 keeps description and history out of the response).
+
+1. The protected behaviour was broken in src/services/requestQueryService.js.
+     --- src/services/requestQueryService.js (original)
+     +++ src/services/requestQueryService.js (sabotaged)
+     @@ line 40 @@
+               version:   request.version,
+       +     requesterId: request.requesterId,
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - service returns exactly reference, status, version — DEC-015 §1
+     not ok - GET 200 body has exactly the three keys and ETag "v<version>" — DEC-015 §1
+     # tests 152
+     # pass 150
+     # fail 2
+
+   Expected to fail (derived before execution from the claim above):
+     service returns exactly reference, status, version
+     GET 200 body has exactly the three keys
+   Outcome: CAUGHT — every expected test failed
+
+3. src/services/requestQueryService.js was restored by writing back its original content. SHA-256 after restore:
+     83d6a63769c8d882a7bba9d5eb434e93ac4d91d85c7b101acfececca8fe40fdc
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: An additional field fails both the service and HTTP tests (the service fixture carries description and location, and both fixtures carry requesterId, so a leak of any of them would be seen).
+  What this does NOT show: That description/comment/action history are withheld from a future detail endpoint; this endpoint does not return them at all.

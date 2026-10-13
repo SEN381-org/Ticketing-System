@@ -1,0 +1,50 @@
+Negative verification NV-43 — Composition root wires the query service to the wrong repository
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  The composed read service reads the requests repository.
+
+1. The protected behaviour was broken in src/composition.js.
+     --- src/composition.js (original)
+     +++ src/composition.js (sabotaged)
+     @@ line 39 @@
+             healthService: createHealthService({ pingDatabase }),
+       -     requestQueryService: createRequestQueryService({ requests: requestRepository }),
+       +     requestQueryService: createRequestQueryService({ requests: historyRepository }),
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     (no test failed)
+     # tests 152
+     # pass 152
+     # fail 0
+
+   Expected to fail (derived before execution from the claim above):
+     (no existing test was expected to catch this; the run was to find out)
+   Outcome: NOT CAUGHT
+
+3. src/composition.js was restored by writing back its original content. SHA-256 after restore:
+     19172b208717a8eda7899fe8a238dc57df75cbe415b45629c4c54faeebcdc660
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  NOT CAUGHT. No existing test fails when this behaviour is broken, so nothing in the suite is evidence for it.
+  What this does NOT show: The composed graph's wiring of the read path is untested beyond key names. Wrong-dependency wiring would only surface against a real database.
+  Proposed test (not added; reported to the project lead first): Either an integration test against a real cluster, or let composeApplication accept injectable repositories and drive one GET through the composed app.
+
+STATUS: REMAINS NOT CAUGHT in `npm test` and in CI. This is a permanent open gap there.
+  The only check that could catch it is E2E-1, which runs locally against the Atlas test
+  cluster and on staging but NOT in CI. So the wiring of the read path in
+  composeApplication is unverified by anything that runs on every push. E2E-1 is a
+  local and staging check, not coverage of this gap in the automated suite, and this
+  record must not be read as "covered by E2E-1".

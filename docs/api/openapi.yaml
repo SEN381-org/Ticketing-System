@@ -115,6 +115,59 @@ paths:
       responses:
         '204':
           description: No session remains for this cookie.
+  /requests/{id}:
+    get:
+      tags: [requests]
+      operationId: getRequest
+      summary: Read a request
+      description: |
+        Provisional: FR-4.2 is Proposed and not yet baselined (OI-01), so this
+        operation may change when the requirement is confirmed.
+
+        Returns only `reference`, `status` and `version`; the `ETag` header
+        carries the same version in the form accepted by `If-Match` on the
+        transition resource. `status` is the status this caller may be shown:
+        a Requester sees only Received, In Progress or Closed for a
+        security-category request (FR-3.5, DEC-012 enforcement point 3).
+
+        A Requester asking for a request that is not theirs receives the same 404
+        as for an identifier that does not exist (FR-3.6, DEC-015 §4). A staff
+        member who may not view the request receives 403 (DEC-015 does not
+        specify this case; 403 is consistent with the service layer, and 404 may
+        be revisited when security categories land).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Request identifier (MongoDB ObjectId).
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+      responses:
+        '200':
+          description: The request, as this caller may see it.
+          headers:
+            ETag:
+              description: The current version, e.g. "v4".
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestView' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not read requests, or the staff member may not view this request (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404':
+          description: No such request, or a Requester asking for another user's request (NOT_FOUND).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /requests/{id}/transitions:
     post:
       tags: [requests]
@@ -303,6 +356,14 @@ components:
       type: string
       description: The controlled status set (FR-6.1).
       enum: [Received, Assigned, In Progress, On Hold, Resolved, Closed, Rejected]
+    RequestView:
+      type: object
+      additionalProperties: false
+      required: [reference, status, version]
+      properties:
+        reference: { type: string, pattern: '^CC-\d{4}-\d{6}$' }
+        status: { $ref: '#/components/schemas/Status' }
+        version: { type: integer, minimum: 0, description: The current version; also returned as the ETag. }
     TransitionCommand:
       type: object
       required: [toStatus]

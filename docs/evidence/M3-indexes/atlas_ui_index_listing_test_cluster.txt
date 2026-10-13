@@ -1,0 +1,68 @@
+Indexes on the test cluster, listed in the Atlas UI
+================================================================================
+Date:           2026-10-12
+Observed by:    E. Lindsay, in the Atlas web UI (Database → Browse Collections → civicconnect →
+                each collection → Indexes), using an Atlas account with project access. That
+                is not the application's database credential, which cannot list indexes (see
+                listIndexes_refused_civicconnect-app.txt in this folder).
+Cluster:        the test cluster (the environment DEC-003 v0.2 calls civicconnect-test; see OI-19)
+Database:       civicconnect
+Compared with:  the 21 indexes the Mongoose schemas declare (src/models/*.js), listed in full
+                with their default names in the checklist used for this observation.
+
+Scope
+  Only the four collections the integration tests and the smoke run write on this cluster:
+  requestHistory, requests, users and sessions. The other six declared collections
+  (notifications, auditLog, reportingCounts, categories, groups, roles) were not checked.
+
+Result (as observed)
+--------------------------------------------------------------------------------
+requestHistory  present: _id_ only
+                ABSENT:  requestId_1_requestVersion_1     (unique)            DEF-015
+                ABSENT:  actorId_1_idempotencyKey_1       (unique, partial)   DEF-014
+
+requests        present: _id_ only
+                ABSENT:  reference_1                      (unique, FR-2.6)
+                ABSENT:  campusId_1_requesterId_1_submittedAt_-1
+                ABSENT:  campusId_1_status_1_submittedAt_-1
+                ABSENT:  campusId_1_categoryId_1_assigneeId_1_status_1
+                ABSENT:  campusId_1_assigneeId_1_status_1
+                ABSENT:  campusId_1_submittedAt_1_categoryId_1
+                ABSENT:  description_text_location_text   (text)
+
+users           present: _id_ only
+                ABSENT:  email_1                          (unique, FR-1.1)
+
+sessions        present: _id_, lastSeenAt_1 (TTL)
+                expireAfterSeconds as shown in the UI: [E. Lindsay to confirm; the schema
+                declares 1800, src/models/Session.js SESSION_IDLE_LIMIT_SECONDS = 30 * 60]
+
+Document counts (as shown in the UI): requestHistory 95, requests 126, users 112, sessions 0.
+(The UI's Usage column for each index is not a document count and is not recorded here.)
+--------------------------------------------------------------------------------
+
+Interpretation
+  Shows: on the test cluster, 10 of the 11 indexes declared for these four collections do not
+  exist, including every unique index (requestHistory x2, requests.reference, users.email).
+  requestHistory, requests and users hold documents, so those indexes are missing from
+  populated collections, not merely not yet created on empty ones. sessions holds no documents
+  but does exist, and carries the one declared index that is present.
+
+  Together with the server's own privilege report for this credential
+  (docs/evidence/DB-01_layer3_verification.txt, PR #85: "Granted on requestHistory: find,
+  insert", "Granted on sessions: find, insert, remove, update", "Database-wide grants: none")
+  and the listIndexes refusal (listIndexes_refused_civicconnect-app.txt):
+  - on requestHistory and sessions, the server reports the credential's actions and they
+    include no createIndex. Observed.
+  - no database-wide grant exists that could add one. Observed.
+  - on requests and users, that report printed no per-collection action list, so createIndex
+    there is shown only indirectly: no database-wide grant, listIndexes refused, and the
+    indexes absent. Not directly observed.
+
+  The one index that does exist, sessions.lastSeenAt_1, cannot have been built by that
+  credential, which has no createIndex on sessions. Some other user created it. Who, when and
+  with what expireAfterSeconds is not recorded (asked of R. van der Merwe, 2026-10-12); the M3 API Test Specification S5 assumed indexes "created
+  by hand". The exception confirms indexes are created outside the application.
+
+  Does NOT show: anything about staging (which does not exist yet) or production; the six
+  collections not checked; the exact expireAfterSeconds value (pending confirmation above).

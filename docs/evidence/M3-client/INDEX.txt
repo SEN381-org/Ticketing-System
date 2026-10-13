@@ -1,0 +1,55 @@
+M3 thin client and tests/clientBoundary.test.js — negative verification index (method as docs/evidence/R-01_negative_verification.txt)
+
+Run on : 2026-10-12 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : a22b450 (HEAD). client/, tests/clientBoundary.test.js and DEC-019 are UNCOMMITTED working-tree content.
+
+Each entry broke one protected behaviour in the client (never in the test), ran the full suite, recorded the
+failing test names and counts, restored the file by writing back its exact original content (or removing the
+file created for the run), confirmed SHA-256 before/after (per file, and over the whole client/src tree), and
+re-ran the full suite. Expected failures were written down in the harness before the run. The run was scripted
+so every sabotage was applied and reverted mechanically. Git was not used to restore anything.
+
+Test count: 162 before this review (the original 4-test clientBoundary file), 167 after (+5 detector
+self-tests / value-list test). Baseline before and after each NV below: 167 tests, 167 pass, 0 fail.
+
+Changes made to tests/clientBoundary.test.js, and why:
+  - JSX text is now scanned (whole-word, case-sensitive). The original did not catch <option>Rejected</option>
+    (NV-65, NOT CAUGHT). No STATUS/ROLE value is used as ordinary UI text anywhere in client/src, so there is
+    no false positive; the self-test shows "Request", "Requests" and lowercase "closed" are not flagged.
+  - Detector self-tests on fixed strings: single quote, double quote, template literal, embedded, JSX text;
+    specifier forms (static, side-effect, export-from, export {..} from, dynamic, require, bare); and path
+    resolution (depth, a detour through shared/ back into src/, package.json, another shared file).
+  - The walk also covers .mjs/.cjs/.ts/.tsx. It was already recursive and skipped node_modules by name.
+  - The header now states the basis, technique, what a pass shows and does NOT show, and that TD-003 (no rule
+    checks in the client) is NOT shown by a static scan and is left to E2E-1 step 3 (a transition POST must be
+    observed with an empty reason). No test pretends to prove it.
+  No assertion was weakened.
+
+NV-55  CAUGHT      STATUS value as a quoted literal in a client file  (NV-55_STATUS_value_as_a_quoted_literal.txt)
+NV-56  CAUGHT      ROLE value as a quoted literal  (NV-56_ROLE_value_as_a_quoted_literal.txt)
+                   Contains a FLAKE NOTE: an unrelated app.test.js test also failed once in this run.
+NV-57  CAUGHT      STATUS value as literal JSX text  (NV-57_STATUS_value_as_literal_JSX_text.txt)
+NV-58  CAUGHT      Static import from src/  (NV-58_Static_import_from_src.txt)
+NV-59  CAUGHT      Dynamic import() from src/  (NV-59_Dynamic_import_from_src.txt)
+NV-60  CAUGHT      Import of a shared/ file other than domainValues.js  (NV-60_Import_of_another_shared_file.txt)
+NV-61  CAUGHT      Path through shared/ back up into src/  (NV-61_Path_through_shared_back_into_src.txt)
+NV-62  CAUGHT      export * from src/  (NV-62_Export_from_src.txt)
+NV-63  CAUGHT      shared/domainValues.js import removed from the client entirely  (NV-63_Shared_domainValues_import_removed.txt)
+NV-64  CAUGHT      New nested client file client/src/x/y.jsx with violations (walk is recursive)  (NV-64_New_nested_client_file_with_violations.txt)
+NV-65  NOT CAUGHT  Same break as NV-57 against the ORIGINAL test, before review  (NV-65_JSX_text_against_the_original_test.txt)
+                   Closed by the strengthening: NV-57, CAUGHT.
+
+Other checks (no NV):
+  npm --prefix client run build : succeeded (18 modules, dist/assets/index-CBa6Tgez.js 145.31 kB).
+  npm --prefix client audit     : found 0 vulnerabilities.
+
+FLAKE, reported and not hidden: during NV-56 a second test failed, "health answers without a session, and
+reports both statuses — AC-NFR-1.6" (tests/app.test.js). Message not captured. It does not read client/. It did
+not fail in the other nine sabotage runs or in any green run. It was not re-run until green. It is not
+DEF-013 (a different test); it may be the same family (in-process loopback HTTP under load), unconfirmed.
+
+Not covered by this test, left open (see the test header): computed specifiers and run-time-assembled values,
+multi-line template literals, client/index.html and client/vite.config.js, and TD-003 (E2E-1 step 3, held
+until PR #88 merges).

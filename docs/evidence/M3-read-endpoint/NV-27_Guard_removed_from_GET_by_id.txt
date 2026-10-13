@@ -1,0 +1,47 @@
+Negative verification NV-27 — Guard removed from GET /requests/:id
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  GET /api/v1/requests/:id carries the composed guard requireOperation('request:read'); an unauthenticated caller gets 401 and no request data (FR-1.1, AC-FR-1.1, NFR-3.3, CON-019, DEC-012).
+
+1. The protected behaviour was broken in src/routes/requestRoutes.js.
+     --- src/routes/requestRoutes.js (original)
+     +++ src/routes/requestRoutes.js (sabotaged)
+     @@ line 67 @@
+             '/:id',
+       -     requireOperation('request:read'),                // enforcement point 1
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - every non-public route in the composed application carries the guard — NFR-3.3, CON-019
+     not ok - the request router guards every route it registers
+     not ok - GET with no session is 401 and carries no request data — AC-FR-1.1, DEC-012
+     # tests 152
+     # pass 149
+     # fail 3
+
+   Expected to fail (derived before execution from the claim above):
+     GET with no session is 401
+     every non-public route in the composed application carries the guard
+   Also failed (not predicted): the request router guards every route it registers
+   Outcome: CAUGHT — every expected test failed
+
+3. src/routes/requestRoutes.js was restored by writing back its original content. SHA-256 after restore:
+     b4d8cf24ebcbbe84f18d181cee47c8faffe354248c82a69c5de743191920fc6a
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: Both the behavioural test (401, no data, code UNAUTHENTICATED) and the structural whole-application guard assertion detect a missing guard on the new route. Without the guard an unauthenticated caller is refused 403 by the service rather than 401, which the HTTP test distinguishes.
+  What this does NOT show: That every future route is guarded by anything other than the structural walk; that 401 is returned by a real session store.

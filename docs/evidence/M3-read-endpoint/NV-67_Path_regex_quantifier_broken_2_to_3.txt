@@ -1,0 +1,63 @@
+Negative verification NV-67 - Path regex broken so it matches nothing ({2} -> {3})
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint (PR #89)
+Commit : 190fb9c (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit.
+         The sabotage was applied to the working tree, then restored by writing back the original
+         bytes (held in memory by the script). Git was not used.
+Baseline: 167 tests, 167 pass, 0 fail; npm run lint clean.
+
+CONTEXT
+  Verified after the fact. Two regexes in tests/openapiRoutes.test.js were rewritten to satisfy
+  ESLint no-regex-spaces (literal runs of spaces became {n} quantifiers):
+    /^  (\/\S*):\s*$/                       ->  /^ {2}(\/\S*):\s*$/
+    /^    (get|put|...|trace):\s*$/          ->  /^ {4}(get|put|...|trace):\s*$/
+  The change had been confirmed only by a green run, which is not evidence. Old-vs-new
+  equivalence over the real file is in the INDEX; this record is the sabotage-fail-restore half.
+CLAIM
+  If the path regex stops matching the real file (a wrong quantifier), the contract test must
+  fail rather than pass vacuously.
+
+1. The protected behaviour was broken in tests/openapiRoutes.test.js. The regex is itself the
+   thing under test, so this is the one NV in this series that edits a test file.
+   SHA-256 before: 7c0caff4c5df43d82176a58a78ea4e8ac2576cf6c4ee9deae3e0cdb8bdb10016
+     @@ line 40 @@
+     -    const p = /^ {2}(\/\S*):\s*$/.exec(line);
+     +    const p = /^ {3}(\/\S*):\s*$/.exec(line);
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok 86 - every route the composed application registers is documented in openapi.yaml - DEC-015
+       error: 'no operations were read from openapi.yaml'
+     ok 87 - every operation documented in openapi.yaml is registered in the composed application - DEC-015
+     # tests 167
+     # pass 166
+     # fail 1
+
+   Expected to fail (derived before execution from the claim above):
+     "every route the composed application registers is documented in openapi.yaml - DEC-015", via
+       its guard: 'no operations were read from openapi.yaml' (docs.size > 0).
+     "every operation documented ... is registered" was expected to PASS vacuously: documented()
+       returns an empty set and filtering an empty set gives []. Written before the run as a
+       suspected weakness of the second test taken alone.
+   Outcome: CAUGHT - the expected test failed (see FINDING below where one is stated)
+
+3. The file was restored by writing back its original bytes. SHA-256 after restore:
+     7c0caff4c5df43d82176a58a78ea4e8ac2576cf6c4ee9deae3e0cdb8bdb10016
+   Identical to the value taken before the run. The full suite was re-run:
+
+     # tests 167
+     # pass 167
+     # fail 0
+INTERPRETATION
+  The suite detects a regex that silently matches nothing: the docs.size > 0 guard in the first
+  test fails. With the regex restored the suite passes.
+  What this shows: the rewritten test cannot go green on an empty documented set.
+  FINDING (reported, not fixed): the second test ("documented ... is registered") PASSES under this
+  sabotage. It guards the registered set (reg.size > 0) but not the documented set, so on its own
+  it would verify nothing; the suite is protected only because the first test carries the
+  docs.size > 0 guard. Missing assertion if the second test should stand alone:
+  assert.ok(documented().size > 0). Not added.
+  What this does NOT show: that a regex matching too MUCH is detected.

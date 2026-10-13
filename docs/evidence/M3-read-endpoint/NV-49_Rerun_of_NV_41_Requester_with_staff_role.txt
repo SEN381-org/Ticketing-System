@@ -1,0 +1,47 @@
+Negative verification NV-49 — Re-run of NV-41: Requester who also holds a staff role treated as a plain Requester, against the new tests
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:59 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+Baseline: 158 tests, 158 pass (including the tests added in this follow-up).
+
+CLAIM
+  A refused actor who holds Requester plus a staff role gets 403, not the Requester-only 404 (project-lead decision, staff first). NV-41 broke this and no test failed.
+
+1. The protected behaviour was broken in src/services/requestQueryService.js.
+     --- src/services/requestQueryService.js (original)
+     +++ src/services/requestQueryService.js (sabotaged)
+     @@ line 29 @@
+               // not disclosed. Anyone else refused gets 403.
+       -       if (roles.includes(ROLE.REQUESTER) && !isStaff) throw new NotFoundError(requestId);
+       +       if (roles.includes(ROLE.REQUESTER)) throw new NotFoundError(requestId);
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - service: a Requester who also holds a staff role, refused, gets AuthorisationError not 404 — project-lead decision (staff first), FR-1.2
+     not ok - a Requester who also holds a staff role, refused, is 403 with no request data — project-lead decision (staff first), FR-1.2
+     # tests 158
+     # pass 156
+     # fail 2
+
+   Expected to fail (derived before execution from the claim above):
+     service: a Requester who also holds a staff role, refused, gets AuthorisationError not 404
+     a Requester who also holds a staff role, refused, is 403 with no request data
+   Outcome: CAUGHT — every expected test failed
+
+3. Each broken file was restored by writing back its original content. SHA-256 after restore:
+     83d6a63769c8d882a7bba9d5eb434e93ac4d91d85c7b101acfececca8fe40fdc  src/services/requestQueryService.js
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 158
+     # pass 158
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: The same sabotage that was NOT CAUGHT in NV-41 now fails at service level and over HTTP. This closes the NV-41 gap.
+  What this does NOT show: That "staff first" is a baselined rule (it is a lead decision). Nor what happens when such an actor owns the request: the rule refuses them too, and that is untested.
