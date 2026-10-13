@@ -1,5 +1,5 @@
 Negative verification NV-71 - NV-43 re-run against E2E-1: query service wired to historyRepository
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:22:34.514Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -17,9 +17,9 @@ CLAIM
      -     requestQueryService: createRequestQueryService({ requests: requestRepository }),
      +     requestQueryService: createRequestQueryService({ requests: historyRepository }),
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
-     E2E-1 fails at step 2 ("sign in: the read returns exactly {reference, status, version}"): the GET is not 200 with the seeded reference. historyRepository has no findById, so a crash (HTTP 500) was the plan's prediction (m3-client-e2e-plan.md section 7).
-     Not in the brief, but follows from the specs' shared GET precondition: E2E-2a also needs the GET to return 200 (wrong-role.spec.js line 39), so it should fail at that precondition too. E2E-2b is an expected failure and is satisfied by ANY failure.
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
+     E2E-1 fails at step 2 ("sign in: the read returns exactly {reference, status, version}"): the GET is not 200 with the seeded reference. historyRepository has no findById, so a crash (HTTP 500) was the prediction in docs/quality/M3_E2E_Test_Plan_v0.1.md §7.
+     Not in the plan (§7), but follows from the specs' shared GET precondition: E2E-2a also needs the GET to return 200 (wrong-role.spec.js line 39), so it should fail at that precondition too. E2E-2b is an expected failure and is satisfied by ANY failure.
 
 3. Result of `npm run test:e2e` with the sabotage applied:
 
@@ -73,6 +73,6 @@ INTERPRETATION
   What this shows: the original NV-43 leak, which no test in npm test or CI catches, IS caught by E2E-1 step 2 when the suite runs against the Atlas test cluster.
   NV-43 itself REMAINS NOT CAUGHT in npm test and in CI: this is a local/staging check, not coverage in the automated suite. NV-43's record must not be read as covered by CI.
   What this does NOT show: that a wrong repository which can answer findById is caught (see NV-72).
-  Side finding: while E2E-2a's GET precondition fails, E2E-2b still reports "expected failure" (green), because test.fail() is satisfied by any failure. 2b is only meaningful when 2a passes and its precondition holds; the split (D1) is what makes that visible.
+  Side finding: while E2E-2a's GET precondition fails, E2E-2b still reports "expected failure" (green), because test.fail() is satisfied by any failure. 2b is only meaningful when 2a passes and its precondition holds; the split (see the header of e2e/wrong-role.spec.js) is what makes that visible.
 
 VERDICT: CAUGHT by E2E-1 (step 2: GET 500). NV-43 itself stays NOT CAUGHT in npm test and CI

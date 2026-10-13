@@ -1,4 +1,4 @@
-M3 end-to-end suite (e2e/: E2E-1, E2E-2a, E2E-2b) and its negative verifications - index (project instructions section 6)
+M3 end-to-end suite (e2e/: E2E-1, E2E-2a, E2E-2b) and its negative verifications - index (method as docs/evidence/R-01_negative_verification.txt)
 
 Run on : 2026-10-12 (UTC). Runs between 21:22 and 21:27 UTC, apart from the unplanned run below, which was earlier the same day.
 Node   : v22.20.0
@@ -12,8 +12,8 @@ Environment : Atlas test cluster, database civicconnect, credential civicconnect
 Each NV broke one protected behaviour in the code (never in a test), ran the E2E suite ONCE against the cluster, recorded the
 failing tests and the failure text, restored the file by writing back its exact original content, and confirmed the SHA-256
 of every touched file and of the whole src/ + client/src + e2e sources + shared/ tree before and after. Expected failures were
-written down before the run (those the brief gave, plus the analysis made before the run where the brief was silent; where
-the outcome differed from the brief this is stated in the record). The run was scripted so each sabotage was applied and
+written down before the run (those in docs/quality/M3_E2E_Test_Plan_v0.1.md §7, plus the analysis made before the run where the plan was silent; where
+the outcome differed from the plan this is stated in the record). The run was scripted so each sabotage was applied and
 reverted mechanically. Git was not used to restore anything.
 
 Green re-run after each NV: NOT made. The final recorded run (E2E_local_run_2026-10-12.txt, section D) is the restored-state
@@ -51,21 +51,21 @@ NV-73  CAUGHT      401 problem body also carries a `reference`. E2E-1 step 1  (N
 NV-74  CAUGHT      401 problem body `status` replaced by a request-status string. E2E-1 step 1  (NV-74_Problem_body_status_replaced_by_a_request_status_string.txt)
 NV-75  CAUGHT      Client validates the reason itself. E2E-1 step 3, no POST observed (test timeout)  (NV-75_Client_validates_the_reason_itself.txt)
                    A first attempt aborted before any run (CRLF search-text mismatch); no cluster run was made for it.
-NV-76  CAUGHT      Client drops Idempotency-Key. Caught at step 3 (400), NOT step 4 as the brief expected  (NV-76_Client_drops_Idempotency_Key.txt)
-NV-77  CAUGHT      Client drops If-Match. Caught at step 3 (428), NOT step 4 as the brief expected  (NV-77_Client_drops_If_Match.txt)
+NV-76  CAUGHT      Client drops Idempotency-Key. Caught at step 3 (400), NOT step 4 as the plan (§7) expected  (NV-76_Client_drops_Idempotency_Key.txt)
+NV-77  CAUGHT      Client drops If-Match. Caught at step 3 (428), NOT step 4 as the plan (§7) expected  (NV-77_Client_drops_If_Match.txt)
                    NV-76/NV-77 finding: the server refuses the missing header on the step-3 (no reason) POST, before step 4. Step 4's
                    own header assertions (idempotency-key is a UUID v4; if-match equals the ETag verbatim) were therefore never reached
                    and are NOT shown to work by these NVs. Reported; no assertion added.
 NV-78  CAUGHT      Reason-required clause removed from checkTransition. E2E-1 step 3, 201 instead of 422  (NV-78_Reason_required_clause_removed_from_checkTransition.txt)
 NV-79  CAUGHT      History entry body written as null. E2E-1 step 4, field-by-field check  (NV-79_History_body_written_as_null.txt)
-NV-80  CAUGHT      Client fakes sign-out (no DELETE). Caught at step 5 waiting for the DELETE (timeout), NOT at the reload GET 200 as the brief expected  (NV-80_Client_fakes_sign_out.txt)
+NV-80  CAUGHT      Client fakes sign-out (no DELETE). Caught at step 5 waiting for the DELETE (timeout), NOT at the reload GET 200 as the plan (§7) expected  (NV-80_Client_fakes_sign_out.txt)
                    The reload check (a server that fails to end the session) was not reached by this NV and is not shown to work by it.
 NV-81  CAUGHT      ROLE.TECHNICIAN added to DISPOSITION_ROLES. E2E-2a FAILS (201); E2E-2b stays an expected failure (201, not 403)  (NV-81_TECHNICIAN_added_to_DISPOSITION_ROLES.txt)
-                   This is the evidence for splitting 2a from 2b (plan D1): under one test.fail() test this regression would read as green.
+                   This is the evidence for splitting 2a from 2b (see the header of e2e/wrong-role.spec.js): under one test.fail() test this regression would read as green.
 NV-82  AS INTENDED Simulated DEF-011 fix (throwaway): role refusal raises AuthorisationError (403). E2E-2b "Expected to fail, but passed"; exit code 1  (NV-82_Simulated_DEF_011_fix_role_refusal_raises_403.txt)
                    The expected-failure mark goes red once DEF-011 is fixed. Restored; this was not the real fix.
 
-No NV was NOT CAUGHT. Where the first failing step differed from the brief (NV-76, NV-77, NV-80) the break was still caught and
+No NV was NOT CAUGHT. Where the first failing step differed from the plan (§7) (NV-76, NV-77, NV-80) the break was still caught and
 the difference is recorded in the NV file.
 
 ASSERTIONS NOT PROVEN BY ANY NV (decided 2026-10-12 by E. Lindsay: recorded as a gap, no further NV runs)

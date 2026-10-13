@@ -1,5 +1,5 @@
 Negative verification NV-76 - Client drops the Idempotency-Key header
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:24:00.199Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -17,7 +17,7 @@ CLAIM
      -  headers: { 'If-Match': etag, 'Idempotency-Key': crypto.randomUUID() },
      +  headers: { 'If-Match': etag },
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      As briefed: E2E-1 step 4 fails (400). Analysis made before the run, from the route (headers validated before the reason): step 3 would fail first, because the no-reason POST of step 3 also lacks the key and returns 400 instead of 422. Either way E2E-1 fails; which step fails first is the open question.
 
 3. Result of `npm run test:e2e` with the sabotage applied:
@@ -55,7 +55,7 @@ CLAIM
 
    Actual vs expected:
      E2E-1 failed at step 3: "Expected: 422 / Received: 400". Step 4 was never reached. E2E-2a passed; E2E-2b expected failure (403/422).
-   Outcome: CAUGHT, but at step 3, not step 4 as the brief expected.
+   Outcome: CAUGHT, but at step 3, not step 4 as the plan (§7) expected.
 
 4. Restore. The file(s) were restored by writing back the original content.
    SHA-256 of client/src/api.js
@@ -71,4 +71,4 @@ INTERPRETATION
   What this shows: a client that drops Idempotency-Key is detected by E2E-1 (via the server's 400).
   What this does NOT show: that step 4's own header assertion (`idempotency-key` matches a UUID v4) works; it was never reached, so it is unverified by this NV. Its protection is shared with the server's 400, which fires earlier. Not strengthened; reported.
 
-VERDICT: CAUGHT by E2E-1 (step 3 first, 400; the brief predicted step 4)
+VERDICT: CAUGHT by E2E-1 (step 3 first, 400; the plan (§7) predicted step 4)

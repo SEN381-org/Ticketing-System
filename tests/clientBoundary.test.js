@@ -3,7 +3,7 @@
  *
  * Basis: the thin client (client/) may share exactly one module with the server,
  * shared/domainValues.js. It must not reach into src/, and it must not carry its
- * own copy of a STATUS or ROLE value (CLAUDE.md section 4; the M2 defect with
+ * own copy of a STATUS or ROLE value (DEC-019 §3; the M2 defect with
  * invented statuses and roles, AI Usage Register v0.12 row 48). DEC-019 makes
  * this test the BLOCKING gate for the client: it runs in `npm test`, so in CI.
  * The expected values are read from shared/domainValues.js itself, never

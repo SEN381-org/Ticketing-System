@@ -1,5 +1,5 @@
 Negative verification NV-74 - Narrowed check: 401 problem body `status` replaced by a request-status string
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:23:37.138Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -23,7 +23,7 @@ CLAIM
      +    res.status(httpStatus)
      (The HTTP response stays 401; only the body member changes. STATUS is imported, not retyped.)
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-1 fails at step 1 inside expectNoRequestData: body.status (a string) is not equal to the HTTP status 401. E2E-2a and E2E-2b unchanged.
 
 3. Result of `npm run test:e2e` with the sabotage applied:

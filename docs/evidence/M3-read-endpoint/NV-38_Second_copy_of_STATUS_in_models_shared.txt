@@ -1,5 +1,5 @@
 Negative verification NV-38 — src/models/_shared.js given its own copy of STATUS
-M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12 09:48 UTC
 Node   : v22.20.0
@@ -7,7 +7,7 @@ Branch : task/M3-request-read-endpoint
 Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
 
 CLAIM
-  There is exactly one definition of STATUS (project instructions §4; the M2 defect was a second copy drifting into invented values).
+  There is exactly one definition of STATUS (shared/domainValues.js; the M2 defect was a second copy drifting into invented values, AI Usage Register v0.12 row 48).
 
 1. The protected behaviour was broken in src/models/_shared.js.
      --- src/models/_shared.js (original)

@@ -50,7 +50,7 @@ The record already constrains both choices:
 
 - `@playwright/test`, Chromium only, in its own `e2e/` package. It is added when the E2E
   specs are built, after PR #88 merges, because they reuse its fixture harness.
-- Settings: `retries: 0`, so a failure is never retried until green (CLAUDE.md §6, DEF-013);
+- Settings: `retries: 0`, so a failure is never retried until green (DEF-013);
   `workers: 1`.
 - Playwright starts the real API entry point (`src/server.js`) and a fresh client build for
   each run, never reusing a running server. The NV-43 check depends on that.
@@ -84,8 +84,8 @@ fails if client source imports anything from `src/`, if it does not import
 - **DEC-003's deploy procedure has no client build step.** Today it is `npm ci --omit=dev`,
   migrations, restart. A procedure gap for R. van der Merwe to close at staging time, in a
   new version of DEC-003. Until then, nothing puts `client/dist` on the VPS.
-- **Static analysis.** Once #89 is updated from dev, `eslint.config.js` (from #86) needs a
-  block for `client/` with browser globals and JSX.
+- **Static analysis.** `eslint.config.js` (from #86) has a block for `client/src` with
+  browser globals and JSX (`react/jsx-uses-vars`), added on #89.
 - **CI** does not build the client. A client-build job is a later change, not part of this
   decision.
 - **NFR-1.1 browser coverage** is not claimed. Chromium only.
@@ -94,6 +94,7 @@ fails if client source imports anything from `src/`, if it does not import
 
 1. ~~The pinned Playwright version, recorded when `e2e/` lands.~~ Recorded: `@playwright/test`
    1.64.0, pinned exactly in `e2e/package.json` (Chromium build 1248).
-2. A recorded local E2E run: E2E-1 and E2E-2a pass, and E2E-2b is an expected failure with
-   its 422 quoted. It is the condition for #89 leaving draft.
+2. ~~A recorded local E2E run: E2E-1 and E2E-2a pass, and E2E-2b is an expected failure with
+   its 422 quoted. It is the condition for #89 leaving draft.~~ Recorded:
+   `docs/evidence/M3-e2e/E2E_local_run_2026-10-12.txt` (12/10/2026, 21:27 UTC, exit code 0).
 3. The client build step, added to DEC-003's deploy procedure before the staging run.

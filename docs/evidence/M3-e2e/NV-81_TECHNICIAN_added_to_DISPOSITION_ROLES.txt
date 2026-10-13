@@ -1,5 +1,5 @@
 Negative verification NV-81 - ROLE.TECHNICIAN added to the disposition roles
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:26:37.380Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -17,7 +17,7 @@ CLAIM
      -const DISPOSITION_ROLES = Object.freeze([ROLE.COORDINATOR, ROLE.MANAGER]);
      +const DISPOSITION_ROLES = Object.freeze([ROLE.COORDINATOR, ROLE.MANAGER, ROLE.TECHNICIAN]);
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-2a FAILS (the Technician's Rejected POST returns 201, status Rejected). E2E-2b remains reported as an expected failure (201 is not 403). E2E-1 unaffected (Coordinator).
 
 3. Result of `npm run test:e2e` with the sabotage applied:

@@ -4,7 +4,7 @@
  * Basis: FR-1.1 / AC-FR-1.1 (detail address only), FR-6.6 / AC-FR-6.6 (refusal and
  * store-the-reason clauses only), FR-6.3 / AC-FR-6.3, DEC-015 §2-4 (ETag / If-Match,
  * Idempotency-Key, 422 and 428 rows, problem details), DEC-018 §3-5 (__Host-sid cookie,
- * 401 UNAUTHENTICATED, DELETE /sessions/current 204). Plan: .claude/notes/m3-client-e2e-plan.md §2.
+ * 401 UNAUTHENTICATED, DELETE /sessions/current 204). Case: DEC-019 (Context).
  *
  * Expected results were taken from those sources before the first run, not from observed output.
  *

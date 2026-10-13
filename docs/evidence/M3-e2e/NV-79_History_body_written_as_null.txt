@@ -1,5 +1,5 @@
 Negative verification NV-79 - Service: the history entry body (the reason) written as null
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:25:36.878Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -18,7 +18,7 @@ CLAIM
      +        body:           null,
      (`body` is the real field name in the history append; the request's closure.reason is a different write and is untouched.)
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-1 step 3 passes (nothing is written); step 4 passes up to the closure.reason check, then fails at expect(entry.body).toBe(reason): Expected the unique reason, Received null.
 
 3. Result of `npm run test:e2e` with the sabotage applied:

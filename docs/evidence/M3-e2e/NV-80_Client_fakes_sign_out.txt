@@ -1,5 +1,5 @@
 Negative verification NV-80 - Client fakes sign-out (shows the prompt without calling DELETE)
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:25:55.452Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -18,7 +18,7 @@ CLAIM
      +    /* sabotage: DELETE not sent */
      (The prompt is still shown afterwards: setRequest(null); setEtag(null); setNeedSignIn(true) are untouched.)
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-1 fails at step 5. The brief expected the reload GET to return 200. Analysis made before the run: step 5 first waits for a DELETE response in the same Promise.all as the click; no DELETE is sent, so the failure should come at that wait (timeout) before the reload is reached.
 
 3. Result of `npm run test:e2e` with the sabotage applied:
@@ -55,7 +55,7 @@ CLAIM
 
    Actual vs expected:
      E2E-1 timed out at step 5: "page.waitForResponse: Test timeout of 30000ms exceeded" at the DELETE wait (journey.spec.js line 131). The reload "GET 200" assertion was never reached. Steps 1-4 passed, so a history entry was written (DEF-006). E2E-2a passed; E2E-2b expected failure (403/422).
-   Outcome: CAUGHT, at the DELETE wait rather than at the reload as the brief expected.
+   Outcome: CAUGHT, at the DELETE wait rather than at the reload as the plan (§7) expected.
 
 4. Restore. The file(s) were restored by writing back the original content.
    SHA-256 of client/src/RequestDetail.jsx

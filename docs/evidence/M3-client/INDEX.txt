@@ -1,4 +1,4 @@
-M3 thin client and tests/clientBoundary.test.js — negative verification index (project instructions §6)
+M3 thin client and tests/clientBoundary.test.js — negative verification index (method as docs/evidence/R-01_negative_verification.txt)
 
 Run on : 2026-10-12 UTC
 Node   : v22.20.0

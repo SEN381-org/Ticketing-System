@@ -1,5 +1,5 @@
 Negative verification NV-75 - Client validates the reason itself (refuses an empty reason without sending)
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:24:41.675Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -18,7 +18,7 @@ CLAIM
      +    if (!reason) { setError({ status: 0, problem: null, message: 'Reason required' }); return; } try { await transition(id, etag, toStatus, reason); await load(); } catch (err) { handle(err); }
      (A first attempt at this NV aborted before any run because the multi-line search text did not match the file's CRLF line endings; nothing was changed and no cluster run was made. This record is the second, successful attempt.)
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-1 fails at step 3: no transition POST is sent, so page.waitForResponse(isTransition) never resolves and the test times out (30 s test timeout) at that wait. E2E-2a and E2E-2b unaffected (they POST directly).
 
 3. Result of `npm run test:e2e` with the sabotage applied:

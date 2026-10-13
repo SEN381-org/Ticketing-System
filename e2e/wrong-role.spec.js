@@ -4,7 +4,7 @@
  * Basis: FR-6.4 / AC-FR-6.4, NFR-3.3 / AC-NFR-3.3 ("invoked directly against the server
  * interface, bypassing the user interface"), FR-1.3 / AC-FR-1.3 first two clauses (the
  * recording clause is not built and is not asserted), DEC-015 §4 (403 row: FR-1.3, FR-6.4,
- * NFR-3.3). Plan: .claude/notes/m3-client-e2e-plan.md §2 and §3.
+ * NFR-3.3). Case: DEC-019 (Context); expected failure: DEC-019 §2, DEF-011.
  *
  * The fixture user is authorised for the request's category on purpose, and the GET is
  * asserted 200 first, so only the transition role rule can refuse.

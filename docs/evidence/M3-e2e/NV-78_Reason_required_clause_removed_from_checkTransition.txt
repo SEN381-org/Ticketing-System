@@ -1,5 +1,5 @@
 Negative verification NV-78 - Domain: the reason-required clause removed from checkTransition
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:25:23.398Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -17,7 +17,7 @@ CLAIM
      -  if (REASON_REQUIRED.includes(to) && !context.hasReason) {
      +  if (false) {
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-1 fails at step 3: the no-reason POST returns 201 instead of 422. E2E-2a and E2E-2b unaffected (their body carries a reason; the role refusal comes earlier).
 
 3. Result of `npm run test:e2e` with the sabotage applied:
@@ -69,6 +69,6 @@ CLAIM
 
 INTERPRETATION
   What this shows: E2E-1 step 3 detects a server that accepts a missing reason.
-  What this does NOT show: whitespace-only reasons (plan D12), or the same break for Closed.
+  What this does NOT show: whitespace-only reasons (OI-18), or the same break for Closed.
 
 VERDICT: CAUGHT by E2E-1 (step 3: 201 instead of 422)

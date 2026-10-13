@@ -1,5 +1,5 @@
 Negative verification NV-62 — An export ... from the server src/ tree
-M3 client (client/, tests/clientBoundary.test.js); verification under project instructions §6
+M3 client (client/, tests/clientBoundary.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12 17:25 UTC
 Node   : v22.20.0

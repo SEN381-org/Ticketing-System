@@ -1,4 +1,4 @@
-M3 read endpoint (GET /api/v1/requests/{id}) and shared/domainValues.js — negative verification index (project instructions §6)
+M3 read endpoint (GET /api/v1/requests/{id}) and shared/domainValues.js — negative verification index (method as docs/evidence/R-01_negative_verification.txt)
 
 Run on : 2026-10-12 09:48 UTC
 Node   : v22.20.0
@@ -62,9 +62,9 @@ role (403, not 404), two ETag round-trip tests (the real transition service over
 version-conditional persistence), and the existing indistinguishability test widened to
 compare headers.
 
-Header comparison (task 4): no difference was found. The headers compared for both 404s
-were connection, content-length, content-type, etag (a weak tag Express derives from the
-identical body) and keep-alive. Only `date` is excluded, as it is the response clock. NV-54
+Header comparison of the two 404 responses (refused and missing request): no difference
+was found. The headers compared for both 404s were connection, content-length,
+content-type, etag (a weak tag Express derives from the identical body) and keep-alive. Only `date` is excluded, as it is the response clock. NV-54
 shows a header-only difference would fail the test.
 
 FLAKE, reported and not hidden: "login sets __Host-sid with HttpOnly, Secure, SameSite=Lax,
@@ -104,7 +104,7 @@ versionFromIfMatch (or etagFor) the ETag test would still pass. Proposed (not ad
 round-trip test that takes the ETag header from a real GET response and passes it as
 If-Match to readCommand, expecting the same version.
 
-Citation review of the new and changed tests (task 1)
+Citation review of the new and changed tests (each cited requirement and decision checked against its text in the record)
 
 Wrong citation, corrected (comment/name only, no assertion touched):
   tests/requestRead.test.js, service Administrator test and HTTP Administrator test. Cited
@@ -130,10 +130,10 @@ Reported, not changed:
     Resolved afterwards: the defect predates the Defect Register, so no retrospective DEF is
     raised. The header comment here and in src/models/_shared.js now cites the AI Usage
     Register row that recorded it at the time (v0.12, row 48, 2026-10-01).
-  - The no-import test is titled with DEC-014. DEC-014 lives in Decision Log v0.7.xlsx, which
-    I could not read as text; project instructions describe it as the layered-monolith rule
-    ("a layer calls only the layer directly below"). Browser-safety of a shared module is not
-    evidently what it says. Treat the citation as unverified.
+  - The no-import test is titled with DEC-014. DEC-014 is the closed, layered modular monolith
+    (Decision Log v0.7; PED v2.0 §6A.4 option C and §6A.5: dependencies point downward only,
+    each crossing exactly one boundary). Browser-safety of a shared module is not evidently
+    what it says. Treat the citation as unverified.
   - tests/requestRead.test.js header: "see the report for this change" is a dangling
     reference and will mean nothing to a later reader.
   - "a requester viewing their own non-security request gets 200 — FR-3.6": FR-3.6 is a

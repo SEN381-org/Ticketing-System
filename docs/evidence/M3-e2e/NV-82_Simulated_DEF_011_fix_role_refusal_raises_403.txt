@@ -1,5 +1,5 @@
 Negative verification NV-82 - Simulated DEF-011 fix (local throwaway): role refusal raises AuthorisationError (403)
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:26:51.761Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -18,7 +18,7 @@ CLAIM
      +      if (!verdict.allowed) { if (verdict.reason.startsWith('No held role')) throw new AuthorisationError(verdict.reason); throw new TransitionError(verdict.reason); }
      (Nothing else changed. AuthorisationError is already imported there and is status 403, code FORBIDDEN, src/errors.js. This is NOT the DEF-011 fix; it is a local simulation, restored below.)
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-2b passes its 403/FORBIDDEN assertions, so Playwright reports "Expected to fail, but passed" and the run exits non-zero. E2E-1 and E2E-2a pass (2a: >= 400 still holds).
 
 3. Result of `npm run test:e2e` with the sabotage applied:

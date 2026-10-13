@@ -1,5 +1,5 @@
 Negative verification NV-56 — A ROLE value as a quoted literal in a client file
-M3 client (client/, tests/clientBoundary.test.js); verification under project instructions §6
+M3 client (client/, tests/clientBoundary.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12 17:25 UTC
 Node   : v22.20.0
@@ -8,7 +8,7 @@ Commit : a22b450 (HEAD). The code under test (client/, tests/clientBoundary.test
 Baseline: 167 tests, 167 pass, 0 fail (before the sabotage, with the strengthened clientBoundary test).
 
 CLAIM
-  No client/src file holds a ROLE value as a string literal (FR-1.2; CLAUDE.md section 4).
+  No client/src file holds a ROLE value as a string literal (FR-1.2; DEC-019 §3).
 
 1. The protected behaviour was broken in the CLIENT (never in the test).
      --- client/src/SignIn.jsx (original)

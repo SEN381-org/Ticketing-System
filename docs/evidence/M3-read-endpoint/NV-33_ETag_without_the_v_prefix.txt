@@ -1,5 +1,5 @@
 Negative verification NV-33 — ETag emitted without the "v" prefix
-M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12 09:48 UTC
 Node   : v22.20.0

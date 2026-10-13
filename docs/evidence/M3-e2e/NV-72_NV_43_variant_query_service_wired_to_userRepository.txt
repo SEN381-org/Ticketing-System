@@ -1,5 +1,5 @@
 Negative verification NV-72 - NV-43 second variant: query service wired to a repository that has findById but the wrong collection
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:22:57.892Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -18,7 +18,7 @@ CLAIM
      +     requestQueryService: createRequestQueryService({ requests: userRepository }),
      (userRepository.findById = User.findById(id).lean(), src/repositories/userRepository.js line 16; already imported in composition.js.)
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-1 fails at step 2 with a 404: the lookup succeeds against the users collection and finds no document with a request id. E2E-2a fails at its GET-200 precondition for the same reason; E2E-2b is reported as an expected failure (not meaningful here, see NV-71).
 
 3. Result of `npm run test:e2e` with the sabotage applied:

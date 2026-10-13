@@ -1,5 +1,5 @@
 Negative verification NV-77 - Client drops the If-Match header
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:24:13.705Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -17,7 +17,7 @@ CLAIM
      -  headers: { 'If-Match': etag, 'Idempotency-Key': crypto.randomUUID() },
      +  headers: { 'Idempotency-Key': crypto.randomUUID() },
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      As briefed: step 4 fails (428). Analysis made before the run, as for NV-76: step 3 would fail first (428 instead of 422).
 
 3. Result of `npm run test:e2e` with the sabotage applied:
@@ -55,7 +55,7 @@ CLAIM
 
    Actual vs expected:
      E2E-1 failed at step 3: "Expected: 422 / Received: 428". Step 4 never reached. E2E-2a passed; E2E-2b expected failure (403/422).
-   Outcome: CAUGHT, but at step 3, not step 4 as the brief expected.
+   Outcome: CAUGHT, but at step 3, not step 4 as the plan (§7) expected.
 
 4. Restore. The file(s) were restored by writing back the original content.
    SHA-256 of client/src/api.js
@@ -71,4 +71,4 @@ INTERPRETATION
   What this shows: dropping If-Match is detected via the server's 428.
   What this does NOT show: that step 4's `if-match` === ETag assertion works; it was not reached. Whether the client sends the ETag VERBATIM (not rebuilt from body.version) is therefore not proven by this NV.
 
-VERDICT: CAUGHT by E2E-1 (step 3 first, 428; the brief predicted step 4)
+VERDICT: CAUGHT by E2E-1 (step 3 first, 428; the plan (§7) predicted step 4)

@@ -49,12 +49,12 @@ Playwright stats from results.json: {"expected":3,"unexpected":0,"skipped":0,"fl
 Cluster writes of this run (DEF-006; they stay on the cluster): 3 fixtures (3 Users, 3 Received requests), 3 sessions with their login audit events (approximate, from reading the code, not queried), and 1 history entry (E2E-1's Received to Rejected). E2E-2a and E2E-2b wrote no history.
 
 INTERPRETATION
-What it shows (plan section 2):
+What it shows (as scoped in the headers of e2e/journey.spec.js and e2e/wrong-role.spec.js):
   - A real Chromium session through the composed production entry point (src/server.js, composeApplication) against the Atlas test cluster: the __Host-sid cookie round trip; the sign-in prompt shown in place with the URL unchanged (AC-FR-1.1, detail address only); the read path returning exactly {reference, status, version} with ETag "v0" from the requests collection (this is the check that catches NV-43; see NV-71, NV-72); If-Match taken from the server's ETag; the server, not the client, refusing a missing reason with 422 (AC-FR-6.6 first attempt refused, and nothing written); the stored reason and the single history entry checked field by field (AC-FR-6.3); sign-out ending the session.
   - E2E-2a: a Technician bypassing the UI is refused (status >= 400, problem+json, no request data in the body), nothing is written (AC-FR-6.4, AC-NFR-3.3, AC-FR-1.3 first two clauses).
   - E2E-2b: the expected failure for DEF-011 is live. DEC-015 section 4 requires 403 FORBIDDEN; the code returns 422. The text above is the 422. When DEF-011 is fixed this test reports 'Expected to fail, but passed' and the run goes red until the mark is removed (shown by NV-82).
 What it does NOT show:
-  - The vite preview stands in for Nginx. Nginx/TLS and the real same-origin deployment are not exercised (a staging run is still required before a production release tag, plan D3).
+  - The vite preview stands in for Nginx. Nginx/TLS and the real same-origin deployment are not exercised.
   - Chromium only; no other browser (NFR-1.1 is not claimed).
   - Local run, NOT in CI (DEC-019 section 2). It writes fixtures to the cluster.
   - AC-FR-6.6 'displays it in the history' is not covered: no history is displayed by the client.

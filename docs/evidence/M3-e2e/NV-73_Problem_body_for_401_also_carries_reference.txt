@@ -1,5 +1,5 @@
 Negative verification NV-73 - Narrowed "no request data in a refusal" check: 401 problem body also carries a reference
-M3 E2E (e2e/, client/, src/) ; verification under project instructions section 6
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12T21:23:21.651Z (UTC, start of the Playwright run)
 Node   : v22.20.0
@@ -18,7 +18,7 @@ CLAIM
      +    if (problem.code === 'UNAUTHENTICATED') problem.reference = 'REF-LEAK-STANDIN';
      (The handler does not know the request's real reference at the 401 point, so a fixed stand-in value is used. The assertion is on the property's presence, not.toHaveProperty('reference'), so the value does not matter to it. The separate page-text check for the real reference is not what failed here.)
 
-2. Expected failures (written down before the run, derived from the claim and the plan, not from output):
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
      E2E-1 fails at step 1 (signed out: prompt shown in place, nothing disclosed) inside expectNoRequestData, with a message about the "reference" path. E2E-2a and E2E-2b unchanged (their refusals are 422, not UNAUTHENTICATED).
 
 3. Result of `npm run test:e2e` with the sabotage applied:

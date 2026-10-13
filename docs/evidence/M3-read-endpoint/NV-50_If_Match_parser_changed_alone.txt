@@ -1,5 +1,5 @@
 Negative verification NV-50 — If-Match parser regex changed alone (versionFromIfMatch)
-M3 read endpoint (GET /api/v1/requests/{id}); verification under project instructions §6
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
 
 Run on : 2026-10-12 09:59 UTC
 Node   : v22.20.0
