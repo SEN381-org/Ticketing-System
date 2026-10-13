@@ -27,6 +27,7 @@ import User from '../../src/models/User.js';
 import Request from '../../src/models/Request.js';
 import RequestHistory from '../../src/models/RequestHistory.js';
 import { ROLE, STATUS } from '../../src/models/_shared.js';
+import { TEST_CLUSTER_MARKER } from '../../scripts/lib/clusterMarkers.js';
 
 /**
  * DEC-003 (environment map, Test row) is the authoritative source for this
@@ -38,7 +39,6 @@ import { ROLE, STATUS } from '../../src/models/_shared.js';
  * user name, database name or option that happens to contain the marker does not
  * satisfy it. The URI itself is never printed: it holds a credential.
  */
-const TEST_CLUSTER_MARKER = 'civicconnecttest';
 
 function skipReason(uri) {
   if (!uri) return 'MONGODB_URI is not set: integration cases were NOT run';

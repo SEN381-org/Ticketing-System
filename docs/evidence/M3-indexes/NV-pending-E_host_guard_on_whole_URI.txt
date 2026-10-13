@@ -1,0 +1,49 @@
+Negative verification NV-pending-E — the host guard looks for the marker in the whole URI
+Index-provisioning script (scripts/atlas, tests/indexProvisioning.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-13 17:04 UTC
+Node   : v22.20.0
+Branch : task/M3-index-provisioning
+Commit : 386f1b6 (HEAD at the start of the work). The code under test (scripts/atlas/, scripts/lib/clusterMarkers.js, tests/indexProvisioning.test.js) is UNCOMMITTED working-tree content. The sabotage was applied to the working tree, then restored by writing back the exact original content.
+Identifier: NV-pending-E is a placeholder; the real number is allocated by the team.
+
+CLAIM
+  Only the host of the URI can satisfy the marker; a user name, password, database or option containing it does not.
+
+1. The protected behaviour was broken in the CODE (never in the test).
+     --- scripts/atlas/indexComparison.js (original)
+     +++ scripts/atlas/indexComparison.js (sabotaged)
+     - if (!url.hostname.includes(marker)) {
+     + if (!uri.includes(marker)) {
+
+   Expected to fail (written down before the run, derived from the claim above):
+     U15 the host guard looks at the host only and at the recorded marker only — DEC-003 (environment map)
+   Reason: Only U15 puts the marker outside the host.
+
+2. Result of node --test tests/indexProvisioning.test.js (with the sabotage applied):
+
+     not ok - U15 the host guard looks at the host only and at the recorded marker only — DEC-003 (environment map)
+         failure: mongodb+srv://civicconnecttest:p@example.net/civicconnect must be refused |  | true !== false
+     # tests 19
+     # pass 18
+     # fail 1
+     # skipped 0
+
+   Outcome: CAUGHT — every expected test failed, and nothing else failed
+
+3. The file was restored by writing back its original content.
+   SHA-256 of scripts/atlas/indexComparison.js before : d6a384d35e33fd854c32bce73c6150724308bc30aa3bb2bf8bf68391d617f3c1
+   SHA-256 of scripts/atlas/indexComparison.js after  : d6a384d35e33fd854c32bce73c6150724308bc30aa3bb2bf8bf68391d617f3c1
+   Identical.
+   The full suite (npm test) was re-run after the restore:
+
+     # tests 194
+     # pass 186
+     # fail 0
+     # skipped 8
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: Only the host of the URI can satisfy the marker; a user name, password, database or option containing it does not.
+  What this does NOT show: that a real Atlas cluster returns listIndexes documents of the shape the tests use, or that the I/O shell calls this function correctly; the live runs L1 to L4 are separate and not yet done.

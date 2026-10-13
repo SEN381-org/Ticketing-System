@@ -1,0 +1,52 @@
+Negative verification NV-pending-A — the comparator ignores the unique option
+Index-provisioning script (scripts/atlas, tests/indexProvisioning.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-13 17:03 UTC
+Node   : v22.20.0
+Branch : task/M3-index-provisioning
+Commit : 386f1b6 (HEAD at the start of the work). The code under test (scripts/atlas/, scripts/lib/clusterMarkers.js, tests/indexProvisioning.test.js) is UNCOMMITTED working-tree content. The sabotage was applied to the working tree, then restored by writing back the exact original content.
+Identifier: NV-pending-A is a placeholder; the real number is allocated by the team.
+
+CLAIM
+  An index that is unique in the declaration but not unique on the server is reported DIFFERENT (DEF-017: users.email_1; DEF-015: requestHistory unique indexes).
+
+1. The protected behaviour was broken in the CODE (never in the test).
+     --- scripts/atlas/indexComparison.js (original)
+     +++ scripts/atlas/indexComparison.js (sabotaged)
+     - for (const flag of ['unique', 'sparse', 'hidden']) {
+     + for (const flag of ['sparse', 'hidden']) {
+
+   Expected to fail (written down before the run, derived from the claim above):
+     U4 a unique index that is not unique on the server is DIFFERENT — DEF-017, DEF-015
+     U13 the summary line has the exact wording and the exit code follows the counts — decision D11
+   Reason: U4 asserts DIFFERENT on a missing unique. U13 builds its DIFFERENT case from a missing unique, so it fails too.
+
+2. Result of node --test tests/indexProvisioning.test.js (with the sabotage applied):
+
+     not ok - U4 a unique index that is not unique on the server is DIFFERENT — DEF-017, DEF-015
+         failure: Expected values to be strictly equal: | + actual - expected |  | + 'PRESENT' | - 'DIFFERENT'
+     not ok - U13 the summary line has the exact wording and the exit code follows the counts — decision D11
+         failure: Expected values to be strictly equal: |  | 0 !== 1
+     # tests 19
+     # pass 17
+     # fail 2
+     # skipped 0
+
+   Outcome: CAUGHT — every expected test failed, and nothing else failed
+
+3. The file was restored by writing back its original content.
+   SHA-256 of scripts/atlas/indexComparison.js before : d6a384d35e33fd854c32bce73c6150724308bc30aa3bb2bf8bf68391d617f3c1
+   SHA-256 of scripts/atlas/indexComparison.js after  : d6a384d35e33fd854c32bce73c6150724308bc30aa3bb2bf8bf68391d617f3c1
+   Identical.
+   The full suite (npm test) was re-run after the restore:
+
+     # tests 194
+     # pass 186
+     # fail 0
+     # skipped 8
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: An index that is unique in the declaration but not unique on the server is reported DIFFERENT (DEF-017: users.email_1; DEF-015: requestHistory unique indexes).
+  What this does NOT show: that a real Atlas cluster returns listIndexes documents of the shape the tests use, or that the I/O shell calls this function correctly; the live runs L1 to L4 are separate and not yet done.
