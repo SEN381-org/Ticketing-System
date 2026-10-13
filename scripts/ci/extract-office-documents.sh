@@ -25,6 +25,7 @@ mkdir -p "$OUT"
 # Listed to a file first, so an invalid <rev> stops the script (set -e) instead of
 # reading as "no Office documents". Kept outside <out-dir> so it is not scanned.
 objects="$(mktemp)"
+trap 'rm -f "$objects"' EXIT
 git -C "$REPO" rev-list "$REV" --objects > "$objects"
 
 zips=0; raws=0; failed=0
@@ -43,7 +44,7 @@ while read -r sha path; do
   else
     if [ "$(head -c 2 "$blob")" = "PK" ]; then
       echo "::warning::Could not unzip $path (blob $sha); scanning its raw bytes instead."
-            failed=$((failed + 1))
+      failed=$((failed + 1))
     else
       echo "::warning::$path (blob $sha) is not a zip (password-protected, or an Office lock file); scanning its raw bytes instead."
     fi
@@ -52,6 +53,5 @@ while read -r sha path; do
     raws=$((raws + 1))
   fi
 done < <(grep -iE '\.(xlsx|xlsm|docx|pptx)$' "$objects" || true)
-rm -f "$objects"
 
 echo "Extracted $zips Office document versions; $raws blobs scanned as raw bytes ($failed of them unreadable zips)."
