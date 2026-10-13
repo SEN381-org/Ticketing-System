@@ -1,0 +1,134 @@
+M3 end-to-end suite (e2e/: E2E-1, E2E-2a, E2E-2b) and its negative verifications - index (method as docs/evidence/R-01_negative_verification.txt)
+
+Run on : 2026-10-12 (UTC). Runs between 21:22 and 21:27 UTC, apart from the unplanned run below, which was earlier the same day.
+Node   : v22.20.0
+Playwright 1.64.0, Chromium (Chrome for Testing 156.0.8078.4, build 1248). Command: npm run test:e2e
+Branch : task/M3-request-read-endpoint (PR #89)
+Commit : 43a53a7 (HEAD). e2e/ and the changes to .gitignore, eslint.config.js, package.json and DEC-019 are UNCOMMITTED
+         working-tree content. client/, src/ and shared/ are tracked and were unmodified after every restore.
+Environment : Atlas test cluster, database civicconnect, credential civicconnect-app. No connection string is recorded in
+         any file in this directory.
+
+Each NV broke one protected behaviour in the code (never in a test), ran the E2E suite ONCE against the cluster, recorded the
+failing tests and the failure text, restored the file by writing back its exact original content, and confirmed the SHA-256
+of every touched file and of the whole src/ + client/src + e2e sources + shared/ tree before and after. Expected failures were
+written down before the run (those in docs/quality/M3_E2E_Test_Plan_v0.1.md §7, plus the analysis made before the run where the plan was silent; where
+the outcome differed from the plan this is stated in the record). The run was scripted so each sabotage was applied and
+reverted mechanically. Git was not used to restore anything.
+
+Green re-run after each NV: NOT made. The final recorded run (E2E_local_run_2026-10-12.txt, section D) is the restored-state
+confirmation for all of NV-71 to NV-82: it passed (exit 0) with src/, client/src and e2e sources hashing identically to
+the values taken before every NV run.
+
+------------------------------------------------------------------------------------------------------------------------
+UNPLANNED RUN (recorded as it happened; 2026-10-12, during the build, before approval)
+
+The implementer ran `npm run test:e2e` once without the intended throwaway env file, because an exported env var did not
+carry between Bash calls, so the config defaulted to .env.test. The host guard held: it ran only because the host is the test
+cluster, and it only ever reached the test cluster. It wrote three fixtures (each a User, email it-<hex>@example.test, and a
+Received request at version 0) that stay on the cluster (DEF-006). E2E-1 failed at step 1 on a spec assertion bug (the "no
+status key" check, since narrowed to allow a numeric RFC 9457 problem status), so it never signed in or sent a transition.
+E2E-2a and E2E-2b each signed in as a Technician and sent one Rejected transition; both got 422, so no history entry was
+written. E2E-2b's failure was "Expected: 403 / Received: 422", which confirmed DEF-011 and showed the client's session cookie
+reaches the transition rule (a 422 comes from checkTransition, after authentication).
+The run's output was not kept, so this entry is from the implementer's report and not from a retained log.
+------------------------------------------------------------------------------------------------------------------------
+
+BASELINE (first approved run, unbroken code; 2026-10-12 21:22 UTC; exit code 0)
+  E2E-1   passed (as expected)
+  E2E-2a  passed (as expected)
+  E2E-2b  expected failure, reported by Playwright as passed-as-expected-failure, 3 passed in the list summary.
+          Actual text from results.json: "Expected: 403 / Received: 422".
+  Matches the prediction; nothing unplanned happened.
+
+NEGATIVE VERIFICATIONS (numbered from NV-71; NV-27 to NV-54 and NV-66 to NV-70 are in M3-read-endpoint, NV-55 to NV-65 in M3-client)
+
+NV-71  CAUGHT      NV-43 re-run: query service wired to historyRepository. E2E-1 step 2, GET 500  (NV-71_NV_43_rerun_query_service_wired_to_historyRepository.txt)
+                   Also failed E2E-2a at its GET-200 precondition; E2E-2b still showed "expected failure" for the wrong reason.
+NV-72  CAUGHT      NV-43 variant: wired to userRepository (has findById, wrong collection). E2E-1 step 2, GET 404, no crash  (NV-72_NV_43_variant_query_service_wired_to_userRepository.txt)
+NV-73  CAUGHT      401 problem body also carries a `reference`. E2E-1 step 1  (NV-73_Problem_body_for_401_also_carries_reference.txt)
+                   A fixed stand-in value was used, not the request's real reference; the assertion tests property presence.
+NV-74  CAUGHT      401 problem body `status` replaced by a request-status string. E2E-1 step 1  (NV-74_Problem_body_status_replaced_by_a_request_status_string.txt)
+NV-75  CAUGHT      Client validates the reason itself. E2E-1 step 3, no POST observed (test timeout)  (NV-75_Client_validates_the_reason_itself.txt)
+                   A first attempt aborted before any run (CRLF search-text mismatch); no cluster run was made for it.
+NV-76  CAUGHT      Client drops Idempotency-Key. Caught at step 3 (400), NOT step 4 as the plan (§7) expected  (NV-76_Client_drops_Idempotency_Key.txt)
+NV-77  CAUGHT      Client drops If-Match. Caught at step 3 (428), NOT step 4 as the plan (§7) expected  (NV-77_Client_drops_If_Match.txt)
+                   NV-76/NV-77 finding: the server refuses the missing header on the step-3 (no reason) POST, before step 4. Step 4's
+                   own header assertions (idempotency-key is a UUID v4; if-match equals the ETag verbatim) were therefore never reached
+                   and are NOT shown to work by these NVs. Reported; no assertion added.
+NV-78  CAUGHT      Reason-required clause removed from checkTransition. E2E-1 step 3, 201 instead of 422  (NV-78_Reason_required_clause_removed_from_checkTransition.txt)
+NV-79  CAUGHT      History entry body written as null. E2E-1 step 4, field-by-field check  (NV-79_History_body_written_as_null.txt)
+NV-80  CAUGHT      Client fakes sign-out (no DELETE). Caught at step 5 waiting for the DELETE (timeout), NOT at the reload GET 200 as the plan (§7) expected  (NV-80_Client_fakes_sign_out.txt)
+                   The reload check (a server that fails to end the session) was not reached by this NV and is not shown to work by it.
+NV-81  CAUGHT      ROLE.TECHNICIAN added to DISPOSITION_ROLES. E2E-2a FAILS (201); E2E-2b stays an expected failure (201, not 403)  (NV-81_TECHNICIAN_added_to_DISPOSITION_ROLES.txt)
+                   This is the evidence for splitting 2a from 2b (see the header of e2e/wrong-role.spec.js): under one test.fail() test this regression would read as green.
+NV-82  AS INTENDED Simulated DEF-011 fix (throwaway): role refusal raises AuthorisationError (403). E2E-2b "Expected to fail, but passed"; exit code 1  (NV-82_Simulated_DEF_011_fix_role_refusal_raises_403.txt)
+                   The expected-failure mark goes red once DEF-011 is fixed. Restored; this was not the real fix.
+
+No NV was NOT CAUGHT. Where the first failing step differed from the plan (§7) (NV-76, NV-77, NV-80) the break was still caught and
+the difference is recorded in the NV file.
+
+ASSERTIONS NOT PROVEN BY ANY NV (decided 2026-10-12 by E. Lindsay: recorded as a gap, no further NV runs)
+These assertions are in the specs and pass, but no break in this directory has been shown to make them fail. A pass on them
+is therefore not evidence.
+  1. E2E-1 step 4, "the request carried an Idempotency-Key in UUID v4 form". NV-76 removed the header, and the server refused
+     the step-3 (no-reason) POST with 400 first, so step 4 was never reached. A client sending a malformed key only on the
+     second submission would be needed to prove it.
+  2. E2E-1 step 4, "the request's If-Match equals the ETag read at step 2, verbatim". NV-77 removed the header, and the
+     server refused the step-3 POST with 428 first, so step 4 was never reached.
+  3. E2E-1 step 5, "after sign-out a reload gets 401 and shows no request data". NV-80 made the client fake sign-out without
+     calling DELETE, and the test failed earlier, waiting for the DELETE, so the reload check was never reached. A server that
+     answers 204 but does not end the session has not been shown to fail this step.
+
+NV-43 STATUS (unchanged by this directory): NV-43 REMAINS NOT CAUGHT in `npm test` and in CI. NV-71 and NV-72 show that
+E2E-1, run locally against the Atlas test cluster (and later on staging), catches the original leak and a no-crash variant. E2E-1
+does not run in CI (DEC-019 section 2), so the wiring of the read path in composeApplication is still unverified by anything
+that runs on every push. E2E-1 is a local and staging check, not coverage in the automated suite. M3-read-endpoint/NV-43 and
+its INDEX entry stay as they are.
+
+FINAL RECORDED RUN (section D): E2E_local_run_2026-10-12.txt. 2026-10-12 21:27 UTC, restored code, exit 0: E2E-1 passed,
+E2E-2a passed, E2E-2b expected failure ("Expected: 403 / Received: 422" quoted in that file).
+
+CLUSTER RUNS MADE IN THIS TASK (every `npm run test:e2e` writes to the Atlas test cluster; all of it stays there, DEF-006)
+Each full run creates 3 fixtures (3 Users and 3 Received requests at version 0; the campus and category are bare ids, not
+documents), and each browser or UI sign-in creates a session and its login audit event. Session and audit counts are
+approximate, from reading the code, not queried. History entries are written only by a successful transition.
+
+   #   run                      users  requests  sessions  history entries written
+   0   unplanned (pre-approval)   3       3         2          0   (E2E-2a, E2E-2b signed in; both got 422)
+   1   baseline                   3       3         3          1   (E2E-1 Received to Rejected)
+   2   NV-71                      3       3         3          0
+   3   NV-72                      3       3         3          0
+   4   NV-73                      3       3         2          0   (E2E-1 failed before sign-in)
+   5   NV-74                      3       3         2          0   (E2E-1 failed before sign-in)
+   6   NV-75                      3       3         3          0
+   7   NV-76                      3       3         3          0
+   8   NV-77                      3       3         3          0
+   9   NV-78                      3       3         3          1   (a Rejected request with NO reason, the sabotage's effect)
+  10   NV-79                      3       3         3          1   (history entry with body null)
+  11   NV-80                      3       3         3          1   (E2E-1's session was not ended)
+  12   NV-81                      3       3         3          2   (the two Technician requests were Rejected)
+  13   NV-82                      3       3         3          1
+  14   final recorded run         3       3         3          1
+  Total cluster runs: 15 (1 unplanned, 1 baseline, 12 negative-verification runs, 1 final). The aborted NV-75 first attempt
+  made no cluster run. Approximate totals: 45 Users, 45 requests, about 40 sessions with login audit events, 8 history entries.
+  Plus, from the other tasks on this branch, the earlier fixtures already there.
+  The unit/lint steps at the end did not touch the cluster (npm test reported 8 skipped: the PR #88 integration cases, which skip when MONGODB_URI is not set).
+
+KNOWN GAPS (also in the final run record)
+  - The vite preview stands in for Nginx locally; the Nginx/TLS same-origin path is not exercised.
+  - Chromium only; no NFR-1.1 browser claim.
+  - Not in CI; local (and later staging) only. Writes fixtures to the cluster (DEF-006).
+  - AC-FR-6.6 "displays it in the history" is not covered.
+  - The POST /sessions 201 body keys are not asserted.
+  - AC-FR-1.3's recording clause is not built and not asserted.
+  - FR-4.2 is not verified (the endpoint returns three fields).
+  - Step 4's own If-Match and Idempotency-Key header assertions are masked by the server's earlier refusal at step 3 (NV-76,
+    NV-77); the step-5 reload check is masked by the DELETE wait (NV-80). Neither was strengthened; reported.
+  - E2E-2b's test.fail() is satisfied by ANY failure: when the GET precondition fails it still reports "expected failure"
+    (NV-71, NV-72). Read 2b only together with 2a.
+  - NV-73 used a stand-in value, not the real reference.
+  - No --repeat-each stability measurement; a single run on one occasion.
+
+Verification steps at the end (not cluster runs): npm run lint exit 0; npm test 175 tests, 167 pass, 0 fail, 8 skipped (the eight
+integration cases from PR #88, which skip with a printed reason when MONGODB_URI is not set). No DEF-013/DEF-016 flake occurred in that run.

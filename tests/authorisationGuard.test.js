@@ -75,9 +75,9 @@ test('the request router guards every route it registers', () => {
   }
 });
 
-test('the transition route is the DEC-015 resource, not a field update — R-03', () => {
-  const routes = routeTable(createRequestRouter({ statusTransitionService: {} }));
-  assert.deepEqual(routes.map((r) => `${r.method} ${r.path}`), ['POST /:id/transitions']);
+test('the transition route is the DEC-015 resource, not a field update; the read route is GET /:id — R-03, DEC-015 §1', () => {
+  const routes = routeTable(createRequestRouter({ statusTransitionService: {}, requestQueryService: {} }));
+  assert.deepEqual(routes.map((r) => `${r.method} ${r.path}`), ['GET /:id', 'POST /:id/transitions']);
 });
 
 test('every role named in the rule set exists in FR-1.2', () => {

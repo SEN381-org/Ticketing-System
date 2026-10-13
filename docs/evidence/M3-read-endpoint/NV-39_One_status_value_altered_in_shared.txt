@@ -1,0 +1,47 @@
+Negative verification NV-39 — One status value altered in shared/domainValues.js
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  The statuses are exactly the FR-6.1 set (AC-FR-6.1).
+
+1. The protected behaviour was broken in shared/domainValues.js.
+     --- shared/domainValues.js (original)
+     +++ shared/domainValues.js (sabotaged)
+     @@ line 15 @@
+           ASSIGNED: 'Assigned',
+       -   IN_PROGRESS: 'In Progress',
+       +   IN_PROGRESS: 'InProgress',
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - shared values are exactly the FR-6.1 statuses and FR-1.2 roles — AC-FR-6.1
+     not ok - status values are exactly the FR-6.1 set
+     not ok - the status set is exactly the seven values FR-6.1 baselines
+     # tests 152
+     # pass 149
+     # fail 3
+
+   Expected to fail (derived before execution from the claim above):
+     shared values are exactly the FR-6.1 statuses and FR-1.2 roles
+   Also failed (not predicted): status values are exactly the FR-6.1 set | the status set is exactly the seven values FR-6.1 baselines
+   Outcome: CAUGHT — every expected test failed
+
+3. shared/domainValues.js was restored by writing back its original content. SHA-256 after restore:
+     d28f961090b50c65ca0a96b707447b9701d59942a91130de5ec6acca23e9c412
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: The exact-value test (derived from the FR-6.1 text) fails. Any other failures are listed in section 2.
+  What this does NOT show: That the deployed system lists these values (AC-FR-6.1 is stated against the deployed system); this checks the definition only.

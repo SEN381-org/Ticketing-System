@@ -1,0 +1,54 @@
+Negative verification NV-40 — GET /requests/{id} removed from docs/api/openapi.yaml
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  The API contract documents the read operation (DEC-015 route table).
+
+1. The protected behaviour was broken in docs/api/openapi.yaml.
+     --- docs/api/openapi.yaml (original)
+     +++ docs/api/openapi.yaml (sabotaged)
+     @@ line 118 @@
+                   description: No session remains for this cookie.
+       -   /requests/{id}:
+       -     get:
+       -       tags: [requests]
+       -       operationId: getRequest
+       -       summary: Read a request
+       -       description: |
+       - ... (45 more lines)
+       -             application/problem+json:
+       -               schema: { $ref: '#/components/schemas/Problem' }
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     (no test failed)
+     # tests 152
+     # pass 152
+     # fail 0
+
+   Expected to fail (derived before execution from the claim above):
+     (no existing test was expected to catch this; the run was to find out)
+   Outcome: NOT CAUGHT
+
+3. docs/api/openapi.yaml was restored by writing back its original content. SHA-256 after restore:
+     152cdbda005d52f943afe4d80fa257901fc39dcb19cafa51823df01d23b60d1d
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+INTERPRETATION
+  NOT CAUGHT. No existing test fails when this behaviour is broken, so nothing in the suite is evidence for it.
+  What this does NOT show: Nothing in the suite checks that a route has an operation in openapi.yaml. tests/openapiContract.test.js (DEF-002) only compares the Problem.code enum with the codes the code can send.
+  Proposed test (not added; reported to the project lead first): A contract test that walks the mounted route table (routeTable() in tests/authorisationGuard.test.js already exists) and asserts each METHOD + path has a matching operation in openapi.yaml, and the reverse. Sabotage-verify it by removing the GET block again.
+
+LATER RE-RUN
+  Re-run against the contract test added afterwards (tests/openapiRoutes.test.js) as
+  NV-45: CAUGHT. This record stays as the NOT CAUGHT history.

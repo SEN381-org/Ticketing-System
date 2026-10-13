@@ -1,0 +1,51 @@
+Negative verification NV-64 — A new nested client file (client/src/x/y.jsx) carrying all three violations
+M3 client (client/, tests/clientBoundary.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 17:26 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : a22b450 (HEAD). The code under test (client/, tests/clientBoundary.test.js) is UNCOMMITTED working-tree content. The sabotage was applied to the working tree, then restored by writing back the original content (or removing the file created for the run).
+Baseline: 167 tests, 167 pass, 0 fail (before the sabotage, with the strengthened clientBoundary test).
+
+CLAIM
+  The scan walks client/src recursively and skips nothing it should check.
+
+1. The protected behaviour was broken in the CLIENT (never in the test).
+     --- client/src/x/y.jsx (original)
+     +++ client/src/x/y.jsx (sabotaged)
+     client/src/x/y.jsx (new file, new directory client/src/x/):
+       + import '../../../src/app.js';
+       + export const leaked = 'Closed';
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - no client/src file imports from the server src/ tree — DEC-014
+     not ok - the only import leaving client/ is shared/domainValues.js, and the client uses it — DEC-014
+     not ok - no client/src file holds a STATUS or ROLE value as a string literal or JSX text — FR-6.1, FR-1.2
+     # tests 167
+     # pass 164
+     # fail 3
+
+   Expected to fail (written down before the run, derived from the claim above):
+     no client/src file holds a STATUS or ROLE value as a string literal or JSX text — FR-6.1, FR-1.2
+     no client/src file imports from the server src/ tree — DEC-014
+     the only import leaving client/ is shared/domainValues.js, and the client uses it — DEC-014
+   Note: The nested file imports src/ (fails the src/ and the "only import" checks) and holds a quoted STATUS value (fails the literal check).
+   Outcome: CAUGHT — every expected test failed, and nothing else failed
+
+3. The created file and its directory were restored by removal.
+   File after removal: (file removed)
+   SHA-256 of the whole client/src tree (path + content of every file) before : 62b234f4afb2f291932fef9b9060412269dc060d4f65f157b01e8b9889a51ebc
+                                                                              after  : 62b234f4afb2f291932fef9b9060412269dc060d4f65f157b01e8b9889a51ebc
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 167
+     # pass 167
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: A violation two directories down is found, so the walk is recursive for all three scans.
+  What this does NOT show: That client/node_modules is skipped (nothing in it is placed here); the walk skips it by name.

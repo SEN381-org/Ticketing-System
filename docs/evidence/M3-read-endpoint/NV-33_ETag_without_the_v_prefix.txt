@@ -1,0 +1,48 @@
+Negative verification NV-33 — ETag emitted without the "v" prefix
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:48 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+
+CLAIM
+  The GET emits ETag "v<version>", the strong form that the transition route's If-Match parser accepts (DEC-015 'ETag: "v<n>"').
+
+1. The protected behaviour was broken in src/routes/requestRoutes.js.
+     --- src/routes/requestRoutes.js (original)
+     +++ src/routes/requestRoutes.js (sabotaged)
+     @@ line 71 @@
+                 const result = await requestQueryService.getRequest(req.params.id, req.actor);
+       -         res.set('ETag', etagFor(result.version));
+       +         res.set('ETag', `"${result.version}"`);
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - GET 200 body has exactly the three keys and ETag "v<version>" — DEC-015 §1
+     # tests 152
+     # pass 151
+     # fail 1
+
+   Expected to fail (derived before execution from the claim above):
+     GET 200 body has exactly the three keys and ETag
+   Outcome: CAUGHT — every expected test failed
+
+3. src/routes/requestRoutes.js was restored by writing back its original content. SHA-256 after restore:
+     b4d8cf24ebcbbe84f18d181cee47c8faffe354248c82a69c5de743191920fc6a
+   Identical to the value recorded before the run.
+   The full suite was re-run:
+
+     # tests 152
+     # pass 152
+     # fail 0
+
+   Parser agreement (code): the transition route accepts If-Match only in the form
+   /^"v(\d+)"$/ (src/routes/requestRoutes.js, versionFromIfMatch). The GET emits
+   etagFor(result.version) = `"v${version}"` (same file, etagFor). See the one-off check in INDEX.txt.
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: The exact ETag string is asserted ("v3").
+  What this does NOT show: No test feeds the GET's ETag into the If-Match parser. Their agreement rests on both calling the one helper etagFor and on the one-off check in INDEX.txt; a round-trip test is proposed there.

@@ -1,0 +1,75 @@
+Negative verification NV-79 - Service: the history entry body (the reason) written as null
+M3 E2E (e2e/, client/, src/) ; negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12T21:25:36.878Z (UTC, start of the Playwright run)
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 43a53a7 (HEAD). e2e/ and other working-tree changes are UNCOMMITTED (see INDEX.txt). The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Environment : Atlas test cluster (database civicconnect, credential civicconnect-app). No connection string is recorded.
+Command : npm run test:e2e   (one run for this NV; exit code 1)
+
+CLAIM
+  AC-FR-6.3 / AC-FR-6.6: the history entry stores the reason (field `body`) and E2E-1 step 4 checks it field by field.
+
+1. The protected behaviour was broken in src/services/statusTransitionService.js (never in a test).
+     --- src/services/statusTransitionService.js (original)
+     +++ src/services/statusTransitionService.js (sabotaged), in the history.append call
+     -        body:           reason,
+     +        body:           null,
+     (`body` is the real field name in the history append; the request's closure.reason is a different write and is untouched.)
+
+2. Expected failures (written down before the run, derived from the claim and docs/quality/M3_E2E_Test_Plan_v0.1.md §7, not from output):
+     E2E-1 step 3 passes (nothing is written); step 4 passes up to the closure.reason check, then fails at expect(entry.body).toBe(reason): Expected the unique reason, Received null.
+
+3. Result of `npm run test:e2e` with the sabotage applied:
+
+     Running 3 tests using 1 worker
+       x  1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (1.9s)
+       ok 2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.4s)
+       x  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.5s)
+
+       1) [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request › 4. Rejected with a reason: stored, versioned, one history entry 
+     
+         Error: expect(received).toBe(expected) // Object.is equality
+     
+         Expected: "e2e-1 it-c973e13f8217@example.test 1791840341735"
+         Received: null
+     
+           119 |     expect(entry.fromStatus).toBe(STATUS.RECEIVED);
+           120 |     expect(entry.toStatus).toBe(STATUS.REJECTED);
+         > 121 |     expect(entry.body).toBe(reason);
+               |                        ^
+           122 |     expect(entry.requestVersion).toBe(1);
+           123 |     expect(entry.idempotencyKey).toBe(headers['idempotency-key']);
+           124 |     const occurredAt = Date.parse(entry.occurredAt);
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:121:24
+             at C:\Users\huawei\Desktop\SEN381\Ticketing-System\e2e\journey.spec.js:97:3
+
+       1 failed
+         [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request ──────────────
+       2 passed (11.7s)
+
+     Per-test outcome from e2e/test-results/results.json (stats: expected 2, unexpected 1, skipped 0, flaky 0):
+       E2E-1: expected=passed, outcome=unexpected, result=failed
+       E2E-2a: expected=passed, outcome=expected, result=passed
+       E2E-2b: expected=failed, outcome=expected, result=failed
+
+   Actual vs expected:
+     E2E-1 failed at step 4: Expected the run's unique reason string, Received: null. E2E-2a passed; E2E-2b expected failure (403/422).
+   Outcome: CAUGHT (as predicted).
+
+4. Restore. The file(s) were restored by writing back the original content.
+   SHA-256 of src/services/statusTransitionService.js
+     before : 0c99af72054e910de42390a5d1564d3f83ba53b54f6968d8c9b4b685e5e531e3
+     after  : 0c99af72054e910de42390a5d1564d3f83ba53b54f6968d8c9b4b685e5e531e3
+   SHA-256 over src/, client/src/, e2e/ sources (path + content, excluding node_modules, dist, test-results) and shared/:
+     before : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+     after  : 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732
+   Identical to the values recorded before the run. `git diff --stat -- src client shared` shows nothing after restore (e2e/ is untracked, so its hash above is the check).
+   A green re-run is NOT repeated after this NV; the final recorded run (E2E_local_run_2026-10-12.txt) is the restored-state confirmation. See INDEX.txt.
+
+INTERPRETATION
+  What this shows: the history body assertion is live; a service that writes the entry but loses the reason fails.
+  What this does NOT show: history DISPLAY (AC-FR-6.6 "displays it in the history" is not covered).
+
+VERDICT: CAUGHT by E2E-1 (step 4: entry.body is null)

@@ -1,0 +1,52 @@
+Negative verification NV-45 — Re-run of NV-40: GET /requests/{id} removed from openapi.yaml, against the new contract test
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:59 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+Baseline: 158 tests, 158 pass (including the tests added in this follow-up).
+
+CLAIM
+  Every route the composed application registers is documented in docs/api/openapi.yaml (DEC-015). NV-40 broke this and no test failed.
+
+1. The protected behaviour was broken in docs/api/openapi.yaml.
+     --- docs/api/openapi.yaml (original)
+     +++ docs/api/openapi.yaml (sabotaged)
+     @@ line 118 @@
+                   description: No session remains for this cookie.
+       -   /requests/{id}:
+       -     get:
+       -       tags: [requests]
+       -       operationId: getRequest
+       -       summary: Read a request
+       -       description: |
+       - ... (45 more lines)
+       -             application/problem+json:
+       -               schema: { $ref: '#/components/schemas/Problem' }
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - every route the composed application registers is documented in openapi.yaml — DEC-015
+     # tests 158
+     # pass 157
+     # fail 1
+
+   Expected to fail (derived before execution from the claim above):
+     every route the composed application registers is documented in openapi.yaml
+   Outcome: CAUGHT — every expected test failed
+
+3. Each broken file was restored by writing back its original content. SHA-256 after restore:
+     152cdbda005d52f943afe4d80fa257901fc39dcb19cafa51823df01d23b60d1d  docs/api/openapi.yaml
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 158
+     # pass 158
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: The same sabotage that was NOT CAUGHT in NV-40 now fails the registered-but-undocumented direction of tests/openapiRoutes.test.js. This closes the NV-40 gap.
+  What this does NOT show: That documented parameters, responses or schemas match the code; only METHOD + path pairs are compared.

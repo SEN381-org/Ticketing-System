@@ -14,7 +14,7 @@
  * a URI whose host does not name the test cluster, they are skipped with a
  * printed reason and nothing connects. A skipped case is not a verified one.
  *
- * Run:  npm run test:integration   (reads .env)
+ * Run:  npm run test:integration   (reads .env.test)
  */
 
 import { before, after } from 'node:test';
@@ -29,6 +29,11 @@ import RequestHistory from '../../src/models/RequestHistory.js';
 import { ROLE, STATUS } from '../../src/models/_shared.js';
 
 /**
+ * DEC-003 (environment map, Test row) is the authoritative source for this
+ * constraint: it records the test cluster's hostname, which contains
+ * `civicconnecttest` with no hyphen, separately from the environment name
+ * `civicconnect-test` and the Atlas project `CivicConnect-Test` (OI-19).
+ *
  * The host of the URI must name the test cluster. Only the host is examined, so a
  * user name, database name or option that happens to contain the marker does not
  * satisfy it. The URI itself is never printed: it holds a credential.

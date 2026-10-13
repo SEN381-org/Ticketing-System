@@ -6,20 +6,24 @@
 
 import js from '@eslint/js';
 import globals from 'globals';
+import react from 'eslint-plugin-react';
 
 export default [
   {
-    ignores: ['docs/**', 'extras/**', 'node_modules/**'],
+    ignores: ['docs/**', 'extras/**', 'node_modules/**', 'client/dist/**', 'e2e/test-results/**', 'e2e/playwright-report/**'],
   },
 
   js.configs.recommended,
 
+  // Rules and language level for every source file, server and client. Globals
+  // are deliberately not set here: they differ by runtime and are set below, so
+  // a client file is never given Node globals (and the server never given
+  // browser ones) that would hide a mistake.
   {
-    files: ['**/*.js'],
+    files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
-      globals: { ...globals.node },
     },
     linterOptions: {
       reportUnusedDisableDirectives: 'error',
@@ -42,6 +46,34 @@ export default [
         argsIgnorePattern: '^_',
         caughtErrors: 'none',
       }],
+    },
+  },
+
+  // Node globals for the server, tests and scripts. client/ is excluded except
+  // for its Vite config, which runs under Node, not in the browser.
+  {
+    files: ['**/*.js'],
+    ignores: ['client/**'],
+    languageOptions: { globals: { ...globals.node } },
+  },
+  {
+    files: ['client/vite.config.js'],
+    languageOptions: { globals: { ...globals.node } },
+  },
+
+  // The browser client (client/src). Browser globals only. The react plugin is
+  // registered with a single rule, jsx-uses-vars, so that a component used only
+  // in JSX is not reported as unused while a genuinely unused import still is.
+  // The JSX runtime is automatic, so no React import is needed.
+  {
+    files: ['client/src/**/*.{js,jsx}'],
+    plugins: { react },
+    languageOptions: {
+      parserOptions: { ecmaFeatures: { jsx: true } },
+      globals: { ...globals.browser },
+    },
+    rules: {
+      'react/jsx-uses-vars': 'error',
     },
   },
 

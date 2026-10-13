@@ -1,0 +1,58 @@
+Negative verification NV-48 — Route path drifts from the contract (/transitions renamed in code)
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 09:59 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : 8728439 (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit. The sabotage was applied to the working tree, then restored by writing back the original content.
+Baseline: 158 tests, 158 pass (including the tests added in this follow-up).
+
+CLAIM
+  A rename in code with the contract untouched is detected in both directions at once (one undocumented route, one unimplemented operation).
+
+1. The protected behaviour was broken in src/routes/requestRoutes.js.
+     --- src/routes/requestRoutes.js (original)
+     +++ src/routes/requestRoutes.js (sabotaged)
+     @@ line 80 @@
+           router.post(
+       -     '/:id/transitions',
+       +     '/:id/transition',
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - a transition with no session is 401 problem details, and the service is not reached — AC-FR-1.1 (API half)
+     not ok - a forged cookie is 401 and the cookie is cleared — DEC-018 §4
+     not ok - with a session the transition reaches the service with the session actor — DEC-018 §4
+     not ok - an identity header is refused with 403 even with a valid session — R-06, CON-019
+     not ok - a role without the operation is 403, decided by the guard — FR-1.3, NFR-3.3
+     not ok - revocation ends an open session at its next request — AC-FR-1.4
+     not ok - logout is 204, clears the cookie, ends the session, and is idempotent — DEC-018 §5
+     not ok - the transition route is the DEC-015 resource, not a field update; the read route is GET /:id — R-03, DEC-015 §1
+     not ok - every route the composed application registers is documented in openapi.yaml — DEC-015
+     not ok - every operation documented in openapi.yaml is registered in the composed application — DEC-015
+     not ok - the ETag from GET, used verbatim as If-Match on the transition route, is accepted — DEC-015 §3
+     not ok - an ETag read before another writer changed the version is refused 412, and a fresh one is accepted — DEC-015 §3, DEC-016
+     # tests 158
+     # pass 146
+     # fail 12
+
+   Expected to fail (derived before execution from the claim above):
+     every route the composed application registers is documented in openapi.yaml
+     every operation documented in openapi.yaml is registered in the composed application
+   Also failed (not predicted): a transition with no session is 401 problem details, and the service is not reached — AC-FR-1.1 (API half) | a forged cookie is 401 and the cookie is cleared — DEC-018 §4 | with a session the transition reaches the service with the session actor — DEC-018 §4 | an identity header is refused with 403 even with a valid session — R-06, CON-019 | a role without the operation is 403, decided by the guard — FR-1.3, NFR-3.3 | revocation ends an open session at its next request — AC-FR-1.4 | logout is 204, clears the cookie, ends the session, and is idempotent — DEC-018 §5 | the transition route is the DEC-015 resource, not a field update; the read route is GET /:id — R-03, DEC-015 §1 | the ETag from GET, used verbatim as If-Match on the transition route, is accepted — DEC-015 §3 | an ETag read before another writer changed the version is refused 412, and a fresh one is accepted — DEC-015 §3, DEC-016
+   Outcome: CAUGHT — every expected test failed
+
+3. Each broken file was restored by writing back its original content. SHA-256 after restore:
+     b4d8cf24ebcbbe84f18d181cee47c8faffe354248c82a69c5de743191920fc6a  src/routes/requestRoutes.js
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 158
+     # pass 158
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: Drift introduced from the code side, the more usual direction, is caught. Other tests that name the transitions path also fail; they are listed above.
+  What this does NOT show: As NV-45.

@@ -26,8 +26,8 @@
  * field again and reports FAIL. Run it against the test cluster only.
  *
  * Usage:
- *   node --env-file=.env scripts/verify_layer3_role.js
- *   node --env-file=.env scripts/verify_layer3_role.js --out <path>
+ *   node --env-file=.env.test scripts/verify_layer3_role.js
+ *   node --env-file=.env.test scripts/verify_layer3_role.js --out <path>
  *
  * Writes docs/evidence/DB-01_layer3_verification.txt. The record names the
  * database user, never the connection string (NFR-3.5).

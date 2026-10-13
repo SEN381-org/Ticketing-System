@@ -1,0 +1,16 @@
+# Gitleaks findings reviewed and confirmed as false positives. Each line is one finding's
+# fingerprint (commit:file:rule:line), so it covers that line in that commit and nothing else;
+# any new finding still fails the secret scan.
+#
+# 2026-10-12, PR #89. generic-api-key on six lines of the form
+#   "SHA-256 of client/src/api.js before|after : <64 hex digits>"
+# in the negative-verification records NV-55, NV-60 and NV-61. They are SHA-256 hashes of a
+# source file, recorded to prove it was restored byte for byte after each sabotage run; the
+# "api" in the file name next to a high-entropy value matches the generic API-key pattern.
+# They are not credentials. Reviewed by E. Lindsay.
+de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-55_STATUS_value_as_a_quoted_literal.txt:generic-api-key:31
+de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-55_STATUS_value_as_a_quoted_literal.txt:generic-api-key:32
+de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-60_Import_of_another_shared_file.txt:generic-api-key:32
+de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-60_Import_of_another_shared_file.txt:generic-api-key:33
+de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-61_Path_through_shared_back_into_src.txt:generic-api-key:33
+de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-61_Path_through_shared_back_into_src.txt:generic-api-key:34

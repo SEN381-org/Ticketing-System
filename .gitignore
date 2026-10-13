@@ -5,3 +5,6 @@ node_modules/
 *.log
 ~$*.xlsx
 ~.xlsx
+client/dist/
+e2e/test-results/
+e2e/playwright-report/
