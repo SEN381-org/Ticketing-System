@@ -1,15 +1,19 @@
 # CivicConnect — continuous integration (issue #52)
 #
 # Runs on every pull request into dev or main, and on every push to dev.
-# Two jobs, both blocking a merge once set as required status checks:
+# Five jobs, all set as required status checks on dev and main ("dev rule"
+# ruleset, 2026-10-13), so any one failing blocks the merge:
 #   1. build-and-test — installs from the lockfile and runs the test suite on
 #      the runtime in package.json "engines" (Node 22). Makes the
 #      authorisation-guard route-table test (NFR-3.3, CON-019, DEC-012) a
 #      build gate rather than a test someone might remember to run. Also
 #      fails if a route or middleware file imports a model or repository
-#      directly (NFR-1.7, DEC-014, RSK-016).
-#   2. secret-scan — scans the full git history for committed credentials
-#      (NFR-3.5, Master Brief §9, CON-006).
+#      directly, by static, re-export, side-effect or dynamic import
+#      (NFR-1.7, DEC-014, RSK-016).
+#   2. secret-scan — scans the history of what this run would merge (HEAD) for
+#      committed credentials, including the text inside Office documents
+#      (NFR-3.5, Master Brief §9, CON-006). Every branch is scanned weekly by
+#      secret-scan-all-branches.yml, which reports but does not block merges.
 #   3. lint — ESLint, defect-catching rules only, fails on any error
 #      (eslint.config.js). M3 §9 quality gate.
 #   4. dependency-audit — npm audit of the production dependencies, fails on
@@ -52,11 +56,17 @@ jobs:
       - name: Run the test suite
         run: npm test
 
+      # Matches `from '../models/…'` (import or re-export), a side-effect
+      # `import '../models/…'` and a dynamic `import('../models/…')`, at any
+      # depth of ../ and with or without a src/ segment. The re-export form is
+      # proven in CI by GATE-01 (docs/evidence/M3-CI/). Not covered: a
+      # cross-module collection read, which stays a reviewer responsibility
+      # (PED §11.1).
       - name: Layer boundary check — presentation must not import data access (NFR-1.7, RSK-016)
         run: |
-          if grep -rnE "from ['\"](\.\./)+(models|repositories)/" src/routes src/middleware; then
-            echo "::error::A route or middleware file imports a model or repository directly. NFR-1.7 requires every dependency to cross exactly one layer boundary (PED §6A.5)."
-            exit 1
+          if grep -rnE "(from|import)[[:space:]]*\(?[[:space:]]*['\"](\.\./)+(src/)?(models|repositories)/" src/routes src/middleware; then
+          echo "::error::A route or middleware file imports a model or repository directly. NFR-1.7 requires every dependency to cross exactly one layer boundary (PED §6A.5)."
+          exit 1
           fi
           echo "No presentation-to-data-access imports found."
 
@@ -73,8 +83,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Scanned range: every commit reachable from any fetched ref, stated by
-      # --log-opts rather than left to the default (which is the same range).
+      # Scanned range: the history of HEAD, which on a pull request is the merge
+      # result (dev plus this PR). Until 2026-10-13 this was --all, so the scan
+      # also read every other branch: on PR #90 it failed on six hash lines that
+      # existed only on #89's unmerged branch, whose .gitleaksignore was not on
+      # dev, and every PR into dev was blocked by someone else's branch
+      # (GATE-01). Other branches are scanned by secret-scan-all-branches.yml.
       # Gitleaks' "N commits scanned" is lower than git's commit count, and that
       # is expected: it does not scan binary file contents, so a commit whose
       # only changes are binary edits or deletions (e.g. an .xlsx-only register
@@ -88,7 +102,7 @@ jobs:
           docker run --rm -v "${{ github.workspace }}:/repo" \
             zricethezav/gitleaks:v8.18.4 \
             detect --source /repo --redact --verbose \
-            --log-opts="--all --full-history"
+            --log-opts="HEAD --full-history"
 
       # An .xlsx/.docx/.pptx is a zip of XML, so every version of every Office
       # document in the history is unzipped and its text scanned. Proven on
@@ -96,14 +110,16 @@ jobs:
       # workbook version: the step above missed it, these two found it.
       # Other binaries (images) are not text containers and are not covered.
       - name: Extract every committed version of every Office document
-        run: scripts/ci/extract-office-documents.sh . "$RUNNER_TEMP/office-documents"
+        run: scripts/ci/extract-office-documents.sh . "$RUNNER_TEMP/office-documents" HEAD
 
       - name: Scan the extracted Office document text with Gitleaks
         run: |
-          cat "$RUNNER_TEMP/office-documents/MANIFEST.txt"
-          docker run --rm -v "$RUNNER_TEMP/office-documents:/scan" \
+            cat "$RUNNER_TEMP/office-documents/MANIFEST.txt"
+            docker run --rm -v "$RUNNER_TEMP/office-documents:/scan" \
+            -v "${{ github.workspace }}:/repo:ro" \
             zricethezav/gitleaks:v8.18.4 \
-            detect --no-git --source /scan --redact --verbose
+            detect --no-git --source /scan --redact --verbose \
+            --gitleaks-ignore-path /repo
 
   lint:
     name: Static analysis (ESLint)
