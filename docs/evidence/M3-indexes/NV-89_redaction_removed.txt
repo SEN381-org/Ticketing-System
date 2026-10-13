@@ -1,31 +1,32 @@
-Negative verification NV-pending-C — the comparator treats key field order as insignificant
+Negative verification NV-89 — redaction removed
 Index-provisioning script (scripts/atlas, tests/indexProvisioning.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
 
-Run on : 2026-10-13 17:03 UTC
+Run on : 2026-10-13 17:04 UTC
 Node   : v22.20.0
 Branch : task/M3-index-provisioning
 Commit : 386f1b6 (HEAD at the start of the work). The code under test (scripts/atlas/, scripts/lib/clusterMarkers.js, tests/indexProvisioning.test.js) is UNCOMMITTED working-tree content. The sabotage was applied to the working tree, then restored by writing back the exact original content.
-Identifier: NV-pending-C is a placeholder; the real number is allocated by the team.
+Identifier: NV-89, allocated by the team on 13/10/2026 (written as NV-pending-G until then).
 
 CLAIM
-  Field order in a compound index key is significant: {a,b} is not {b,a}.
+  The redactor removes the URI, host, user, password, mongodb.net names and the dup key clause from anything printed (NFR-3.5).
 
 1. The protected behaviour was broken in the CODE (never in the test).
      --- scripts/atlas/indexComparison.js (original)
      +++ scripts/atlas/indexComparison.js (sabotaged)
-     - export function keyId(key) {
-     -   return JSON.stringify(key);
-     + export function keyId(key) {
-     +   return JSON.stringify([...key].sort((x, y) => (x[0] < y[0] ? -1 : 1)));
+     -     let out = String(text);
+     -     for (const s of secrets)
+     +     return String(text);
+     +     let out = String(text);
+     +     for (const s of secrets)
 
    Expected to fail (written down before the run, derived from the claim above):
-     U2 the same fields in a different order are not the same index — TD-004
-   Reason: Only U2 presents the same fields in another order.
+     U16 the redactor removes the URI, host, password, mongodb.net names and duplicate-key values — NFR-3.5
+   Reason: Only U16 exercises the redactor.
 
 2. Result of node --test tests/indexProvisioning.test.js (with the sabotage applied):
 
-     not ok - U2 the same fields in a different order are not the same index — TD-004
-         failure: Expected values to be strictly equal: | + actual - expected |  | + 'DIFFERENT' | - 'MISSING'
+     not ok - U16 the redactor removes the URI, host, password, mongodb.net names and duplicate-key values — NFR-3.5
+         failure: "s3cretPw" must not survive redaction; got: connect failed for mongodb+srv://prov-user:s3cretPw@cluster0.abcde.mongodb.net/civicconnect?retryWrites=true | host cluster0.abcde.mongodb.net refused; also ac-xyz-shard-00-01.abcde.mongodb.net:27017 | user prov-user with password s3cretPw | E11000 duplicate key error collection: civicconnect.users index: email_1 dup key: { email: "ada@example.org" }
      # tests 19
      # pass 18
      # fail 1
@@ -47,5 +48,5 @@ CLAIM
 INTERPRETATION
   The assertion detects the condition it tests: with the behaviour broken it
   fails, and with the behaviour restored it passes.
-  What this shows: Field order in a compound index key is significant: {a,b} is not {b,a}.
+  What this shows: The redactor removes the URI, host, user, password, mongodb.net names and the dup key clause from anything printed (NFR-3.5).
   What this does NOT show: that a real Atlas cluster returns listIndexes documents of the shape the tests use, or that the I/O shell calls this function correctly; the live runs L1 to L4 are separate and not yet done.

@@ -11,20 +11,20 @@ original content, confirmed the SHA-256 before and after, and re-ran the full su
 down in the driver before the run. The run was scripted so each sabotage was applied and reverted mechanically.
 SHA-256 of scripts/atlas/indexComparison.js before and after every entry: d6a384d35e33fd854c32bce73c6150724308bc30aa3bb2bf8bf68391d617f3c1
 
-Identifiers NV-pending-A to NV-pending-H are placeholders. The team allocates the real numbers.
+Identifiers NV-83 to NV-90 were allocated by the team on 13/10/2026 (written as NV-pending-A to NV-pending-H until then).
 
 Test count: 19 tests in tests/indexProvisioning.test.js (U1 to U18 plus one test for an absent collection).
 Full suite before the work: 175 tests, 167 pass, 8 skipped, 0 fail. After, and after each restore below:
 194 tests, 186 pass, 8 skipped, 0 fail.
 
-NV-pending-A  CAUGHT  comparator ignores unique  (NV-pending-A_comparator_ignores_unique.txt)
-NV-pending-B  CAUGHT  comparator ignores expireAfterSeconds  (NV-pending-B_comparator_ignores_expireAfterSeconds.txt)
-NV-pending-C  CAUGHT  key field order treated as insignificant  (NV-pending-C_key_order_ignored.txt)
-NV-pending-D  CAUGHT  privilege check accepts any action  (NV-pending-D_privilege_check_accepts_any_action.txt)
-NV-pending-E  CAUGHT  host guard looks at the whole URI  (NV-pending-E_host_guard_on_whole_URI.txt)
-NV-pending-F  CAUGHT  exit code ignores DIFFERENT  (NV-pending-F_exit_code_ignores_DIFFERENT.txt)
-NV-pending-G  CAUGHT  redaction removed  (NV-pending-G_redaction_removed.txt)
-NV-pending-H  CAUGHT  command allow-list removed  (NV-pending-H_command_allow_list_removed.txt)
+NV-83  CAUGHT  comparator ignores unique  (NV-83_comparator_ignores_unique.txt)
+NV-84  CAUGHT  comparator ignores expireAfterSeconds  (NV-84_comparator_ignores_expireAfterSeconds.txt)
+NV-85  CAUGHT  key field order treated as insignificant  (NV-85_key_order_ignored.txt)
+NV-86  CAUGHT  privilege check accepts any action  (NV-86_privilege_check_accepts_any_action.txt)
+NV-87  CAUGHT  host guard looks at the whole URI  (NV-87_host_guard_on_whole_URI.txt)
+NV-88  CAUGHT  exit code ignores DIFFERENT  (NV-88_exit_code_ignores_DIFFERENT.txt)
+NV-89  CAUGHT  redaction removed  (NV-89_redaction_removed.txt)
+NV-90  CAUGHT  command allow-list removed  (NV-90_command_allow_list_removed.txt)
 
 Not yet done (they need the owner's credentials and a recreated test database): live verifications L1 to L4 and the
 provisioning runs. Nothing in this folder shows behaviour against a real cluster. The privilege probe is

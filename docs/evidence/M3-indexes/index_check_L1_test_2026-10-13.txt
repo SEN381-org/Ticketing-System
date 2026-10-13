@@ -168,5 +168,5 @@ WHAT THIS SHOWS / DOES NOT SHOW
   Does NOT show: that the script creates indexes correctly (nothing was created; that is the provisioning run
   after the database is recreated, decision D4); that the allow-list stops a disallowed command against a live
   driver (no disallowed command was attempted; the stopping behaviour is covered only by the unit test and
-  NV-pending-H); which handshake commands the driver sends (none appeared among the monitored commands); this
+  NV-90); which handshake commands the driver sends (none appeared among the monitored commands); this
   run's exit code (not captured); anything about staging or production.
