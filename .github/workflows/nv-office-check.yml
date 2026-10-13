@@ -5,8 +5,13 @@
 # inside Office files, so every version is extracted with the repository's own
 # scripts/ci/extract-office-documents.sh (--all) and the extracted text searched.
 # Controls: OI-20 is known to exist only inside a workbook, so it must be found
-# (proves the search can see inside Office files); OI-99 was never used, so it
-# must not be found (proves the search does not match everything).
+# (proves the search can see inside Office files); NV-999 has never been written
+# anywhere, so it must not be found (proves the search does not match everything).
+# Run 1 used OI-99 as the negative control, but AI Usage Register v0.13 row 59
+# mentions OI-99 as a control of an earlier check, so it was found; replaced.
+# Any NV-83 to NV-90 hit is printed with its surrounding text and raised as a
+# warning: whether it is a clash or a reference to #98's own records is judged
+# from that text and recorded, not decided by the job.
 name: NV ID check in Office files (do not merge)
 
 on:
@@ -55,16 +60,18 @@ jobs:
           }
           echo "--- Controls"
           report "OI-20 (positive control, must be found)" 'OI-20([^0-9]|$)'
-          report "OI-99 (negative control, must not be found)" 'OI-99([^0-9]|$)'
+          report "NV-999 (negative control, must not be found)" 'NV-999([^0-9]|$)'
           echo "--- The question"
           report "NV-83 to NV-90" 'NV-(8[3-9]|90)([^0-9]|$)'
+          echo "--- Every NV-83 to NV-90 occurrence, with the text around it"
+          grep -rhoE '.{0,80}NV-(8[3-9]|90)([^0-9]|$).{0,60}' "$D" --include='*.text' --include='*.raw' 2>/dev/null | sort | uniq -c || true
           echo "--- Context: every NV number that does appear inside an Office file"
           grep -rhoE 'NV-[0-9]+' "$D" --include='*.text' --include='*.raw' 2>/dev/null | sort -t- -k2 -n | uniq -c || true
           # Assertions
           [ -n "$(hits 'OI-20([^0-9]|$)')" ] || { echo "::error::Positive control OI-20 not found: the search cannot be trusted"; exit 1; }
-          [ -z "$(hits 'OI-99([^0-9]|$)')" ] || { echo "::error::Negative control OI-99 found: the search cannot be trusted"; exit 1; }
+          [ -z "$(hits 'NV-999([^0-9]|$)')" ] || { echo "::error::Negative control NV-999 found: the search cannot be trusted"; exit 1; }
           if [ -n "$(hits 'NV-(8[3-9]|90)([^0-9]|$)')" ]; then
-            echo "::error::NV-83 to NV-90 already appear inside a committed Office file (listed above)"
-            exit 1
+            echo "::warning::NV-83 to NV-90 appear inside a committed Office file. Read the text above to judge clash or reference."
+          else
+            echo "RESULT: NV-83 to NV-90 appear in no committed Office file on any branch."
           fi
-          echo "RESULT: NV-83 to NV-90 appear in no committed Office file on any branch."
