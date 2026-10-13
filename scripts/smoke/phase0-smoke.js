@@ -20,7 +20,9 @@
  * The transition used is Received → Rejected with a reason, which the current
  * model permits for a Coordinator authorised for the category. Seeded data is
  * synthetic and is left in place: requestHistory is append-only (DB-01), and
- * the test cluster's database is dropped per run (DEC-003).
+ * the test cluster's database is NOT dropped per run, so seeded data accumulates
+ * across runs. That contradicts the design in DEC-003 (environment map, Test
+ * row), which says it is dropped; the contradiction is logged as DEF-006.
  *
  * Usage (server already running against the SAME cluster):
  *   node --env-file=.env scripts/smoke/phase0-smoke.js --base-url http://127.0.0.1:3000
