@@ -1,0 +1,231 @@
+Privilege probe: createIndexes on an absent collection, and a conflicting TTL, on the Atlas test cluster
+Basis: TD-004; DEC-003 v0.3 deployment step 5; the index-provisioning script's privilege check (decisions D2, D10)
+
+Expected results written: 2026-10-13, before the run.
+Run on      : 2026-10-13, 16:54:44 to 16:54:45 UTC, one run; exit code 0
+Environment : Atlas test cluster (host contains the recorded marker civicconnecttest; host not recorded),
+              throwaway database ccprobe. No civicconnect database, collection or document is touched.
+Credential  : ccprobe-temp, a temporary (6-hour) Atlas database user restricted to the test cluster, holding
+              only the throwaway custom role ccprobe-index-probe: createIndex and listIndexes on database
+              ccprobe. Created for this probe and deleted after it. No connection string, host, user password
+              or project-specific hostname part is recorded.
+Command     : node --env-file=.env.probe probe-createindexes.mjs <repository root>/package.json
+              The script runs from a temporary directory outside the repository and loads the project's
+              driver through the repository's package.json. Its full source is reproduced at the end.
+
+WHY
+  The provisioning script's privilege check needs to know the exact set of actions the temporary
+  provisioning user must hold. DEC-003 v0.3 names createIndex and listIndexes. Building indexes on an
+  empty database (the fresh test database, and later staging) means calling createIndexes on collections
+  that do not exist yet. MongoDB's server source checks only createIndex for that command, but Atlas
+  applies its own permission layer, which is not documented. Separately, an existing index with the same
+  key and name but a different expireAfterSeconds is documented to be refused rather than changed; this
+  confirms what Atlas actually returns.
+
+EXPECTED RESULTS (stated before the run)
+  0  Authenticated as ccprobe-temp: yes. Privileges: createIndex and listIndexes on ccprobe only.
+  1  listIndexes on ccprobe.absent_a: refused, 26 NamespaceNotFound.
+     (Shows listIndexes is granted and the collection does not exist.)
+  2  insertOne into ccprobe.absent_b: refused (13 Unauthorized, or Atlas 8000).
+     (Shows the credential is not broader than intended.)
+  3  Explicit createCollection ccprobe.absent_c: refused.
+     (Shows createCollection is not granted, so step 4's result is about implicit creation.)
+  4  createIndexes {k: 1} on ccprobe.absent_a: NO PREDICTION. This is the question.
+       (a) ok, createdCollectionAutomatically true  -> createCollection is NOT needed
+       (b) refused naming createCollection / create -> createCollection IS needed
+       (c) refused naming createIndex               -> the role is misconfigured; fix and re-run
+  Steps 5 and 6 run only if step 4 created the collection:
+  5  The same createIndexes again: ok, numIndexesBefore = numIndexesAfter (nothing created).
+  6a createIndexes {t: 1} name t_1, expireAfterSeconds 1800: ok.
+  6b Same key and name, expireAfterSeconds 1801: refused, 85 IndexOptionsConflict.
+  6c listIndexes: _id_, k_1, t_1 with expireAfterSeconds 1800 (unchanged by 6b).
+
+OUTPUT (unedited)
+  Host check passed (host contains the test-cluster marker; host not printed).
+  Probe database: ccprobe. Run started (UTC): 2026-10-13T16:54:44.448Z
+  Node v22.20.0; driver mongodb 6.20.0
+
+  0. Authenticated as the probe user (ccprobe-temp): yes
+     Privileges reported by the server:
+       ccprobe / (any collection) : createIndex, listIndexes
+
+  1. Control: listIndexes on ccprobe.absent_a (does not exist)
+     Expected: refused with 26 NamespaceNotFound (shows listIndexes is granted and the collection is absent)
+     Actual:   refused/failed: code 26 NamespaceNotFound — ns does not exist: ccprobe.absent_a
+
+  2. Negative control: insertOne into ccprobe.absent_b
+     Expected: refused (Unauthorized 13, or Atlas 8000): the credential is not broader than intended
+     Actual:   refused/failed: code 8000 AtlasError — user is not allowed to do action [insert] on [ccprobe.absent_b]
+
+  3. Negative control: explicit createCollection ccprobe.absent_c
+     Expected: refused (createCollection is not granted to this role)
+     Actual:   refused/failed: code 8000 AtlasError — user is not allowed to do action [createCollection] on [ccprobe.absent_c]
+
+  4. QUESTION A: createIndexes {k: 1} on ccprobe.absent_a (does not exist)
+     Expected: no prediction; (a) ok with createdCollectionAutomatically true = createCollection NOT needed; (b) refused naming createCollection/create = needed; (c) refused naming createIndex = role misconfigured
+     Actual:   ok createdCollectionAutomatically=true numIndexesBefore=1 numIndexesAfter=2
+
+  5. Idempotency: the same createIndexes {k: 1} again
+     Expected: ok, numIndexesBefore = numIndexesAfter (nothing created)
+     Actual:   ok numIndexesBefore=2 numIndexesAfter=2 note=all indexes already exist
+
+  6a. QUESTION B setup: createIndexes {t: 1} name t_1, expireAfterSeconds 1800
+     Expected: ok
+     Actual:   ok 
+
+  6b. QUESTION B: same key and name, expireAfterSeconds 1801
+     Expected: refused with 85 IndexOptionsConflict
+     Actual:   refused/failed: code 85 IndexOptionsConflict — An equivalent index already exists with the same name but different options. Requested index: { v: 2, key: { t: 1 }, name: "t_1", expireAfterSeconds: 1801 }, existing index: { v: 2, key: { t: 1 }, name: "t_1", expireAfterSeconds: 1800 }
+
+  6c. QUESTION B check: listIndexes on ccprobe.absent_a
+     Expected: _id_, k_1, t_1 with expireAfterSeconds 1800 (unchanged)
+     Actual:   ok _id_, k_1, t_1 (expireAfterSeconds 1800)
+
+  CONCLUSION A: createIndexes on an absent collection succeeded WITHOUT createCollection.
+  CONCLUSION B: a different expireAfterSeconds is refused with 85 IndexOptionsConflict; listing after: _id_, k_1, t_1 (expireAfterSeconds 1800)
+  Run ended (UTC): 2026-10-13T16:54:45.013Z
+
+AFTERWARDS (done by E. Lindsay in the Atlas UI; times reported in SAST, UTC+2, and converted here)
+  16:57 UTC  ccprobe database dropped (it held absent_a, created by step 4)
+  16:59 UTC  ccprobe-temp deleted
+  17:00 UTC  ccprobe-index-probe custom role deleted
+  17:00 UTC  .env.probe deleted from disk (as reported; not independently checked)
+
+WHAT THIS SHOWS / DOES NOT SHOW
+  Every control matched its expected result (steps 0-3, 5, 6a-6c), so the result of step 4 is about the
+  question asked and not about a broader or broken credential.
+  Shows (question A): on this Atlas test cluster, createIndexes on a collection that does not exist creates
+  the collection and the index with createIndex alone (createdCollectionAutomatically true), while an
+  explicit createCollection by the same user is refused (step 3). The provisioning role therefore needs
+  createIndex and listIndexes only, as DEC-003 v0.3 states; createCollection is not added (decision D2).
+  Shows (question B): an index with the same key and name but a different expireAfterSeconds is refused with
+  85 IndexOptionsConflict and the existing index is left unchanged (6c). A conflicting sessions TTL index
+  cannot be changed by the provisioning script; it is reported and fails the run (decision D10).
+  Shows (scope): Atlas accepted createIndex and listIndexes scoped to one database, any collection; the
+  server reported exactly those two actions on ccprobe and nothing else.
+  Shows (idempotency): a repeated identical createIndexes creates nothing ("all indexes already exist").
+  Does NOT show: behaviour on another Atlas tier or server version (the test cluster is a free cluster);
+  collection-scoped grants (the role used database scope, any collection); anything about the civicconnect
+  database; behaviour under concurrent writes; the effect of a unique index over duplicate keys.
+
+SCRIPT SOURCE (probe-createindexes.mjs, unedited)
+  // Probe for the index-provisioning script (TD-004, DEC-003 v0.3 step 5).
+  // Question A: on Atlas, does createIndexes on a collection that does not exist yet need the
+  //             createCollection action as well as createIndex?
+  // Question B: on Atlas, what does createIndexes do when an index with the same key and name
+  //             exists with a different expireAfterSeconds?
+  // Runs only against the throwaway database "ccprobe" on the test cluster. Touches no
+  // civicconnect data. Never prints the connection string, host, user name or password.
+  //
+  // Usage (from the repository root):
+  //   node --env-file=.env.probe <this file> <repository root>/package.json
+  import { createRequire } from 'node:module';
+  import dns from 'node:dns';
+  
+  const require = createRequire(process.argv[2]);           // repo package.json -> the project's driver
+  const { MongoClient } = require('mongodb');
+  dns.setServers(['8.8.8.8', '1.1.1.1']);                   // as the project's test:integration script does
+  
+  const PROBE_DB = 'ccprobe';
+  const PROBE_USER = 'ccprobe-temp';
+  
+  const uri = process.env.MONGODB_URI;
+  if (!uri) { console.log('MONGODB_URI not set in the env file'); process.exit(2); }
+  
+  let host = '', user = '', pass = '';
+  try { const u = new URL(uri); host = u.hostname; user = decodeURIComponent(u.username); pass = decodeURIComponent(u.password); }
+  catch { console.log('URI could not be parsed; refusing'); process.exit(2); }
+  const secrets = [uri, host, user, pass].filter((s) => s && s.length > 2);
+  const redact = (s) => {
+    let out = String(s);
+    for (const x of secrets) out = out.split(x).join('[redacted]');
+    return out.replace(/[A-Za-z0-9._-]*mongodb\.net(:\d+)?/g, '[redacted-host]').replace(/mongodb(\+srv)?:\/\/\S+/g, '[redacted-uri]');
+  };
+  
+  if (!host.includes('civicconnecttest')) { console.log('Host check FAILED: not the test cluster; refusing to connect'); process.exit(2); }
+  console.log('Host check passed (host contains the test-cluster marker; host not printed).');
+  console.log(`Probe database: ${PROBE_DB}. Run started (UTC): ${new Date().toISOString()}`);
+  console.log(`Node ${process.version}; driver mongodb ${require('mongodb/package.json').version}`);
+  
+  const errOf = (e) => ({ ok: false, code: e.code, codeName: e.codeName, msg: redact(e.errmsg || e.message) });
+  const show = (r) => (r.ok ? `ok ${r.detail ?? ''}` : `refused/failed: code ${r.code} ${r.codeName ?? ''} — ${r.msg}`);
+  
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 15000 });
+  try {
+    await client.connect();
+  } catch (e) {
+    console.log(`Could not connect: ${show(errOf(e))}`); process.exit(2);
+  }
+  const db = client.db(PROBE_DB);
+  
+  // 0. Who are we, and what may we do? (server-reported; the user name is checked, not printed)
+  try {
+    const st = await client.db('admin').command({ connectionStatus: 1, showPrivileges: true });
+    const users = st.authInfo.authenticatedUsers.map((u) => u.user);
+    console.log(`\n0. Authenticated as the probe user (${PROBE_USER}): ${users.includes(PROBE_USER) ? 'yes' : 'NO'}`);
+    console.log('   Privileges reported by the server:');
+    for (const p of st.authInfo.authenticatedUserPrivileges) {
+      const r = p.resource;
+      const where = r.anyResource ? 'anyResource' : r.cluster ? 'cluster' : `${r.db || '(any db)'} / ${r.collection || '(any collection)'}`;
+      console.log(`     ${where} : ${p.actions.join(', ')}`);
+    }
+    if (!users.includes(PROBE_USER)) { console.log('Not the probe user; stopping.'); await client.close(); process.exit(2); }
+  } catch (e) {
+    console.log(`0. connectionStatus: ${show(errOf(e))}`);
+  }
+  
+  const steps = [
+    ['1', 'Control: listIndexes on ccprobe.absent_a (does not exist)',
+      'refused with 26 NamespaceNotFound (shows listIndexes is granted and the collection is absent)',
+      async () => { await db.collection('absent_a').listIndexes().toArray(); return { ok: true }; }],
+    ['2', 'Negative control: insertOne into ccprobe.absent_b',
+      'refused (Unauthorized 13, or Atlas 8000): the credential is not broader than intended',
+      async () => { await db.collection('absent_b').insertOne({ probe: 1 }); return { ok: true }; }],
+    ['3', 'Negative control: explicit createCollection ccprobe.absent_c',
+      'refused (createCollection is not granted to this role)',
+      async () => { await db.createCollection('absent_c'); return { ok: true }; }],
+    ['4', 'QUESTION A: createIndexes {k: 1} on ccprobe.absent_a (does not exist)',
+      'no prediction; (a) ok with createdCollectionAutomatically true = createCollection NOT needed; (b) refused naming createCollection/create = needed; (c) refused naming createIndex = role misconfigured',
+      async () => { const r = await db.command({ createIndexes: 'absent_a', indexes: [{ key: { k: 1 }, name: 'k_1' }] });
+        return { ok: true, detail: `createdCollectionAutomatically=${r.createdCollectionAutomatically} numIndexesBefore=${r.numIndexesBefore} numIndexesAfter=${r.numIndexesAfter}` }; }],
+  ];
+  const results = {};
+  for (const [n, what, expected, fn] of steps) {
+    let r; try { r = await fn(); } catch (e) { r = errOf(e); }
+    results[n] = r;
+    console.log(`\n${n}. ${what}\n   Expected: ${expected}\n   Actual:   ${show(r)}`);
+  }
+  
+  if (results['4'].ok) {
+    const more = [
+      ['5', 'Idempotency: the same createIndexes {k: 1} again', 'ok, numIndexesBefore = numIndexesAfter (nothing created)',
+        async () => { const r = await db.command({ createIndexes: 'absent_a', indexes: [{ key: { k: 1 }, name: 'k_1' }] });
+          return { ok: true, detail: `numIndexesBefore=${r.numIndexesBefore} numIndexesAfter=${r.numIndexesAfter} note=${r.note ?? ''}` }; }],
+      ['6a', 'QUESTION B setup: createIndexes {t: 1} name t_1, expireAfterSeconds 1800', 'ok',
+        async () => { await db.command({ createIndexes: 'absent_a', indexes: [{ key: { t: 1 }, name: 't_1', expireAfterSeconds: 1800 }] }); return { ok: true }; }],
+      ['6b', 'QUESTION B: same key and name, expireAfterSeconds 1801', 'refused with 85 IndexOptionsConflict',
+        async () => { await db.command({ createIndexes: 'absent_a', indexes: [{ key: { t: 1 }, name: 't_1', expireAfterSeconds: 1801 }] }); return { ok: true }; }],
+      ['6c', 'QUESTION B check: listIndexes on ccprobe.absent_a', '_id_, k_1, t_1 with expireAfterSeconds 1800 (unchanged)',
+        async () => { const ix = await db.collection('absent_a').listIndexes().toArray();
+          return { ok: true, detail: ix.map((i) => `${i.name}${i.expireAfterSeconds !== undefined ? ` (expireAfterSeconds ${i.expireAfterSeconds})` : ''}`).join(', ') }; }],
+    ];
+    for (const [n, what, expected, fn] of more) {
+      let r; try { r = await fn(); } catch (e) { r = errOf(e); }
+      results[n] = r;
+      console.log(`\n${n}. ${what}\n   Expected: ${expected}\n   Actual:   ${show(r)}`);
+    }
+  } else {
+    console.log('\n5-6. Skipped: step 4 did not create the collection, so there is nothing to test question B on.');
+  }
+  
+  const a = results['4'];
+  const named = (r, re) => !r.ok && re.test(`${r.msg} ${r.codeName}`);
+  console.log('\nCONCLUSION A: ' + (a.ok ? 'createIndexes on an absent collection succeeded WITHOUT createCollection.'
+    : named(a, /createCollection|\bcreate\b/i) ? 'createIndexes on an absent collection NEEDS createCollection.'
+    : named(a, /createIndex/i) ? 'refused naming createIndex: the role is misconfigured; fix it and re-run.'
+    : 'inconclusive: refused without naming an action; see the message above.'));
+  if (results['6b']) console.log('CONCLUSION B: ' + (results['6b'].code === 85 ? 'a different expireAfterSeconds is refused with 85 IndexOptionsConflict'
+    : results['6b'].ok ? 'a different expireAfterSeconds was ACCEPTED (unexpected); see 6c' : `refused with ${results['6b'].code} ${results['6b'].codeName}`)
+    + (results['6c']?.ok ? `; listing after: ${results['6c'].detail}` : ''));
+  console.log(`Run ended (UTC): ${new Date().toISOString()}`);
+  await client.close();
