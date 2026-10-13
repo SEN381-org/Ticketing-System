@@ -53,6 +53,12 @@ jobs:
       - name: Install dependencies from the lockfile
         run: npm ci
 
+      - name: Install the client's dependencies from its lockfile (DEC-019)
+        run: npm --prefix client ci
+
+      - name: Build the client (DEC-019; DEC-003 v0.3 step 3)
+        run: npm run build:client
+
       - name: Run the test suite
         run: npm test
 
@@ -167,6 +173,11 @@ jobs:
       # path, and a gate that fails on what the team cannot fix gets ignored.
       - name: Audit production dependencies (high and critical fail the build)
         run: npm audit --omit=dev --audit-level=high
+
+      # react and react-dom ship to the browser from client/dist, so the
+      # client's production dependencies are audited on the same terms.
+      - name: Audit the client's production dependencies (high and critical fail the build)
+        run: npm --prefix client audit --omit=dev --audit-level=high
 
   codeql:
     name: CodeQL analysis
