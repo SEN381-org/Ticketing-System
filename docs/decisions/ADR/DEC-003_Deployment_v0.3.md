@@ -69,7 +69,8 @@ Run by the deploy script on the VPS, for one environment at a time, in this orde
    index listing is kept as evidence in docs/evidence/M3-indexes/, and shows whether the
    unique indexes exist on that cluster (DEF-014, DEF-015).
 6. `systemctl restart` of the environment's unit. The application does not start before
-   step 5 has completed.
+   step 5 has completed. Note: on a first deploy, step 5 is required first; during a
+   rollback, step 5 is already complete and skipped.
 7. Health check: `/api/v1/health` (NFR-1.6).
 
 Rollback redeploys the previous tag and runs steps 1, 2, 3, 4, 6 and 7 for it. Step 3
