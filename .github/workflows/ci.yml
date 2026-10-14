@@ -16,11 +16,14 @@
 #      secret-scan-all-branches.yml, which reports but does not block merges.
 #   3. lint — ESLint, defect-catching rules only, fails on any error
 #      (eslint.config.js). M3 §9 quality gate.
-#   4. dependency-audit — npm audit of the production dependencies, fails on
-#      a high or critical advisory. M3 §9 quality gate.
+#   4. dependency-audit — npm audit of the server's and the client's
+#      production dependencies, fails on a high or critical advisory.
+#      M3 §9 quality gate.
 #   5. codeql — CodeQL static security analysis of the JavaScript sources.
-#      The blocking check is GitHub's "CodeQL" code-scanning result, which
-#      fails a pull request that introduces a new alert. M3 §9 quality gate.
+#      The required check is this job, which fails only if the analysis
+#      itself fails. Alerts appear under Security > Code scanning and do
+#      not block a merge: the separate "CodeQL" result is not required.
+# The build-and-test job also installs and builds the client (DEC-019).
 # A mature CI/CD pipeline is not an M2 requirement; jobs 1-2 were stage 1 of
 # the staged adoption recorded in the team's Assignment 2 research, and jobs
 # 3-5 are the M3 stage.
@@ -53,6 +56,12 @@ jobs:
       - name: Install dependencies from the lockfile
         run: npm ci
 
+      - name: Install the client's dependencies from its lockfile (DEC-019)
+        run: npm --prefix client ci
+
+      - name: Build the client (DEC-019; DEC-003 v0.3 step 3)
+        run: npm run build:client
+
       - name: Run the test suite
         run: npm test
 
@@ -64,9 +73,17 @@ jobs:
       # (PED §11.1).
       - name: Layer boundary check — presentation must not import data access (NFR-1.7, RSK-016)
         run: |
+          # Fail closed: if either folder is missing, grep exits 2 and the
+          # check would pass even with a breach in the other folder.
+          for dir in src/routes src/middleware; do
+            if [ ! -d "$dir" ]; then
+              echo "::error::$dir not found, so the layer check has nothing to scan. Update its paths (issue #51)."
+              exit 1
+            fi
+          done
           if grep -rnE "(from|import)[[:space:]]*\(?[[:space:]]*['\"](\.\./)+(src/)?(models|repositories)/" src/routes src/middleware; then
-          echo "::error::A route or middleware file imports a model or repository directly. NFR-1.7 requires every dependency to cross exactly one layer boundary (PED §6A.5)."
-          exit 1
+            echo "::error::A route or middleware file imports a model or repository directly. NFR-1.7 requires every dependency to cross exactly one layer boundary (PED §6A.5)."
+            exit 1
           fi
           echo "No presentation-to-data-access imports found."
 
@@ -159,6 +176,11 @@ jobs:
       # path, and a gate that fails on what the team cannot fix gets ignored.
       - name: Audit production dependencies (high and critical fail the build)
         run: npm audit --omit=dev --audit-level=high
+
+      # react and react-dom ship to the browser from client/dist, so the
+      # client's production dependencies are audited on the same terms.
+      - name: Audit the client's production dependencies (high and critical fail the build)
+        run: npm --prefix client audit --omit=dev --audit-level=high
 
   codeql:
     name: CodeQL analysis
