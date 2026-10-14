@@ -1,0 +1,181 @@
+Index provisioning (creates, then compares)
+Started (UTC)   : 2026-10-14T16:10:05.214Z
+Environment     : test (host not printed)
+Database        : civicconnect
+Server user     : civicconnect-temp-provisioner (expected civicconnect-temp-provisioner)
+Commit          : 07a67d3; working tree NOT clean
+Node v26.0.0; mongoose 8.24.4; driver mongodb 6.20.0; server 8.0.34
+Declared        : 21 indexes over 10 collections (computed from src/models)
+
+Privileges reported by the server:
+  civicconnect / roles : createIndex, listIndexes
+  civicconnect / notifications : createIndex, listIndexes
+  civicconnect / auditLog : createIndex, listIndexes
+  civicconnect / users : createIndex, listIndexes
+  civicconnect / categories : createIndex, listIndexes
+  civicconnect / groups : createIndex, listIndexes
+  civicconnect / reportingCounts : createIndex, listIndexes
+  civicconnect / sessions : createIndex, listIndexes
+  civicconnect / requests : createIndex, listIndexes
+  civicconnect / requestHistory : createIndex, listIndexes
+Privilege check: passed
+
+Before (as listed by the server):
+  auditLog
+    _id_  { _id: 1 }  (default)
+    eventId_1  { eventId: 1 }  unique
+    recordedAt_1  { recordedAt: 1 }  TTL 7948800 s
+    requestId_1_occurredAt_1  { requestId: 1, occurredAt: 1 }
+  categories
+    _id_  { _id: 1 }  (default)
+    campusId_1_code_1  { campusId: 1, code: 1 }  unique
+  groups
+    _id_  { _id: 1 }  (default)
+    campusId_1_name_1  { campusId: 1, name: 1 }  unique
+  notifications
+    _id_  { _id: 1 }  (default)
+    createdAt_1  { createdAt: 1 }  TTL 2592000 s
+    sourceHistoryId_1_userId_1  { sourceHistoryId: 1, userId: 1 }  unique
+    userId_1_read_1_createdAt_-1  { userId: 1, read: 1, createdAt: -1 }
+  reportingCounts
+    _id_  { _id: 1 }  (default)
+    campusId_1_categoryId_1_status_1  { campusId: 1, categoryId: 1, status: 1 }  unique
+  requestHistory
+    _id_  { _id: 1 }  (default)
+    actorId_1_idempotencyKey_1  { actorId: 1, idempotencyKey: 1 }  unique, partial {"idempotencyKey":{"$type":"string"}}
+    requestId_1_requestVersion_1  { requestId: 1, requestVersion: 1 }  unique
+  requests
+    _id_  { _id: 1 }  (default)
+    campusId_1_assigneeId_1_status_1  { campusId: 1, assigneeId: 1, status: 1 }
+    campusId_1_categoryId_1_assigneeId_1_status_1  { campusId: 1, categoryId: 1, assigneeId: 1, status: 1 }
+    campusId_1_requesterId_1_submittedAt_-1  { campusId: 1, requesterId: 1, submittedAt: -1 }
+    campusId_1_status_1_submittedAt_-1  { campusId: 1, status: 1, submittedAt: -1 }
+    campusId_1_submittedAt_1_categoryId_1  { campusId: 1, submittedAt: 1, categoryId: 1 }
+    description_text_location_text  { _fts: 'text', _ftsx: 1 }  weights {"description":2,"location":1}
+    reference_1  { reference: 1 }  unique
+  roles
+    _id_  { _id: 1 }  (default)
+    code_1  { code: 1 }  unique
+  sessions
+    _id_  { _id: 1 }  (default)
+    lastSeenAt_1  { lastSeenAt: 1 }  TTL 1800 s
+  users
+    _id_  { _id: 1 }  (default)
+    email_1  { email: 1 }  unique
+
+createIndexes (per model; a failure on one index does not stop the others):
+  auditLog: ok
+  categories: ok
+  groups: ok
+  notifications: ok
+  reportingCounts: ok
+  requests: ok
+  requestHistory: ok
+  roles: ok
+  sessions: ok
+  users: ok
+
+After (as listed by the server):
+  auditLog
+    _id_  { _id: 1 }  (default)
+    eventId_1  { eventId: 1 }  unique
+    recordedAt_1  { recordedAt: 1 }  TTL 7948800 s
+    requestId_1_occurredAt_1  { requestId: 1, occurredAt: 1 }
+  categories
+    _id_  { _id: 1 }  (default)
+    campusId_1_code_1  { campusId: 1, code: 1 }  unique
+  groups
+    _id_  { _id: 1 }  (default)
+    campusId_1_name_1  { campusId: 1, name: 1 }  unique
+  notifications
+    _id_  { _id: 1 }  (default)
+    createdAt_1  { createdAt: 1 }  TTL 2592000 s
+    sourceHistoryId_1_userId_1  { sourceHistoryId: 1, userId: 1 }  unique
+    userId_1_read_1_createdAt_-1  { userId: 1, read: 1, createdAt: -1 }
+  reportingCounts
+    _id_  { _id: 1 }  (default)
+    campusId_1_categoryId_1_status_1  { campusId: 1, categoryId: 1, status: 1 }  unique
+  requestHistory
+    _id_  { _id: 1 }  (default)
+    actorId_1_idempotencyKey_1  { actorId: 1, idempotencyKey: 1 }  unique, partial {"idempotencyKey":{"$type":"string"}}
+    requestId_1_requestVersion_1  { requestId: 1, requestVersion: 1 }  unique
+  requests
+    _id_  { _id: 1 }  (default)
+    campusId_1_assigneeId_1_status_1  { campusId: 1, assigneeId: 1, status: 1 }
+    campusId_1_categoryId_1_assigneeId_1_status_1  { campusId: 1, categoryId: 1, assigneeId: 1, status: 1 }
+    campusId_1_requesterId_1_submittedAt_-1  { campusId: 1, requesterId: 1, submittedAt: -1 }
+    campusId_1_status_1_submittedAt_-1  { campusId: 1, status: 1, submittedAt: -1 }
+    campusId_1_submittedAt_1_categoryId_1  { campusId: 1, submittedAt: 1, categoryId: 1 }
+    description_text_location_text  { _fts: 'text', _ftsx: 1 }  weights {"description":2,"location":1}
+    reference_1  { reference: 1 }  unique
+  roles
+    _id_  { _id: 1 }  (default)
+    code_1  { code: 1 }  unique
+  sessions
+    _id_  { _id: 1 }  (default)
+    lastSeenAt_1  { lastSeenAt: 1 }  TTL 1800 s
+  users
+    _id_  { _id: 1 }  (default)
+    email_1  { email: 1 }  unique
+
+Created this run: 0
+
+Comparison (declared indexes against what the server lists, per collection):
+  auditLog
+    PRESENT   eventId_1  { eventId: 1 }
+    PRESENT   requestId_1_occurredAt_1  { requestId: 1, occurredAt: 1 }
+    PRESENT   recordedAt_1  { recordedAt: 1 }
+  categories
+    PRESENT   campusId_1_code_1  { campusId: 1, code: 1 }
+  groups
+    PRESENT   campusId_1_name_1  { campusId: 1, name: 1 }
+  notifications
+    PRESENT   userId_1_read_1_createdAt_-1  { userId: 1, read: 1, createdAt: -1 }
+    PRESENT   sourceHistoryId_1_userId_1  { sourceHistoryId: 1, userId: 1 }
+    PRESENT   createdAt_1  { createdAt: 1 }
+  reportingCounts
+    PRESENT   campusId_1_categoryId_1_status_1  { campusId: 1, categoryId: 1, status: 1 }
+  requestHistory
+    PRESENT   requestId_1_requestVersion_1  { requestId: 1, requestVersion: 1 }
+    PRESENT   actorId_1_idempotencyKey_1  { actorId: 1, idempotencyKey: 1 }
+  requests
+    PRESENT   reference_1  { reference: 1 }
+    PRESENT   campusId_1_requesterId_1_submittedAt_-1  { campusId: 1, requesterId: 1, submittedAt: -1 }
+    PRESENT   campusId_1_status_1_submittedAt_-1  { campusId: 1, status: 1, submittedAt: -1 }
+    PRESENT   campusId_1_categoryId_1_assigneeId_1_status_1  { campusId: 1, categoryId: 1, assigneeId: 1, status: 1 }
+    PRESENT   campusId_1_assigneeId_1_status_1  { campusId: 1, assigneeId: 1, status: 1 }
+    PRESENT   campusId_1_submittedAt_1_categoryId_1  { campusId: 1, submittedAt: 1, categoryId: 1 }
+    PRESENT   description_text_location_text  { _fts: 'text', _ftsx: 1 }
+  roles
+    PRESENT   code_1  { code: 1 }
+  sessions
+    PRESENT   lastSeenAt_1  { lastSeenAt: 1 }
+  users
+    PRESENT   email_1  { email: 1 }
+
+Commands issued (name and collection, with counts; endSessions on close is not included):
+  buildInfo x1
+  connectionStatus x1
+  createIndexes auditLog x3
+  createIndexes categories x1
+  createIndexes groups x1
+  createIndexes notifications x3
+  createIndexes reportingCounts x1
+  createIndexes requestHistory x2
+  createIndexes requests x7
+  createIndexes roles x1
+  createIndexes sessions x1
+  createIndexes users x1
+  listIndexes auditLog x2
+  listIndexes categories x2
+  listIndexes groups x2
+  listIndexes notifications x2
+  listIndexes reportingCounts x2
+  listIndexes requestHistory x2
+  listIndexes requests x2
+  listIndexes roles x2
+  listIndexes sessions x2
+  listIndexes users x2
+
+Ended (UTC): 2026-10-14T16:10:05.725Z
+RESULT PASS: 21 of 21 declared indexes present with matching options (missing 0, different 0, undeclared 0)
