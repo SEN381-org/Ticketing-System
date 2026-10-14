@@ -1,4 +1,5 @@
 M3 thin client and tests/clientBoundary.test.js — negative verification index (method as docs/evidence/R-01_negative_verification.txt)
+Citations reworded 13/10/2026 (commit ca368bb, PR #89): references to uncommitted local files replaced by committed sources. No result, count or verdict changed.
 
 Run on : 2026-10-12 UTC
 Node   : v22.20.0
