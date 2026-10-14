@@ -1,0 +1,51 @@
+Negative verification NV-85 — the comparator treats key field order as insignificant
+Index-provisioning script (scripts/atlas, tests/indexProvisioning.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-13 17:03 UTC
+Node   : v22.20.0
+Branch : task/M3-index-provisioning
+Commit : 386f1b6 (HEAD at the start of the work). The code under test (scripts/atlas/, scripts/lib/clusterMarkers.js, tests/indexProvisioning.test.js) is UNCOMMITTED working-tree content. The sabotage was applied to the working tree, then restored by writing back the exact original content.
+Identifier: NV-85, allocated by the team on 13/10/2026 (written as NV-pending-C until then).
+
+CLAIM
+  Field order in a compound index key is significant: {a,b} is not {b,a}.
+
+1. The protected behaviour was broken in the CODE (never in the test).
+     --- scripts/atlas/indexComparison.js (original)
+     +++ scripts/atlas/indexComparison.js (sabotaged)
+     - export function keyId(key) {
+     -   return JSON.stringify(key);
+     + export function keyId(key) {
+     +   return JSON.stringify([...key].sort((x, y) => (x[0] < y[0] ? -1 : 1)));
+
+   Expected to fail (written down before the run, derived from the claim above):
+     U2 the same fields in a different order are not the same index — TD-004
+   Reason: Only U2 presents the same fields in another order.
+
+2. Result of node --test tests/indexProvisioning.test.js (with the sabotage applied):
+
+     not ok - U2 the same fields in a different order are not the same index — TD-004
+         failure: Expected values to be strictly equal: | + actual - expected |  | + 'DIFFERENT' | - 'MISSING'
+     # tests 19
+     # pass 18
+     # fail 1
+     # skipped 0
+
+   Outcome: CAUGHT — every expected test failed, and nothing else failed
+
+3. The file was restored by writing back its original content.
+   SHA-256 of scripts/atlas/indexComparison.js before : d6a384d35e33fd854c32bce73c6150724308bc30aa3bb2bf8bf68391d617f3c1
+   SHA-256 of scripts/atlas/indexComparison.js after  : d6a384d35e33fd854c32bce73c6150724308bc30aa3bb2bf8bf68391d617f3c1
+   Identical.
+   The full suite (npm test) was re-run after the restore:
+
+     # tests 194
+     # pass 186
+     # fail 0
+     # skipped 8
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: Field order in a compound index key is significant: {a,b} is not {b,a}.
+  What this does NOT show: that a real Atlas cluster returns listIndexes documents of the shape the tests use, or that the I/O shell calls this function correctly; the live runs L1 to L4 are separate and not yet done.
