@@ -1,0 +1,47 @@
+Negative verification NV-94 - the request written before the transition check
+M3 test evidence records (docs/quality/M3_Test_Evidence_Records_v0.1.md), record UT-5; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-15T11:57:01.072Z (UTC)
+Node   : v24.16.0  (.nvmrc pins 22; nvm is not installed on this machine)
+Branch : task/M3-test-evidence-records
+Commit : 28674dd. The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Command: node --test --test-reporter=tap   (the full unit suite; integration tests skip without MONGODB_URI)
+
+CLAIM
+  FR-6.2 / AC-FR-6.2 ("the status is unchanged"): a refused transition writes nothing. If the service writes before checking, UT-5 fails.
+
+1. The protected behaviour was broken in src/services/statusTransitionService.js (never in a test).
+     --- src/services/statusTransitionService.js (original)
+     +++ src/services/statusTransitionService.js (sabotaged)
+     -      const verdict = checkTransition(request.status, toStatus, actor.roles, {
+     +      await requests.applyChange(requestId, expectedVersion, {}, actor, { session });  // SABOTAGE: write before the check
+     +      const verdict = checkTransition(request.status, toStatus, actor.roles, {
+
+2. Expected result (written to this file before the run, derived from the claim and the test source, not from output):
+     "an illegal transition is refused and nothing is written — FR-6.2" FAILS (calls is not empty). Tests that count writes on a permitted transition may also fail; not predicted.
+3. Result with the sabotage applied:
+
+     not ok - the ETag from GET, used verbatim as If-Match on the transition route, is accepted — DEC-015 §3
+     not ok - an ETag read before another writer changed the version is refused 412, and a fresh one is accepted — DEC-015 §3, DEC-016
+     not ok - the status change and the history entry are one unit of work — DEC-016
+     not ok - both writes happen inside the unit of work, with its session — DEC-016, FR-6.3
+     not ok - nothing commits when the history write fails — DEC-016, R-15
+     not ok - an illegal transition is refused and nothing is written — FR-6.2
+     not ok - closing records the reason and the closure clock — FR-6.6, NFR-4.2
+     not ok - a move to Resolved records the resolution summary, when and by whom — FR-6.5
+     # tests 194
+     # pass 178
+     # fail 8
+     # skipped 8
+     exit code 1
+
+   Outcome: CAUGHT. Every expected test failed.
+   Also failed (not predicted): 7, listed above.
+
+4. src/services/statusTransitionService.js was restored by writing back its original content. SHA-256:
+     before 0c99af72054e910de42390a5d1564d3f83ba53b54f6968d8c9b4b685e5e531e3
+     after  0c99af72054e910de42390a5d1564d3f83ba53b54f6968d8c9b4b685e5e531e3  (same as before the run)
+   The full suite was re-run: 194 tests, 186 pass, 0 fail, 8 skipped (exit code 0).
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it fails, and with the behaviour restored it passes.
