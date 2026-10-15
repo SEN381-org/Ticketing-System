@@ -1,0 +1,25 @@
+NFR-2.4 load run (staging)
+Started (UTC)        : 2026-10-15T16:30:21.758Z
+Target               : https://158.158.115.[redacted] (staging VM, Azure Spain Central)
+Database             : staging Atlas cluster civicconnectstaging, M0, Azure westeurope (Netherlands); not colocated with the VM
+Client location      : Stellenbosch, South Africa
+Node                 : v26.0.0
+NODE_EXTRA_CA_CERTS  : set (SHA-256: 74:2D:A5:C0:DF:68:F6:29:A7:61:41:33:5D:0B:53:F8:6D:5E:DD:2C:53:90:50:46:74:A4:DC:19:72:86:68:B2)
+NODE_TLS_REJECT_UNAUTHORIZED: unset
+Fixture run          : 77b08804
+Workload             : 100 users; ramp 60 s; window 600 s after the last login; think 10 s; a transition every 6 iterations; timeout 30 s
+
+All users logged in (UTC): 2026-10-15T16:31:21.591Z
+Ended (UTC)          : 2026-10-15T16:41:31.777Z
+
+Per request type (all phases):
+  login      n=  100  failed=0  p50 430 ms  p95 451 ms  p99 697 ms  max 808 ms  statuses {"201":100}
+  read       n= 5835  failed=0  p50 206 ms  p95 249 ms  p99 464 ms  max 748 ms  statuses {"200":5835}
+  transition n=  900  failed=0  p50 315 ms  p95 631 ms  p99 703 ms  max 897 ms  statuses {"201":900}
+
+Requests in the 600 s window: 6735 (11.04 requests/s)
+
+Failed requests      : 0
+Unhandled server errors (5xx): 0
+
+RESULT PASS: NFR-2.4, 100 concurrent authenticated users for 600 s: 0 failed requests, 0 unhandled server errors
