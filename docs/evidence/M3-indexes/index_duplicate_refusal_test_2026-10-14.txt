@@ -267,3 +267,17 @@ process.exit(failures === 0 ? 0 : 1);
 
 Data left on the test cluster (synthetic; DEF-006): requestHistory 5 entries, users 1, requests 1,
 categories 1, groups 1, all from this run.
+
+Note added 15/10/2026 (UTC):
+- Expected results (section 1) were written by R. van der Merwe at 16:13:08 UTC on
+  2026-10-14, before the 16:13:39 UTC run.
+- Correction to section 5, "Data left on the test cluster": the run left 4 requestHistory
+  entries, not 5 (L2 1, L2c 2, L3 1, as the script and the recorded counts show). The other
+  counts (users 1, requests 1, categories 1, groups 1) stand.
+- What this does not show, in addition to section 5:
+  - The runs were on Node 26.0.0; step 5 on the VM's Node 22 is not yet shown.
+  - The provisioning before these checks was run by hand, not by the deploy script, so
+    DEC-003's ordering ("the application does not start before step 5 has completed") is
+    not exercised.
+  - L4 inserts through the User model, which lowercases and trims email. It shows the index
+    refuses an identical stored email, not what happens to a write that bypasses the model.

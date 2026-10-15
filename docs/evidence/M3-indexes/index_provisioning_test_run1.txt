@@ -148,3 +148,32 @@ Commands issued (name and collection, with counts; endSessions on close is not i
 
 Ended (UTC): 2026-10-14T16:09:50.136Z
 RESULT PASS: 21 of 21 declared indexes present with matching options (missing 0, different 0, undeclared 0)
+
+Note added 15/10/2026 (UTC):
+- Date of the run: 2026-10-14 (UTC). The file name carries no date; this note states it.
+- Expected results: none were written to a file before runs 1 and 2. The predicted outcome
+  (run 1: every collection absent, "Created this run: 31", that is the 21 declared indexes
+  plus 10 default _id_ indexes, RESULT PASS 21 of 21, exit 0; run 2: "Created this run: 0",
+  RESULT PASS 21 of 21, exit 0) was stated in a planning checklist on 14/10/2026 before the
+  runs. That checklist is not in the repository and carries no recorded time, so this record
+  does not rely on it as a prediction.
+- D4 drop: the test cluster's civicconnect database was dropped by R. van der Merwe through
+  the Atlas UI (Browse Collections) at 15:55 UTC on 2026-10-14, before run 1. Run 1's
+  "collection does not exist" for all ten collections is consistent with that.
+- Temporary user: civicconnect-temp-provisioner was created at 16:05 UTC on 2026-10-14,
+  restricted to the test cluster, with the custom role civicconnect-index-provisioner as its
+  only role, and a 6-hour expiry. It was deleted at 16:19 UTC on 2026-10-14. The output above
+  shows the user name and the server-reported privileges; the role name is from this record.
+- Credential file: the run used .env.provision in the repository root, which .gitignore
+  covers; it was never in the tracked tree. R. van der Merwe deleted it on 2026-10-14, at
+  about 16:14 UTC (just after PR #102 was opened at 16:14:24 UTC).
+- Command:
+    node --env-file=.env.provision scripts/atlas/provision-indexes.js --env test --out docs/evidence/M3-indexes/index_provisioning_test_run1.txt
+- Exit code: 0.
+- Commit: the "Commit" line above reports 07a67d3, the head of the DEF-018 branch
+  (task/def-018-test-flake) at the time, not dev's merge of PR #98 (1d0641a). The two differ
+  only in the Defect Register workbook; scripts/ and src/ are identical.
+- What this does not show:
+  - Step 5 on Node 22. The run was on Node 26.0.0; DEC-003 deploys Node 22 on the VM.
+  - DEC-003's ordering. The script was run by hand, not by the deploy script, so "the
+    application does not start before step 5 has completed" is not exercised here.
