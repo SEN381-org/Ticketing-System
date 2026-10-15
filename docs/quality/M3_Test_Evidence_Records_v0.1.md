@@ -6,9 +6,9 @@
 | **Version** | 0.1 |
 | **Author** | Ethan Lindsay (Member A) |
 | **Date** | 15 October 2026 |
-| **Status** | Executed locally on `dev` at `28674dd`, 15 October 2026. Every record has been seen to fail with its protected behaviour broken (§6: NV-91 to NV-100, and earlier NVs reused). The CI run on `v3.0-M3-rc` is cited once the tag exists |
+| **Status** | Executed locally on `dev` at `28674dd`, 15 October 2026. Every record has been seen to fail with its protected behaviour broken (§6: NV-91 to NV-100, and earlier NVs reused). At the release candidate: CI run 38737312900 (PR #106, Node v22.23.3), 199 tests, 191 pass, 0 fail, 8 skipped, on a tree identical to `v3.0-M3-rc` (§1) |
 | **Run output** | `docs/evidence/M3-test-records/run_2026-10-15_local.txt`; negative verifications `docs/evidence/M3-test-records/NV-91_…` to `NV-100_…` |
-| **Traces to** | FR-1.3, FR-1.5, FR-3.6, FR-4.1, FR-6.1, FR-6.2, FR-6.3, FR-6.5, FR-6.6, FR-6.7; DEC-012, DEC-016, DB-01; OI-15, OI-17, TD-005 |
+| **Traces to** | FR-1.3, FR-1.5, FR-3.6, FR-4.1, FR-6.1, FR-6.2, FR-6.3, FR-6.5, FR-6.6, FR-6.7; DEC-012, DEC-016, DB-01; OI-15, OI-17, TD-005 (allocated 14/10/2026; enters the Technical Debt Register at v0.3) |
 
 ---
 
@@ -25,9 +25,13 @@
 | S7 | Record labels UT-1 to UT-5 and BB-1 to BB-5 are local to this document. They are not a project identifier scheme, and are chosen not to collide with existing labels (U1–U18 in `indexProvisioning.test.js`, E2E-1/E2E-2, NV-, review comments B-1/N-1/R-01, M3_API_Test_Specification case numbers) | — |
 | S8 | A record counts as evidence only once its assertion has been seen to fail with the protected behaviour broken (§6) | Project verification standard |
 
-**Execution environment.** The local run used Node v24.16.0. The project's minimum and deployed
-version is Node 22, which is what CI runs. The -rc CI run is the evidence on the
-version that ships. The local run is evidence that the tests pass at `28674dd`.
+**Execution environment.** The local run used Node v24.16.0, and is evidence that the tests pass at
+`28674dd`. The project's minimum and deployed version is Node 22, which is what CI runs. CI runs on
+pull requests and on pushes to `dev`, not on pushes to `main`, so there is no run on the tag commit
+`30ff0c6` itself. Its tree (`88ae217`) is identical to that of `fe970d7`, the `dev` head merged by
+PR #106, and both CI runs on that content passed on Node v22.23.3: the PR #106 run 38737312900 and
+the push run 38735733226. In the PR #106 run: 199 tests, 191 pass, 0 fail, 8 skipped (the integration
+tests). All 93 tests in the five files these records draw on are reported `ok` there, on Node 22.
 
 ---
 
@@ -83,7 +87,7 @@ requirements whose priority is High.
 | **Status** | Pass |
 | **Evidence** | Run output, line "✔ the guard refuses before the handler runs — DEC-012 path A" |
 | **Traceability** | FR-1.3, AC-FR-1.3 (partial), DEC-012 point 1, NFR-3.3 |
-| **Interpretation** | Shows the guard stops a role that is not in `OPERATION_RULES['request:transition']`. Which roles are in that list is a team decision, not a requirement (S4), so this test does not show that the list is right. AC-FR-1.3 also requires "records the rejected attempt"; that is **not built** and is recorded as TD-005. AC-FR-1.3's own example (a Technician invoking an operation reserved to the Coordinator) is not the input used here |
+| **Interpretation** | Shows the guard stops a role that is not in `OPERATION_RULES['request:transition']`. Which roles are in that list is a team decision, not a requirement (S4), so this test does not show that the list is right. AC-FR-1.3 also requires "records the rejected attempt"; that is **not built** and is recorded as TD-005 (allocated 14/10/2026; it enters the Technical Debt Register at v0.3). AC-FR-1.3's own example (a Technician invoking an operation reserved to the Coordinator) is not the input used here |
 
 ### UT-3 — `requestHistory` refuses every update and delete path
 
