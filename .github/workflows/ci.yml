@@ -169,7 +169,7 @@ jobs:
         with:
           node-version: 22
 
-      # Production dependencies only: they are what is deployed to Hostinger.
+      # Production dependencies only: they are what is deployed to the application host (DEC-003).
       # Dev tooling (ESLint) never ships, so an advisory there would block
       # merges without exposing the running system.
       # High, not moderate: moderate pulls in transitive advisories with no fix

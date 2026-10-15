@@ -25,6 +25,8 @@ import { ROLE, STATUS } from '../src/models/_shared.js';
 
 const quiet = { error() {} };
 
+const TEST_RELEASE = '0123456789abcdef0123456789abcdef01234567';
+
 function harness({ databaseUp = true } = {}) {
   const users = new Map([
     ['u1', { _id: 'u1', campusId: 'c1', email: 'coord@example.test', displayName: 'Coord',
@@ -56,6 +58,7 @@ function harness({ databaseUp = true } = {}) {
   });
   const healthService = createHealthService({
     pingDatabase: async () => { if (!databaseUp) throw new Error('down'); },
+    release: TEST_RELEASE,
   });
   const statusTransitionService = {
     transition: async (id, toStatus, actor, command) => {
@@ -101,7 +104,7 @@ test('health answers without a session, and reports both statuses — AC-NFR-1.6
   await serve(harness().app, async (base) => {
     const res = await fetch(`${base}/api/v1/health`);
     assert.equal(res.status, 200);
-    assert.deepEqual(await res.json(), { application: 'up', database: 'up' });
+    assert.deepEqual(await res.json(), { application: 'up', database: 'up', release: TEST_RELEASE });
   });
 });
 
@@ -109,7 +112,7 @@ test('health reports a database outage as 503 — DEC-015, NFR-1.6', async () =>
   await serve(harness({ databaseUp: false }).app, async (base) => {
     const res = await fetch(`${base}/api/v1/health`);
     assert.equal(res.status, 503);
-    assert.deepEqual(await res.json(), { application: 'up', database: 'down' });
+    assert.deepEqual(await res.json(), { application: 'up', database: 'down', release: TEST_RELEASE });
   });
 });
 

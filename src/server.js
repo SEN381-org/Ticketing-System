@@ -17,6 +17,7 @@
 import { loadConfig, LISTEN_HOST } from './config.js';
 import { connectDatabase, disconnectDatabase, databaseUserOf } from './infrastructure/database.js';
 import { composeApplication } from './composition.js';
+import { resolveRelease } from './infrastructure/release.js';
 
 const SHUTDOWN_DEADLINE_MS = 10_000;
 
@@ -37,10 +38,11 @@ async function main() {
     process.exit(1);
   }
 
-  const { app } = composeApplication();
+  const release = resolveRelease();
+  const { app } = composeApplication({ release });
   const server = app.listen(config.port, LISTEN_HOST, () => {
     console.log(`CivicConnect listening on http://${LISTEN_HOST}:${config.port} `
-      + `(database user: ${databaseUserOf(config.mongodbUri)})`);
+      + `(database user: ${databaseUserOf(config.mongodbUri)}; release: ${release})`);
   });
 
   let stopping = false;

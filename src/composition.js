@@ -29,13 +29,13 @@ import { createAuthService } from './services/authService.js';
 import { createHealthService } from './services/healthService.js';
 import { createApp } from './app.js';
 
-export function composeApplication({ log = console } = {}) {
+export function composeApplication({ log = console, release = 'unknown' } = {}) {
   const services = {
     authService: createAuthService({
       users: userRepository, sessions: sessionRepository,
       audit: auditRepository, passwords: passwordHasher,
     }),
-    healthService: createHealthService({ pingDatabase }),
+    healthService: createHealthService({ pingDatabase, release }),
     requestQueryService: createRequestQueryService({ requests: requestRepository }),
     statusTransitionService: createStatusTransitionService({
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),

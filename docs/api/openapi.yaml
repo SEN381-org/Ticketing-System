@@ -50,13 +50,13 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Health' }
-              example: { application: up, database: up }
+              example: { application: up, database: up, release: 0867575a1b2c3d4e5f60718293a4b5c6d7e8f901 }
         '503':
           description: The application is up and the database did not answer (DEC-015).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Health' }
-              example: { application: up, database: down }
+              example: { application: up, database: down, release: 0867575a1b2c3d4e5f60718293a4b5c6d7e8f901 }
   /sessions:
     post:
       tags: [sessions]
@@ -328,10 +328,14 @@ components:
   schemas:
     Health:
       type: object
-      required: [application, database]
+      required: [application, database, release]
       properties:
         application: { type: string, enum: [up] }
         database: { type: string, enum: [up, down] }
+        release:
+          type: string
+          description: The commit the running process was started from (RELEASE_COMMIT, else the checkout's HEAD), or `unknown`.
+          pattern: '^([0-9a-f]{7,40}|unknown)$'
     LoginCommand:
       type: object
       additionalProperties: false
