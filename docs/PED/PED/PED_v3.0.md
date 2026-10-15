@@ -2044,6 +2044,7 @@ Significant changes since v2.0, each with its reason, impact and record.
 | RTM v0.10 | M3 chain (brief §12) | Four columns, 27 requirements in M3 scope | PR #115 |
 | `/health` reports `release` | Identify the deployed candidate (brief §14) | Health contract gains one field | PR #105; DEC-015's health row is updated in its next version |
 | Staging configuration correction | `MONGODB_URI` named no database (DEF-020) | Fixed on the VM before the load run | PR #111 |
+| Staging Nginx corrected (15/10/2026, 20:35:57 UTC) | The built client was not served: every path was proxied to Node | Nginx now serves `client/dist` and proxies only `/api/`; VM configuration only, the release candidate unchanged | Deploy record, dated note |
 | Access-list exception for step 5 | Index provisioning was run from a developer workstation | The workstation's IP was on the staging access list alongside the VM's; removed 15/10/2026 18:37 UTC. Not in DEC-003 | PR #111; next DEC-003 version |
 
 **Hostinger and VPS in the baselined text.** §1.7.2 (DEC-003 row), §6C (host row and
@@ -2541,12 +2542,16 @@ below and in `docs/quality/M3_Release_Evidence_Summary_v0.1.md`, which holds the
 - **Staging is not production-shaped:** a disposable VM, a self-signed certificate on the IP,
   the cluster in another country from the VM, and a hand deploy with no deploy script,
   systemd unit, Nginx configuration or migration runner in the repository.
-- **The browser journey was not run on staging.** `playwright.config.js` targets localhost
-  and starts its own servers, and there is no submission route to create a request on
-  staging. The browser journey ran locally at the tag (M3.7); on staging the API path was
+- **The browser journey was not run on staging.** The client is served there since the Nginx
+  correction (20:35:57 UTC), but `playwright.config.js` targets localhost and starts its own
+  servers, and there is no submission route to create a request on staging. The browser journey ran locally at the tag (M3.7); on staging the API path was
   checked by the smoke test.
 - **Configuration and access exceptions on staging:** DEF-020 (fixed) and the step-5
   access-list exception (removed).
+- **Deployment finding, fixed:** Nginx proxied every path to Node, so the built client was not
+  served on staging. It was corrected on the VM on 15/10/2026 at 20:35:57 UTC; six checks
+  passed as expected (deploy record, dated note). Residual: the Nginx configuration is not in
+  the repository.
 - **CI gaps:** TD-007, TD-008, the layer check's text match, and OI-20.
 
 **Gate summary.** All five required checks pass at the release candidate (M3.5.1). No
