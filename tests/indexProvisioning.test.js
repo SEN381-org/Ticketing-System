@@ -24,7 +24,7 @@ import {
   checkPrivileges, checkTarget, classify, describeError, formatComparison, isCommandAllowed, makeRedactor, normaliseDeclared, summarise,
 } from '../scripts/atlas/indexComparison.js';
 import { loadDeclared } from '../scripts/atlas/declaredIndexes.js';
-import { CLUSTER_MARKERS, TEST_CLUSTER_MARKER } from '../scripts/lib/clusterMarkers.js';
+import { CLUSTER_MARKERS, STAGING_CLUSTER_MARKER, TEST_CLUSTER_MARKER } from '../scripts/lib/clusterMarkers.js';
 import mongoose from 'mongoose';
 
 // ---- helpers -------------------------------------------------------------------------------
@@ -246,8 +246,9 @@ test('U14 only createIndex and listIndexes on the declared collections of civicc
 test('U15 the host guard looks at the host only and at the recorded marker only — DEC-003 (environment map)', () => {
   // Expected: marker in the host and database civicconnect -> ok. Refused: marker only in the user
   // name, only in the database, only in a query option, only in the password; a different host;
-  // database other than civicconnect; unparseable; no URI; staging and production (no marker
-  // recorded); an unknown environment. The reason never contains the URI.
+  // database other than civicconnect; unparseable; no URI; a test host for staging and a staging
+  // host for test; production (no marker recorded); an unknown environment. The reason never
+  // contains the URI.
   const ok = (uri, env = 'test') => checkTarget({ uri, env });
   assert.deepEqual(ok(`mongodb+srv://u:p@x.${TEST_CLUSTER_MARKER}.example/civicconnect`), { ok: true });
 
@@ -267,12 +268,14 @@ test('U15 the host guard looks at the host only and at the recorded marker only 
   refused('not a uri');
   refused('');
   refused(undefined);
-  assert.match(refused(`mongodb+srv://u:p@x.${TEST_CLUSTER_MARKER}.example/civicconnect`, 'staging'), /no host marker is recorded in DEC-003 for the staging environment/);
+  assert.deepEqual(ok(`mongodb+srv://u:p@${STAGING_CLUSTER_MARKER}.x.example/civicconnect`, 'staging'), { ok: true });
+  assert.match(refused(`mongodb+srv://u:p@x.${TEST_CLUSTER_MARKER}.example/civicconnect`, 'staging'), /does not contain the recorded staging marker/);
+  assert.match(refused(`mongodb+srv://u:p@${STAGING_CLUSTER_MARKER}.x.example/civicconnect`), /does not contain the recorded test marker/);
   assert.match(refused(`mongodb+srv://u:p@x.${TEST_CLUSTER_MARKER}.example/civicconnect`, 'production'), /no host marker is recorded in DEC-003 for the production environment/);
   refused(`mongodb+srv://u:p@x.${TEST_CLUSTER_MARKER}.example/civicconnect`, 'dev');
   assert.equal(checkTarget({ uri: `mongodb+srv://u:p@x.${TEST_CLUSTER_MARKER}.example/civicconnect` }).ok, false, 'no --env');
-  // Only the test marker is recorded.
-  assert.deepEqual(Object.keys(CLUSTER_MARKERS), ['test']);
+  // Test and staging markers are recorded; production has none.
+  assert.deepEqual(Object.keys(CLUSTER_MARKERS), ['test', 'staging']);
 });
 
 // ---- redaction ------------------------------------------------------------------------------
