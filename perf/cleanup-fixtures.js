@@ -58,6 +58,10 @@ try {
   refuse('MONGODB_URI could not be parsed');
 }
 if (!STAGING_CLUSTER_MARKER || !host.includes(STAGING_CLUSTER_MARKER)) refuse('the host in MONGODB_URI is not the staging cluster; refusing');
+// Database guard: the URI must name the civicconnect database. Without a name the driver uses its
+// default database, "test", on which the application credential has no grants (found on staging,
+// 15/10/2026). The URI is never printed.
+if (decodeURIComponent(new URL(uri).pathname.replace(/^\//, '')) !== 'civicconnect') refuse('MONGODB_URI does not name the civicconnect database; refusing');
 
 const { default: mongoose } = await import(pathToFileURL(path.join(appDir, 'node_modules', 'mongoose', 'index.js')).href);
 mongoose.set('autoIndex', false);

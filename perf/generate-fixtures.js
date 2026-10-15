@@ -33,6 +33,7 @@
 import { parseArgs } from 'node:util';
 import { randomBytes, randomInt } from 'node:crypto';
 import { writeFile, chmod } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -59,6 +60,8 @@ try {
   refuse(`usage: ${e.message}`);
 }
 if (!args.out) refuse('--out <path> is required');
+// Checked before any database write, so an existing file never leaves a run without its logins.
+if (existsSync(args.out)) refuse(`${args.out} already exists; remove it or choose another --out`);
 const intArg = (name, min, max) => {
   const v = Number(args[name]);
   if (!Number.isInteger(v) || v < min || v > max) refuse(`--${name} must be an integer from ${min} to ${max}`);
@@ -87,6 +90,10 @@ try {
   refuse('MONGODB_URI could not be parsed');
 }
 if (!host.includes(STAGING_CLUSTER_MARKER)) refuse('the host in MONGODB_URI is not the staging cluster; refusing');
+// Database guard: the URI must name the civicconnect database. Without a name the driver uses its
+// default database, "test", on which the application credential has no grants (found on staging,
+// 15/10/2026). The URI is never printed.
+if (decodeURIComponent(new URL(uri).pathname.replace(/^\//, '')) !== 'civicconnect') refuse('MONGODB_URI does not name the civicconnect database; refusing');
 
 // Mongoose from the deployed checkout, configured before any model compiles: the application's
 // credential may not create collections or indexes, so neither is attempted.
@@ -181,7 +188,8 @@ try {
       return { email: u.email, readRequestId: own[0], transitionRequestIds: own.slice(1) };
     }),
   };
-  await writeFile(args.out, `${JSON.stringify(fixtures, null, 2)}\n`, { mode: 0o600 });
+  // wx: never overwrite an existing file (another run's logins, or anything else at that path).
+  await writeFile(args.out, `${JSON.stringify(fixtures, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
   await chmod(args.out, 0o600);
 
   console.log(`Created         : ${created.length} users, ${requests.length} requests (campus and category ids new)`);
