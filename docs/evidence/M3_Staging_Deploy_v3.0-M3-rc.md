@@ -8,7 +8,7 @@ the connection string, host, passwords or the full static IP.
 |---|---|
 | Environment | `civicconnect-staging` (Azure VM, Spain Central; Atlas `civicconnectstaging`, M0, Azure `westeurope`) |
 | Procedure | DEC-003 v0.4, steps 1 to 7 |
-| Record status | DRAFT. Complete: step 5 (provisioning), step 7 and section 6 (health), section 3a (certificate), section 8 (NFR-2.4, PASS), section 9 (smoke, 6 of 6). Awaiting the deployer's outputs: sections 1, 3 (steps 1 to 4 and 6), 4, 5, 7 and 10, and the time of the configuration correction |
+| Record status | COMPLETE, with two checks not recorded: the checkout’s own commit on the VM (step 1) and the client build’s output (step 3). See *Not recorded* at the end |
 
 ## Execution order (E. Lindsay, 15/10/2026)
 
@@ -26,15 +26,17 @@ No E2E run on staging (E. Lindsay, 15/10/2026). The smoke test takes its place.
 ## 1. Deployer identity and machine
 
 ```
-Deployer           : <name>
-Machine            : <VM name / hostname as shown by `hostname`>   (not the IP)
-SSH from           : <workstation, location>
-OS                 : <`lsb_release -ds`>
-Node               : <`node -v`>   (DEC-003: Node 22)
-npm                : <`npm -v`>
-git                : <`git --version`>
-Session start (UTC): <YYYY-MM-DDTHH:MM:SSZ>   (`date -u +%FT%TZ`)
+Deployer           : R. van der Merwe
+Machine            : civicconnect-staging   (hostname; the IP is not recorded)
+SSH from           : R. van der Merwe's workstation, Stellenbosch, South Africa
+OS                 : Ubuntu 24.04.5 LTS   ("No LSB modules are available." printed first)
+Node               : v22.23.3   (DEC-003: Node 22)
+npm                : 10.9.9
+git                : not captured
+Session start (UTC): not captured
 ```
+
+Captured on the VM after the deploy, on 2026-10-15 at about 17:17 UTC (the service status below reads "1h 5min ago" from 16:12:28 UTC). They describe the VM as it was then, not a transcript of the deploy session.
 
 ## 2. Release candidate: tag and commit
 
@@ -44,7 +46,7 @@ $ git rev-parse v3.0-M3-rc^{commit}
 30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc
 
 $ git show -s --format='%H %an %ad' v3.0-M3-rc^{commit}
-<output>
+30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc Ethan Lindsay Thu Oct 15 14:59:48 2026 +0200   (12:59:48 UTC)
 ```
 
 This commit hash is the value every later check is compared against (steps 6 and 8).
@@ -64,28 +66,35 @@ the path the repository already uses (DEC-010, `scripts/backup/crontab.example`)
 E. Lindsay for this deployment. Owner: the service user, `ticketuser`.
 
 ```
-Start (UTC): <time>
+Commands (as given to the deployer; the terminal output of steps 1 to 4 was not kept):
 $ sudo mkdir -p /opt/civicconnect
 $ sudo chown ticketuser:ticketuser /opt/civicconnect
 $ git clone https://github.com/SEN381-org/Ticketing-System.git /opt/civicconnect
-<output>
 $ cd /opt/civicconnect && git checkout v3.0-M3-rc
-<output>
-$ git rev-parse HEAD
-<must equal 30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc (section 2)>
-End (UTC)  : <time>
+$ git rev-parse HEAD                 -> not recorded
+
+Evidence captured afterwards (stat):
+  2026-10-15 14:05:39.729588117 +0000 /opt/civicconnect
+  drwxr-xr-x 13 ticketuser ticketuser 4096 Oct 15 14:05 /opt/civicconnect
 ```
+
+The directory was created at 14:05:39 UTC and is owned by `ticketuser`. That the checkout
+is at `30ff0c6` is **not shown**: `git rev-parse HEAD` on the VM was not recorded, and
+`/health`'s `release` (section 6) reports `RELEASE_COMMIT`, which was set by hand
+(section 4), not the checkout.
 
 ### Step 2: `npm ci --omit=dev` in the repository root
 
 ```
-Start (UTC): <time>
-$ echo "NODE_ENV=${NODE_ENV:-unset}"
-<output>
-$ npm ci --omit=dev
-<output summary: packages added, vulnerabilities line>
-End (UTC)  : <time>
+Output: not kept.
+Evidence captured afterwards (stat):
+  2026-10-15 14:05:40.763625320 +0000 /opt/civicconnect/node_modules
 ```
+
+`node_modules` exists, with a directory time one second after the checkout's. A directory's
+time is not the install's duration, and the `NODE_ENV` value and the install summary were not
+kept. That the server's dependencies are installed is shown by the service running and
+answering (sections 5, 6, 8 and 9).
 
 ### Step 3: build the client
 
@@ -93,21 +102,20 @@ DEC-003 warning: `NODE_ENV` must not be `production` in this shell, or `npm ci` 
 dependencies and Vite does not install.
 
 ```
-Start (UTC): <time>
-$ npm --prefix client ci
-<output summary>
-$ npm run build:client
-<output: built files in client/dist>
-End (UTC)  : <time>
+Output: not kept.
+Evidence captured afterwards:
+  $ stat /opt/civicconnect/dist
+  stat: cannot statx '/opt/civicconnect/dist': No such file or directory
 ```
+
+**Not shown.** The client build writes to `client/dist` (DEC-019), so `/opt/civicconnect/dist`
+never exists; the check looked in the wrong place. Whether `/opt/civicconnect/client/dist`
+exists was not recorded. Nothing later in this record depends on the client: the health
+check, the load run and the smoke test call the API only.
 
 ### Step 4: run migrations
 
-**No migrations in this release.**
-
-```
-Checked (UTC): <time>
-```
+**No migrations in this release.** Nothing was run for this step.
 
 ### Step 5: provision indexes (TD-004)
 
@@ -159,12 +167,11 @@ Node on the workstation     : v26.0.0 (the VM runs Node 22; step 5 ran from the 
 ### Step 6: restart the service
 
 ```
-Start (UTC): <time>
 $ sudo systemctl restart civicconnect-staging
-End (UTC)  : <time>
+Time of the first restart, at deploy: not recorded.
+The service was restarted again after the configuration correction (section 3, *Configuration
+correction during the deploy*) and has been active since 2026-10-15 16:12:28 UTC (section 5).
 ```
-
-Status output is recorded in section 5.
 
 ### Step 7: health check
 
@@ -211,28 +218,42 @@ Commands, as run on the VM (address redacted in this record):
     $ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/staging.key -out /etc/ssl/certs/staging.crt -subj "/CN=158.158.115.[redacted]" -addext "subjectAltName=IP:158.158.115.[redacted]" 2>/dev/null
     $ sudo systemctl restart nginx
 
-<the Nginx server block's ssl_certificate and ssl_certificate_key lines are not recorded here>
+The Nginx server block's ssl_certificate and ssl_certificate_key lines are not recorded here.
 
 ---
 
 ## 4. `RELEASE_COMMIT` in the environment file
 
-Show only this one line. The file also holds `MONGODB_URI`, which must not be printed.
+Shown as one line only. The file also holds `MONGODB_URI`, which must not be printed.
 
 ```
 $ sudo grep '^RELEASE_COMMIT=' /etc/civicconnect/staging.env
-RELEASE_COMMIT=<hash>
+RELEASE_COMMIT=30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc
 ```
 
-The value must equal the commit in section 2.
+Equals the commit in section 2. Captured on the VM after the deploy, on 2026-10-15 at about 17:17 UTC (the service status below reads "1h 5min ago" from 16:12:28 UTC).
 
 ## 5. Service status
 
 ```
 $ systemctl status civicconnect-staging --no-pager
-<output>
-Captured (UTC): <time>
+● civicconnect-staging.service - CivicConnect Staging
+     Loaded: loaded (/etc/systemd/system/civicconnect-staging.service; enabled; preset: enabled)
+     Active: active (running) since Thu 2026-10-15 16:12:28 UTC; 1h 5min ago
+   Main PID: 70259 (npm start)
+      Tasks: 23 (limit: 4660)
+     Memory: 99.7M (peak: 131.9M)
+        CPU: 51.858s
+     CGroup: /system.slice/civicconnect-staging.service
+             ├─70259 "npm start"
+             ├─70270 sh -c "node src/server.js"
+             └─70271 node src/server.js
+Captured (UTC): about 17:17 on 2026-10-15
 ```
+
+The unit is enabled (it starts on boot) and running. Its process tree is `npm start` →
+`node src/server.js`. The peak memory of 131.9 MB covers the load run (16:30 to 16:42 UTC),
+which falls inside this uptime. The unit file's contents are not recorded here.
 
 ## 6. Health response
 
@@ -254,11 +275,15 @@ the deployed process is not the release candidate.
 ## 7. Environment file permissions
 
 ```
-$ sudo stat -c '%a %U:%G %n' /etc/civicconnect/staging.env
-600 <owner>:<group> /etc/civicconnect/staging.env
+$ ls -l /etc/civicconnect/staging.env
+-rw------- 1 root root 206 Oct 15 16:12 /etc/civicconnect/staging.env
 ```
 
-Required: exactly `600` (DEC-003, *Secrets*).
+Mode `600`, as DEC-003 (*Secrets*) requires. Captured on the VM after the deploy, on 2026-10-15 at about 17:17 UTC (the service status below reads "1h 5min ago" from 16:12:28 UTC).
+
+DEC-003 says the file is owned by the service user; it is owned by `root`. The service still
+reads it, because systemd reads an `EnvironmentFile` as root before starting the process. The
+difference from DEC-003 is recorded, not changed here.
 
 ## 8. Performance test (NFR-2.4)
 
@@ -330,7 +355,7 @@ Database                 : Atlas civicconnectstaging, M0, Azure westeurope (Neth
                            the Netherlands (DEC-003 v0.4)
 Client location          : Stellenbosch, South Africa (R. van der Merwe's workstation)
 Client Node              : v26.0.0
-TLS                      : NODE_EXTRA_CA_CERTS=<path to the local copy of staging.crt>;
+TLS                      : NODE_EXTRA_CA_CERTS=staging.crt in the repository root (untracked; since deleted);
                            the SHA-256 the run prints must be 74:2D:A5:C0:...:72:86:68:B2 (section 3a).
                            NODE_TLS_REJECT_UNAUTHORIZED=0 is NOT used; the script refuses to
                            run with it.
@@ -369,13 +394,13 @@ Attempt 2, run f44598a6
   Started (UTC): 2026-10-15T16:14:16Z
   Aborted by hand (Ctrl+C) after the 100 users were inserted, before the requests.
   Its 100 users were removed with cleanup-fixtures.js --run f44598a6 --confirm.
-  <cleanup output and time>
+  Cleanup output and time: not kept.
 
 Attempt 3, run c0a3b855
   Started (UTC): 2026-10-15T16:15:36Z; succeeded 2026-10-15T16:16:06Z
   Not used by the load run. /tmp/perf-fixtures.json on the VM was removed before the run
   was used. Run c0a3b855 was then removed from the database with cleanup-fixtures.js.
-  <cleanup output and time>
+  Cleanup output and time: not kept.
   A copy of run c0a3b855's fixture file was nevertheless found on the load client, in the
   user's home folder, and deleted at 2026-10-15T16:55:44Z (see the load run below).
 
@@ -394,7 +419,9 @@ Defect     : MONGODB_URI in /etc/civicconnect/staging.env did not name the datab
              "civicconnect". The connection itself, and the health ping, succeeded.
 Corrected  : /civicconnect added before the query string; the service restarted
              (sudo systemctl restart civicconnect-staging).
-Time (UTC) : <time of the edit and restart>
+Time (UTC) : by 16:12:28 on 2026-10-15. The deployer's estimate is about 16:10; the environment
+             file's modification time is 16:12 and the service has been active since
+             16:12:28 UTC (sections 5 and 7). The cleanup dry run that followed ran at 16:12:48.
 Effect     : from the deploy until the restart, the running application used the wrong database.
              The step 7 health check at 14:19:22 UTC was made before the correction; its
              "database: up" shows the ping succeeded, which does not depend on the database
@@ -406,7 +433,8 @@ Effect     : from the deploy until the restart, the running application used the
 
 ```
 Started (UTC): 2026-10-15T16:30:21Z
-$ NODE_EXTRA_CA_CERTS=<local copy of staging.crt> node perf/load-run.js --base-url https://158.158.115.[redacted] --fixtures <local fixture file> --out docs/evidence/M3-perf/NFR-2.4_load_run_2026-10-15.txt --client-location "Stellenbosch, South Africa"
+$ NODE_EXTRA_CA_CERTS=<staging.crt in the repository root> node perf/load-run.js --base-url https://158.158.115.[redacted] --fixtures <perf-fixtures.json in the repository root> --out docs/evidence/M3-perf/NFR-2.4_load_run_2026-10-15.txt --client-location "Stellenbosch, South Africa"
+(the exact command line was not kept; the two files were in the repository root, untracked, and are deleted)
 Full output: docs/evidence/M3-perf/NFR-2.4_load_run_2026-10-15.txt
 
 Client location             : Stellenbosch, South Africa
@@ -540,26 +568,48 @@ behaviour under load (section 8).
 
 ## 10. Rollback plan (M3 brief §14)
 
-**Target to restore:** `<previous tag or commit>`, deployed with DEC-003's rollback rule:
-steps 1, 2, 3, 4, 6 and 7. Step 3 (client build) is included, because `client/dist` is
-git-ignored and checking out the old tag does not replace it. Step 5 (index provisioning) is
-not run; the indexes already provisioned stay in place.
+**Target to restore: none.** This is the first staging deployment, so there is no earlier
+staging release to roll back to. If `v3.0-M3-rc` had to be withdrawn from staging, the
+service would be stopped (`sudo systemctl stop civicconnect-staging`) until a corrected tag
+is deployed with DEC-003's forward procedure.
 
-**Data and configuration concerns:**
+For later releases, DEC-003's rollback rule applies: the target is the previous release tag,
+deployed with steps 1, 2, 3, 4, 6 and 7. Step 3 (client build) is included, because
+`client/dist` is git-ignored and checking out the old tag does not replace it. Step 5 (index
+provisioning) is not run; the indexes already provisioned stay in place.
 
-- Data: <documents written by this release that an older release may not read; migrations are
-  forward-only and additive within a release, and this release has none>.
-- Indexes: <the 21 indexes provisioned in step 5 stay; whether the older release declares the
-  same set>.
-- Configuration: <`RELEASE_COMMIT` in `/etc/civicconnect/staging.env` must be changed to the
-  restored commit, or `/health` reports the wrong release>.
-- Client: <client/dist rebuilt from the restored tag>.
+**Data and configuration concerns for a later rollback:**
 
-**How a rollback is verified:** `/health` reports the restored commit; the smoke test re-run (section 9).
+- Data: documents written by the newer release must still be readable by the older one.
+  Migrations are forward-only and additive within a release (DEC-003); this release has none.
+- Indexes: the 21 indexes provisioned in step 5 stay. An older release that declares fewer
+  would leave the extra ones in place, which the provisioning script reports as undeclared.
+- Configuration: `RELEASE_COMMIT` in `/etc/civicconnect/staging.env` must be set to the
+  restored commit, or `/health` reports the wrong release. The `MONGODB_URI` must keep its
+  `/civicconnect` database name (see the configuration correction in section 3).
+- Client: `client/dist` rebuilt from the restored tag.
+
+**How a rollback is verified:** `/health` reports the restored commit, `git rev-parse HEAD` on the
+VM is recorded, and the smoke test is re-run (section 9).
 
 ---
 
 ## What this record does not show
 
-- <limits: staging is not production; synthetic data; the regions and the latency rule in
-  DEC-003 v0.4, *Performance testing and region*; anything not run>.
+- **Production.** Staging is a disposable VM with synthetic data (DEC-003 v0.4); production has
+  no host yet. The VM is in Spain and the cluster in the Netherlands, and both differ from where
+  production would run.
+- **Performance beyond one run.** One NFR-2.4 run, from one client network; latency includes
+  the South Africa to Spain round trip and the Spain to Netherlands hop (section 8).
+- **The client.** Nothing here exercises the React client on staging (step 3 not shown).
+
+### Not recorded
+
+These were not captured during the deploy, and are stated here rather than reconstructed:
+
+1. **The checkout's commit on the VM** (step 1). Check with
+   `git -C /opt/civicconnect rev-parse HEAD`; it must print the commit in section 2.
+2. **The client build** (step 3). Check with `ls /opt/civicconnect/client/dist`.
+3. The terminal output of steps 1 to 4 and of the first restart, the deploy session's start time,
+   the git version on the VM, the exact load-run command line, the cleanup outputs for runs
+   f44598a6 and c0a3b855, and the time the fixture file was deleted on the VM.
