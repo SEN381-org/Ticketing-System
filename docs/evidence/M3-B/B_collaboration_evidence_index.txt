@@ -74,3 +74,34 @@ What this does not show
   - The secret handling (.env files, the least-privilege
     civicconnect-app role) is evidenced in #84 and #85 and
     DB-01_layer3_verification.txt, not in these screenshots.
+
+Note added 15/10/2026 (C. Burger): staging branch removed
+  On 14/10/2026, with R. van der Merwe's agreement, staging was removed
+  from the Branch Safety targets and the branch was then deleted. B-01
+  ("applied to main, dev and staging") and B-02 (targets main, dev and
+  staging) were captured on 13/10/2026, before this change, and are kept
+  as captured. From 14/10/2026 Branch Safety targets main and dev only.
+
+  Why: the branch held only a51cd75, the repository's initial commit,
+  which is still the first commit on dev and main, so nothing was lost.
+  Nothing used it: CI runs on dev and main, and staging deploys from a
+  release tag (DEC-003, DEC-008). Deletion was restricted by the ruleset,
+  so the target was removed first.
+
+B-05a_staging_before_removal.png
+  Target branches before the change: main, dev and staging
+  ("Applies to 3 targets").
+
+B-05b_staging_removed_from_targets.png
+  Target branches after the change was saved and the page reloaded:
+  main and dev only ("Applies to 2 targets").
+
+B-05c_staging_deleted.png
+  The repository's branches page: staging "Deleted now", with the restore
+  button. Its behind/ahead count against dev reads 174 | 0: staging had
+  no commit that dev does not already have.
+
+  What this does not show
+  - The other Branch Safety rules after the change. B-05b shows only
+    the targets; the rules in B-01 were not edited and were not
+    re-captured.
