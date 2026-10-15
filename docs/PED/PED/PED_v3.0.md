@@ -2040,7 +2040,7 @@ Significant changes since v2.0, each with its reason, impact and record.
 | Data and Persistence Baseline v0.3 | DEC-018 sessions collection; corrections | — | PR #82 |
 | CR-001 (AC-NFR-1.10 v0.3) | Still **Proposed**. The integration test was written to it | The Acceptance Criteria register still holds v0.2 | `docs/change/CR-001_AC-NFR-1.10_v0.1.md` |
 | Defect Register and Technical Debt Register (new) | M3 brief §12 | DEF-001 to DEF-020; TD-001 to TD-008 | Registers v0.5 and v0.3 (PR #113) |
-| RTM v0.10 | M3 chain (brief §12) | Four columns, 27 requirements in M3 scope | [SLOT: RTM PR number] |
+| RTM v0.10 | M3 chain (brief §12) | Four columns, 27 requirements in M3 scope | PR #115 |
 | `/health` reports `release` | Identify the deployed candidate (brief §14) | Health contract gains one field | PR #105; DEC-015's health row is updated in its next version |
 | Staging configuration correction | `MONGODB_URI` named no database (DEF-020) | Fixed on the VM before the load run | PR #111 |
 | Access-list exception for step 5 | Index provisioning was run from a developer workstation | The workstation's IP was on the staging access list alongside the VM's; removed 15/10/2026 18:37 UTC. Not in DEC-003 | PR #111; next DEC-003 version |
