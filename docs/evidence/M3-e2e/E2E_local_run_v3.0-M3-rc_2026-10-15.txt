@@ -1,0 +1,68 @@
+E2E local run at the release candidate v3.0-M3-rc (critical path item 9a)
+E2E-1, E2E-2a, E2E-2b (docs/quality/M3_E2E_Test_Plan_v0.1.md)
+
+Tag         : v3.0-M3-rc (annotated, tag object 77914ea)
+Commit      : 30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc (merge commit of PR #106)
+Checkout    : a separate detached worktree at the tag, outside the developer's working copy, removed after the run.
+              git status --short before the run: 0 entries (clean).
+Install     : npm ci in the repository root, client/ and e2e/, from the tag's lockfiles.
+              @playwright/test 1.64.0; Chromium build 1248 installed for this run (npx playwright install chromium).
+Node        : v24.16.0. The project's minimum and deployed version is 22 (.nvmrc); nvm is not installed on this machine.
+Environment : E2E_ENV_FILE pointing to an environment file outside the repository (test cluster, credential
+              civicconnect-app). Its contents are not recorded. The cluster guard requires the host to contain
+              civicconnecttest.
+Command     : npm run test:e2e   (one run; not repeated whatever the outcome)
+Data        : the run writes synthetic fixtures to the test cluster (a staff user, a Received request and, for E2E-1,
+              a requestHistory entry, per case). The civicconnect-app role cannot delete them (DB-01 layer 3). This is
+              accepted; every assertion is scoped to its own fixture.
+
+EXPECTED RESULTS (written to this file at 2026-10-15 13:45:59 UTC, before the run, from the E2E plan and the Defect Register v0.4):
+  E2E-1  Coordinator rejects a Received request                       PASS
+  E2E-2a A Technician cannot reject a request, and nothing is written  PASS
+  E2E-2b The wrong-role refusal is 403 FORBIDDEN (DEC-015 §4)          EXPECTED FAILURE (test.fail): DEF-011 is open,
+         the service answers 422 INVALID_TRANSITION, not 403. Playwright reports it as an expected failure, and the
+         run's exit code is 0 if E2E-1 and E2E-2a pass.
+  Anything else (an unexpected failure, a skip, a connection error such as ENOTFOUND / querySrv) is recorded as it
+  happened, with the test names, and the run is not repeated.
+
+RUN
+  Started (UTC) : 2026-10-15T13:46:07Z
+  Ended (UTC)   : 2026-10-15T13:46:11Z
+  Exit code     : 1
+
+  Full output (ANSI colour codes removed; the cluster hostname's middle label redacted, as in DEC-003's environment map):
+
+    
+    > civicconnect@0.1.0 test:e2e
+    > npm --prefix e2e test
+    
+    
+    > civicconnect-e2e@0.0.0 test
+    > playwright test
+    
+    [WebServer] Database connection failed: querySrv ECONNREFUSED _mongodb._tcp.civicconnecttest.[redacted].mongodb.net
+    Error: Process from config.webServer was not able to start. Exit code: 1
+    
+    npm notice
+    npm notice New major version of npm available! 11.13.0 -> 12.2.0
+    npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+    npm notice To update run: npm install -g npm@12.2.0
+    npm notice
+
+OUTCOME: NOT RUN. None of E2E-1, E2E-2a or E2E-2b executed.
+  The first webServer entry (node --env-file=<env file> src/server.js) exited with code 1 before any test started:
+  "Database connection failed: querySrv ECONNREFUSED _mongodb._tcp.civicconnecttest.[redacted].mongodb.net".
+  The DNS SRV lookup for the test cluster's mongodb+srv address was refused on this machine. This is the known
+  SRV DNS problem on this laptop, where Node has needed a DNS server override for SRV lookups before.
+  It is a failure of the run environment, not a test result: the expected results above were
+  neither confirmed nor contradicted.
+  Not repeated, and no DNS override applied, as decided before the run: the failure is recorded as it happened.
+  No fixture was written: the specs never started, so nothing connected from the test side.
+
+WHAT THIS DOES AND DOES NOT SHOW
+  Shows: at v3.0-M3-rc the server refuses to start without a database connection and reports why without
+  printing the connection string (only the SRV host appears).
+  Does not show: anything about E2E-1, E2E-2a or E2E-2b at v3.0-M3-rc. Item 9a stays open until a run from a
+  machine whose DNS resolves SRV records, or with the documented override, is recorded as a separate run.
+
+The worktree was removed after the run.
