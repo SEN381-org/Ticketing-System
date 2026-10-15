@@ -176,8 +176,10 @@ say(`Target               : ${shownOrigin} (staging VM, Azure Spain Central)`);
 say(`Database             : staging Atlas cluster civicconnectstaging, M0, Azure westeurope (Netherlands); not colocated with the VM`);
 say(`Client location      : ${args['client-location']}`);
 say(`Node                 : ${process.version}`);
-say(`NODE_EXTRA_CA_CERTS  : set (${path.basename(caFile)}; SHA-256 ${caFingerprint})`);
-say(`NODE_TLS_REJECT_UNAUTHORIZED: ${process.env.NODE_TLS_REJECT_UNAUTHORIZED ?? 'unset'}`);
+// Fixed text only: no environment value is logged (CodeQL js/clear-text-logging). The trusted
+// certificate is identified by its SHA-256, read from the file, not by its path.
+say(`NODE_EXTRA_CA_CERTS  : set (SHA-256: ${caFingerprint})`);
+say(`NODE_TLS_REJECT_UNAUTHORIZED: ${process.env.NODE_TLS_REJECT_UNAUTHORIZED === undefined ? 'unset' : 'set (not 0)'}`);
 say(`Fixture run          : ${fixtures.run}`);
 say(`Workload             : ${USERS} users; ramp ${RAMP_S} s; window ${DURATION_S} s after the last login; think ${THINK_S} s; a transition every ${TRANSITION_EVERY} iterations; timeout ${TIMEOUT_S} s`);
 say();
