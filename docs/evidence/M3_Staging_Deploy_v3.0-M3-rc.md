@@ -8,7 +8,7 @@ the connection string, host, passwords or the full static IP.
 |---|---|
 | Environment | `civicconnect-staging` (Azure VM, Spain Central; Atlas `civicconnectstaging`, M0, Azure `westeurope`) |
 | Procedure | DEC-003 v0.4, steps 1 to 7 |
-| Record status | COMPLETE, with two checks not recorded: the checkout’s own commit on the VM (step 1) and the client build’s output (step 3). See *Not recorded* at the end |
+| Record status | COMPLETE. What was not captured during the deploy is listed under *Not recorded* at the end |
 
 ## Execution order (E. Lindsay, 15/10/2026)
 
@@ -71,17 +71,21 @@ $ sudo mkdir -p /opt/civicconnect
 $ sudo chown ticketuser:ticketuser /opt/civicconnect
 $ git clone https://github.com/SEN381-org/Ticketing-System.git /opt/civicconnect
 $ cd /opt/civicconnect && git checkout v3.0-M3-rc
-$ git rev-parse HEAD                 -> not recorded
+$ git rev-parse HEAD                 -> output not kept at the time; checked afterwards, below
 
 Evidence captured afterwards (stat):
   2026-10-15 14:05:39.729588117 +0000 /opt/civicconnect
   drwxr-xr-x 13 ticketuser ticketuser 4096 Oct 15 14:05 /opt/civicconnect
+
+Checkout verification, run on the VM afterwards (2026-10-15):
+  ticketuser@civicconnect-staging:/opt/civicconnect$ git -C /opt/civicconnect rev-parse HEAD
+  30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc
 ```
 
-The directory was created at 14:05:39 UTC and is owned by `ticketuser`. That the checkout
-is at `30ff0c6` is **not shown**: `git rev-parse HEAD` on the VM was not recorded, and
-`/health`'s `release` (section 6) reports `RELEASE_COMMIT`, which was set by hand
-(section 4), not the checkout.
+The directory was created at 14:05:39 UTC and is owned by `ticketuser`. The checkout is at
+`30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc`, the commit of `v3.0-M3-rc` (section 2). This is
+checked separately from `/health`'s `release` (section 6), which reports `RELEASE_COMMIT`, set
+by hand (section 4): both agree with the tag.
 
 ### Step 2: `npm ci --omit=dev` in the repository root
 
@@ -106,12 +110,21 @@ Output: not kept.
 Evidence captured afterwards:
   $ stat /opt/civicconnect/dist
   stat: cannot statx '/opt/civicconnect/dist': No such file or directory
+  (the wrong path: the build writes to client/dist, DEC-019)
+
+  ticketuser@civicconnect-staging:/opt/civicconnect$ ls -la /opt/civicconnect/client/dist
+  total 16
+  drwxrwxr-x 3 ticketuser ticketuser 4096 Oct 15 14:05 .
+  drwxrwxr-x 5 ticketuser ticketuser 4096 Oct 15 14:05 ..
+  drwxrwxr-x 2 ticketuser ticketuser 4096 Oct 15 14:05 assets
+  -rw-rw-r-- 1 ticketuser ticketuser  323 Oct 15 14:05 index.html
 ```
 
-**Not shown.** The client build writes to `client/dist` (DEC-019), so `/opt/civicconnect/dist`
-never exists; the check looked in the wrong place. Whether `/opt/civicconnect/client/dist`
-exists was not recorded. Nothing later in this record depends on the client: the health
-check, the load run and the smoke test call the API only.
+The client was built: `client/dist` holds `index.html` and an `assets` directory, owned by
+`ticketuser`, written at 14:05 UTC, the same minute as the clone and the server install. The
+listing shows the build's output exists; the build's own output (Vite's summary) was not kept.
+Nothing later in this record loads the client: the health check, the load run and the smoke
+test call the API only.
 
 ### Step 4: run migrations
 
@@ -601,15 +614,17 @@ VM is recorded, and the smoke test is re-run (section 9).
   production would run.
 - **Performance beyond one run.** One NFR-2.4 run, from one client network; latency includes
   the South Africa to Spain round trip and the Spain to Netherlands hop (section 8).
-- **The client.** Nothing here exercises the React client on staging (step 3 not shown).
+- **The client in use.** The client is built (step 3), but nothing here loads it in a browser
+  on staging; the health check, the load run and the smoke test call the API only.
 
 ### Not recorded
 
 These were not captured during the deploy, and are stated here rather than reconstructed:
 
-1. **The checkout's commit on the VM** (step 1). Check with
-   `git -C /opt/civicconnect rev-parse HEAD`; it must print the commit in section 2.
-2. **The client build** (step 3). Check with `ls /opt/civicconnect/client/dist`.
-3. The terminal output of steps 1 to 4 and of the first restart, the deploy session's start time,
-   the git version on the VM, the exact load-run command line, the cleanup outputs for runs
-   f44598a6 and c0a3b855, and the time the fixture file was deleted on the VM.
+- The terminal output of steps 1 to 4 (including Vite's build summary) and of the first restart,
+  the deploy session's start time, the git version on the VM, the exact load-run command line,
+  the cleanup outputs for runs f44598a6 and c0a3b855, and the time the fixture file was deleted
+  on the VM.
+
+The checkout's commit (step 1) and the client build's output (step 3) were not captured during
+the deploy either; both were checked on the VM afterwards and are recorded in those steps.
