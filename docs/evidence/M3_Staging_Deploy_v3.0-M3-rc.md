@@ -151,8 +151,9 @@ Network access              : the staging cluster's Atlas access list held R. va
                               entry is how a run from Stellenbosch, on the workstation's Node 26,
                               reached a cluster whose list DEC-003 v0.4 (Database access)
                               restricts to the VM's IP. It was an exception for step 5, not
-                              recorded in DEC-003. When it was added, and when (or whether) it was
-                              removed, are not recorded.
+                              recorded in DEC-003. Removed by R. van der Merwe at
+                              2026-10-15T18:37Z, after the load run and the smoke test. When it
+                              was added is not recorded.
 
 Expected results, written before the run (UTC 2026-10-15T13:27:47Z):
   Run 1: Created this run: 31 (21 declared + 10 default _id_); RESULT PASS: 21 of 21; exit 0
@@ -634,8 +635,8 @@ These were not captured during the deploy, and are stated here rather than recon
 - The terminal output of steps 1 to 4 (including Vite's build summary) and of the first restart,
   the deploy session's start time, the git version on the VM, the exact load-run command line,
   the cleanup outputs for runs f44598a6 and c0a3b855, the time the fixture file was deleted
-  on the VM, and when the workstation's entry on the staging access list was added and removed
-  (step 5).
+  on the VM, and when the workstation's entry on the staging access list was added (step 5; its removal,
+  at 18:37 UTC, is recorded there).
 
 The checkout's commit (step 1) and the client build's output (step 3) were not captured during
 the deploy either; both were checked on the VM afterwards and are recorded in those steps.
