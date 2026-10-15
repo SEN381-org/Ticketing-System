@@ -1,0 +1,122 @@
+E2E local run at the release candidate v3.0-M3-rc, second attempt (critical path item 9a)
+E2E-1, E2E-2a, E2E-2b (docs/quality/M3_E2E_Test_Plan_v0.1.md)
+
+Previous attempt: E2E_local_run_v3.0-M3-rc_2026-10-15.txt (same folder), 13:46:07 to 13:46:11 UTC: NOT RUN. The API
+web server exited before any test started, with "querySrv ECONNREFUSED" for the test cluster's SRV record. That file
+is unchanged. This is a new run, recorded in its own file.
+
+Tag         : v3.0-M3-rc (annotated, tag object 77914ea)
+Commit      : 30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc (merge commit of PR #106)
+Checkout    : a fresh detached worktree at the tag, outside the developer's working copy, removed after the run.
+              git status --short before the run: 0 entries (clean).
+Install     : npm ci in the repository root, client/ and e2e/, from the tag's lockfiles.
+              @playwright/test 1.64.0; Chromium build 1248 (installed for the first attempt).
+Node        : v24.16.0. The project's minimum and deployed version is 22 (.nvmrc); nvm is not installed on this machine.
+Environment : E2E_ENV_FILE pointing to an environment file outside the repository (test cluster, credential
+              civicconnect-app). Its contents are not recorded. The cluster guard requires the host to contain
+              civicconnecttest.
+DNS override: NODE_OPTIONS was set, for this run only, to:
+                --import "data:text/javascript,import dns from 'node:dns';dns.setServers(['8.8.8.8','1.1.1.1']);"
+              Why: on this laptop the SRV lookup a mongodb+srv connection string needs was refused by the system
+              resolver (first attempt). The override makes Node's resolver use the public DNS servers 8.8.8.8 and
+              1.1.1.1. It is set through NODE_OPTIONS, so every Node process in the run gets it: Playwright, its workers
+              (which create the fixtures) and the API server Playwright starts. Checked before the run: a child Node
+              process with this NODE_OPTIONS reported servers 8.8.8.8,1.1.1.1. It changes name resolution only. No
+              application, test or configuration file is changed, and the deployed build does not use it.
+Command     : npm run test:e2e   (one run; not repeated whatever the outcome)
+Data        : the run writes synthetic fixtures to the test cluster (a staff user, a Received request and, for E2E-1,
+              a requestHistory entry, per case). The civicconnect-app role cannot delete them (DB-01 layer 3). This is
+              accepted; every assertion is scoped to its own fixture.
+
+EXPECTED RESULTS (written to this file at 2026-10-15 13:51:14 UTC, before the run, from the E2E plan and the Defect Register v0.4):
+  E2E-1  Coordinator rejects a Received request                       PASS
+  E2E-2a A Technician cannot reject a request, and nothing is written  PASS
+  E2E-2b The wrong-role refusal is 403 FORBIDDEN (DEC-015 §4)          EXPECTED FAILURE (test.fail): DEF-011 is open,
+         the service answers 422 INVALID_TRANSITION, not 403. Playwright reports it as an expected failure, and the
+         run's exit code is 0 if E2E-1 and E2E-2a pass.
+  Anything else (an unexpected failure, a skip, a connection error) is recorded as it happened, with the test names,
+  and the run is not repeated.
+
+RUN
+  Started (UTC) : 2026-10-15T13:51:22Z
+  Ended (UTC)   : 2026-10-15T13:51:33Z
+  Exit code     : 0
+
+  Full console output (ANSI colour codes removed; npm's update notice lines removed):
+
+    
+    > civicconnect@0.1.0 test:e2e
+    > npm --prefix e2e test
+    
+    
+    > civicconnect-e2e@0.0.0 test
+    > playwright test
+    
+    
+    Running 3 tests using 1 worker
+    
+      ✓  1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (1.5s)
+      ✓  2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (825ms)
+      ✘  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (795ms)
+    
+      3 passed (9.3s)
+
+  Per-test results from e2e/test-results/results.json (Playwright's JSON reporter):
+
+    {
+     "stats": {
+      "startTime": "2026-10-15T13:51:24.468Z",
+      "duration": 9331.369,
+      "expected": 3,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+     },
+     "tests": [
+      {
+       "title": "E2E-1: Coordinator rejects a Received request",
+       "expectedStatus": "passed",
+       "status": "passed",
+       "outcome": "expected",
+       "ms": 1470,
+       "error": ""
+      },
+      {
+       "title": "E2E-2a: a Technician cannot reject a request, and nothing is written",
+       "expectedStatus": "passed",
+       "status": "passed",
+       "outcome": "expected",
+       "ms": 825,
+       "error": ""
+      },
+      {
+       "title": "E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4)",
+       "expectedStatus": "failed",
+       "status": "failed",
+       "outcome": "expected",
+       "ms": 795,
+       "error": "Error: expect(received).toBe(expected) // Object.is equality |  | Expected: 403 | Received: 422"
+      }
+     ]
+    }
+
+OUTCOME: AS EXPECTED.
+  E2E-1   passed (expected: pass).
+  E2E-2a  passed (expected: pass).
+  E2E-2b  failed as expected (test.fail): "Expected: 403, Received: 422". DEF-011 is still open; Playwright counts
+          an expected failure as passing, which is why the summary line says "3 passed" and the exit code is 0.
+  No unexpected failure, no skip, no flaky result (stats: expected 3, unexpected 0, skipped 0, flaky 0).
+
+WHAT THIS DOES AND DOES NOT SHOW
+  Shows: at v3.0-M3-rc (30ff0c6), built from the tag's lockfiles, the critical journey works in a browser against
+  the real API and the test cluster. E2E-1: signed out, the request is not disclosed; a Coordinator signs in and
+  reads it; a reject with no reason is refused by the server and nothing is written; a reject with a reason is
+  stored, versioned and gives exactly one history entry; sign-out ends the session. E2E-2a: a Technician's reject
+  is refused and nothing is written. (E2E-1 does not show the history being displayed; see the spec's header.) The DEF-011 discrepancy (422 for a
+  wrong role where DEC-015 §4 says 403) is still present at the release candidate (E2E-2b).
+  Does not show: the journey on staging (the browser journey runs locally only; on staging the API path is checked
+  by scripts/smoke/phase0-smoke.js on the VM, an M3.10 limitation); behaviour on Node 22 (this run used Node 24);
+  behaviour without the DNS override, which changes name resolution only.
+
+Fixtures written by this run stay on the test cluster (accepted, see Data above).
+The worktree was removed after the run.
