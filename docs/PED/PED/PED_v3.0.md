@@ -87,7 +87,7 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 1.12 | — | E. Lindsay, R. van der Merwe | **Not undertaken at M2; carried into M3.** Planned as: assumptions and dependencies updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone *(the remainder of the row previously planned as 1.9; renumbered from 1.10, then 1.11)* | — |
 | 2.0 | 30/09/2026 | E. Lindsay | Milestone 2 baseline. Architecture, Technology & Initial Design Baseline identified in §12: what is baselined and what is deliberately not. M1 conditions reviewed and their final M2 status recorded in Appendix B (C-01, C-02 and C-05 open; C-03 partially closed; C-04 closed), with the M2 baseline sign-off block. Citations aligned to the versions held in the repository: AI Usage Register v0.9, Scope Baseline v0.3, Non-Functional Requirements v0.3, Acceptance Criteria v0.3, Data and Persistence Baseline v0.2, Team Working Agreement v0.2. The Data and Persistence Baseline (R. van der Merwe) and the Team Working Agreement (team) moved from draft to approved status by a header-only change, so that no baselined artefact describes itself as a draft; their content is unchanged. Appendix A extended with the files it did not list (Requirements Control, the RTM v0.5 change notes, the DEC-011 and DEC-012 diagram sources, the R-01 negative-verification evidence, the PED references and the three briefs). Version row 1.12 recorded as not undertaken at M2. PED v1.11 archived | R. van der Merwe, C. Burger |
 | 2.1 | 13/10/2026 | C. Burger | M3 part added after §12, structured on the M3 brief §6 as an evidence index (M3.1–M3.10), with an owner for each section. M3.4 Construction and configuration written: rulesets (Branch Safety, dev rule), the approval-of-most-recent-push rule enabled on 13/10/2026, review evidence (PR #85, #88, #62, #90), configuration and secrets controls (PR #84, #85), construction notes (PR #83) and TD-004 as a known gap. M3.5 CI and automated verification written: the five required checks (PR #86), the scope and layer-check changes in PR #91 and the weekly all-branch secret scan, blocking evidence (PR #86, GATE-01 on PR #90, PR #92) and what CI does not cover. M3 references listed in the part, to move into §13 at v3.0. B evidence pack added in `docs/evidence/M3-B/`. Header and contents updated. §1 to §13 and Appendices A and B are unchanged from v2.0. PED v2.0 archived | E. Lindsay, R. van der Merwe |
-| 3.0 | 16/10/2026 | E. Lindsay | Milestone 3 version. M3 submission information block added after the title (brief §5.3). M3 part completed: M3.1 overview with the two tags and the rule that only `docs/` and `perf/` change between them; M3.2 M2 baseline conformance table; M3.3 controlled changes (DEC-018, DEC-019, DEC-003 v0.2 to v0.4 and OI-21, CR-001 status, the registers, RTM v0.10, `/health` release, DEF-020, the step-5 access-list exception), with the baselined Hostinger lines recorded as superseded rather than edited; M3.4 updated with C. Burger's M3 lines (staging branch removed; environments as built under DEC-003 v0.4; TD-004 repaid on test and staging), corrected against the record; M3.5 updated (PR #95 merged; CI at the release candidate; the weekly all-branch scan's first run; the lock files' permanent warnings; CodeQL alerts; TD-007, TD-008); M3.6, M3.7, M3.9 and M3.10 written; slots for R. van der Merwe's M3.8 and C. Burger's Risk Register lines. Release Evidence Summary v0.1 added. PED v2.1 archived | [SLOT] |
+| 3.0 | 16/10/2026 | E. Lindsay | Milestone 3 version. M3 submission information block added after the title (brief §5.3). M3 part completed: M3.1 overview with the two tags and the rule that only `docs/` and `perf/` change between them; M3.2 M2 baseline conformance table; M3.3 controlled changes (DEC-018, DEC-019, DEC-003 v0.2 to v0.4 and OI-21, CR-001 status, the registers, RTM v0.10, `/health` release, DEF-020, the step-5 access-list exception), with the baselined Hostinger lines recorded as superseded rather than edited; M3.8 written by R. van der Merwe (taken unchanged from his PED v2.2 draft, PR #114); M3.4 updated with C. Burger's M3 lines (staging branch removed; environments as built under DEC-003 v0.4; TD-004 repaid on test and staging), corrected against the record; M3.5 updated (PR #95 merged; CI at the release candidate; the weekly all-branch scan's first run; the lock files' permanent warnings; CodeQL alerts; TD-007, TD-008); M3.6, M3.7, M3.9 and M3.10 written; a slot for C. Burger's Risk Register lines. Release Evidence Summary v0.1 added. PED v2.1 archived | [SLOT] |
 
 Baselined content is not silently overwritten. Changes after this baseline follow the
 change control process in Master Brief §14.
@@ -2361,12 +2361,135 @@ journey's API path was: the smoke test on the VM over HTTPS, 6 of 6 (M3.8).
 
 ## M3.8 Performance and reliability
 
-[SLOT: R. van der Merwe — M3.8. The NFR-2.4 workload (requirement versus team choices), the
-result (PASS: 0 failed requests, 0 unhandled server errors, 100 users, 600 s, 11.04
-requests/s), latency interpreted against the South Africa to Spain and Spain to Netherlands
-hops, the fixtures' four attempts, the staging deploy order and times, the smoke test, the
-rollback approach (brief §14), and what the run does not show. Source:
-`docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`, `docs/evidence/M3-perf/`.]
+Owner: R. van der Merwe. This section indexes the M3 performance and staging evidence. The
+evidence itself is in `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md` (the deploy record,
+sections 8 and 9) and `docs/evidence/M3-perf/NFR-2.4_load_run_2026-10-15.txt` (the load run's
+output), on the release candidate `v3.0-M3-rc` (`30ff0c6`).
+
+### M3.8.1 What was tested, and why
+
+The operation tested is the one NFR-2.4 states: sustained authenticated use. NFR-2.4 (High) reads:
+"The system will sustain 100 concurrent authenticated users with no failed request and no
+unhandled server error." AC-NFR-2.4 adds "exercising the standard journeys for 10 minutes".
+
+It matters for three reasons:
+- The 100-user figure is the client's (CON-010), not a team assumption (§6, OI-04).
+- The database is an Atlas M0 cluster with a 100 operations/s ceiling, the binding free-tier
+  limit (data baseline §7; RSK-019). DEC-010 re-opens the tier decision if the load test
+  exceeds 70 % of it.
+- Every status transition runs the DEC-016 transaction and writes to the unique indexes that
+  TD-004 provisioned, so the test also exercises the write path under concurrency.
+
+NFR-2.1's 3-second target is for request submission, which is not built, so it is not tested.
+
+### M3.8.2 Workload
+
+NFR-2.4 fixes the load, the duration and the pass criterion. It does not define "the standard
+journeys", a request mix, a ramp or any latency target. The team filled those gaps, and the
+deploy record (section 8) separates the two.
+
+| Parameter | Value | Source |
+|---|---|---|
+| Concurrent users | 100, each logged in for the whole window | NFR-2.4 |
+| Duration | 600 s, measured from the 100th login | AC-NFR-2.4 |
+| Ramp | Logins staggered over 60 s | Team: each login is a 32 MiB scrypt verification on a 2-vCPU VM (DEC-018) |
+| Journey | Read one request; every 6th iteration, reject a fresh Received request | Team: the authenticated operations the release candidate implements |
+| Think time | 10 s | Data baseline §7's assumption for NFR-2.4 ("mostly reads, ~10 s think time") |
+| Timeout | 30 s, counted as a failure | Team |
+| Pass criterion | 0 failed requests and 0 unhandled server errors (5xx), over ramp and window | NFR-2.4 |
+
+Tooling: `perf/generate-fixtures.js` created 100 synthetic Coordinators and 1,300 requests on
+the staging cluster, from the VM, with the application's own credential (run `77b08804`).
+`perf/load-run.js` ran the load from the client. The expected results and the pass/fail rule
+were written into the deploy record at 14:33:53 UTC, before the run. There was one run, with
+no re-run.
+
+### M3.8.3 Environment
+
+| Component | Value |
+|---|---|
+| Application | `v3.0-M3-rc` (`30ff0c6`), Node 22.23.3, behind Nginx with TLS (self-signed certificate, verified by the client) |
+| Host | Azure VM, `Standard_B2ls_v2` (2 vCPU, 4 GiB), Ubuntu 24.04.5 LTS, Spain Central (DEC-003 v0.4) |
+| Database | Atlas M0 `civicconnectstaging` on Azure `westeurope` (Netherlands), not colocated with the VM; the 21 declared indexes provisioned and verified |
+| Client | R. van der Merwe's workstation, Stellenbosch, South Africa; Node 26.0.0 |
+| Network | Every request crosses South Africa to Spain (measured 150 to 180 ms round trip, DEC-003 v0.4); every database call crosses Spain to the Netherlands |
+
+### M3.8.4 Results (15/10/2026, 16:30 to 16:41 UTC)
+
+**NFR-2.4: PASS.** 0 failed requests and 0 unhandled server errors.
+
+| Request | Count | Failed | p50 | p95 | p99 | Max |
+|---|---|---|---|---|---|---|
+| Login | 100 | 0 | 430 ms | 451 ms | 697 ms | 808 ms |
+| Read one request | 5,835 | 0 | 206 ms | 249 ms | 464 ms | 748 ms |
+| Status transition | 900 | 0 | 315 ms | 631 ms | 703 ms | 897 ms |
+
+- **Volume.** 6,835 requests in total. Of these, 6,735 fell in the 600-second window, at 11.04
+  requests/s.
+- **Against the predictions.** Every figure was within what was written before the run:
+  100 logins, about 5,000 to 6,000 reads, about 900 to 1,000 transitions, and about 10 to 11
+  requests/s (11.04 is at the top).
+
+### M3.8.5 Interpretation
+
+- **What it shows.** The release candidate, deployed to staging, sustained the load NFR-2.4
+  states for the duration AC-NFR-2.4 states, with no failed request and no server error. That
+  includes 900 transactional writes under concurrent use with the unique indexes in place.
+- **Latency.** NFR-2.4 sets no latency target, so latency is read, not judged.
+  - The read median (206 ms) is close to the measured South Africa to Spain round trip, so most
+    of it is distance, not processing.
+  - Transitions cost more (p95 631 ms), because each makes several database calls across the
+    Spain to Netherlands hop.
+  - Login includes the deliberate scrypt cost.
+  - p99 and max are single samples from one run and are not compared.
+- **What it does not show.**
+  - Production behaviour: staging is a disposable VM with synthetic data, and production has no
+    host yet (DEC-003 v0.4).
+  - Scale beyond 100 users. CON-010's reasoning toward 1,000 does not fit on M0 (data
+    baseline §7).
+  - Request submission and the list views, which are not built.
+  - More than one run, or more than one client network.
+  - Database throughput. The Atlas metrics for the window were not captured, so whether the
+    DEC-010 trigger (70 % of 100 ops/s) was approached is unknown. The data baseline estimates
+    about 9 operations per transition, which puts this workload around 40 to 50 ops/s.
+
+### M3.8.6 Staging and reliability evidence
+
+The release candidate was deployed to staging following DEC-003 v0.4's procedure, in the order
+provisioning → deploy → `/health` → performance → smoke. Deploy record:
+`docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`.
+
+| Evidence | Result |
+|---|---|
+| Index provisioning (DEC-003 step 5, TD-004) | 31 indexes created, then 0 on re-run; both PASS 21 of 21 (`docs/evidence/M3-indexes/index_provisioning_staging_run1.txt`, `…_run2.txt`) |
+| Release identification | `/health` over verified HTTPS reports `release` = `30ff0c6…`; the VM's checkout is at the same commit |
+| Smoke test (`scripts/smoke/phase0-smoke.js`), after the load run | 6 of 6: health, refusal without a session, login cookie attributes, a transition with exactly one history entry, logout, refusal of the old cookie |
+
+Failures found during the deploy, recorded as they happened:
+- **The application was connected to the wrong database.** The staging environment file's
+  `MONGODB_URI` did not name the database, so the application connected to the driver's
+  default, `test`. `/health` still reported "up", because its ping does not depend on the
+  database name. A failing fixture run exposed it (Atlas error 8000). It was corrected by
+  16:12:28 UTC, before the load run and the smoke test. Both fixture scripts now refuse a URI
+  without the database name.
+- **Fixture creation took four attempts.** One failed, one was aborted by hand, and one
+  succeeded but was not used; the fourth was used. Each is recorded in the deploy record.
+- **An exception to the access list.** The deployer's workstation IP was on the staging
+  cluster's access list for index provisioning, an exception to DEC-003 v0.4. It was removed at
+  18:37 UTC.
+
+Environment differences from production (M3 brief §14):
+- the VM is in Spain and the database in the Netherlands;
+- the database is on the free M0 tier;
+- the TLS certificate is self-signed, where DEC-003 specifies Let's Encrypt;
+- the environment file is owned by `root`, where DEC-003 says the service user.
+
+These are listed for the next DEC-003 version.
+
+**Rollback.** This was the first staging deployment, so there was no earlier release to restore.
+For later releases DEC-003's rule applies: redeploy the previous tag with steps 1, 2, 3, 4, 6
+and 7, rebuilding the client and keeping the provisioned indexes. `RELEASE_COMMIT` and the
+database name in the environment file must match the restored release.
 
 ## M3.9 Defects and quality interpretation
 
