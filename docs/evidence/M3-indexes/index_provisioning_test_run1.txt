@@ -1,0 +1,179 @@
+Index provisioning (creates, then compares)
+Started (UTC)   : 2026-10-14T16:09:49.236Z
+Environment     : test (host not printed)
+Database        : civicconnect
+Server user     : civicconnect-temp-provisioner (expected civicconnect-temp-provisioner)
+Commit          : 07a67d3; working tree clean
+Node v26.0.0; mongoose 8.24.4; driver mongodb 6.20.0; server 8.0.34
+Declared        : 21 indexes over 10 collections (computed from src/models)
+
+Privileges reported by the server:
+  civicconnect / roles : createIndex, listIndexes
+  civicconnect / notifications : createIndex, listIndexes
+  civicconnect / auditLog : createIndex, listIndexes
+  civicconnect / users : createIndex, listIndexes
+  civicconnect / categories : createIndex, listIndexes
+  civicconnect / groups : createIndex, listIndexes
+  civicconnect / reportingCounts : createIndex, listIndexes
+  civicconnect / sessions : createIndex, listIndexes
+  civicconnect / requests : createIndex, listIndexes
+  civicconnect / requestHistory : createIndex, listIndexes
+Privilege check: passed
+
+Before (as listed by the server):
+  auditLog: collection does not exist
+  categories: collection does not exist
+  groups: collection does not exist
+  notifications: collection does not exist
+  reportingCounts: collection does not exist
+  requestHistory: collection does not exist
+  requests: collection does not exist
+  roles: collection does not exist
+  sessions: collection does not exist
+  users: collection does not exist
+
+createIndexes (per model; a failure on one index does not stop the others):
+  auditLog: ok
+  categories: ok
+  groups: ok
+  notifications: ok
+  reportingCounts: ok
+  requests: ok
+  requestHistory: ok
+  roles: ok
+  sessions: ok
+  users: ok
+
+After (as listed by the server):
+  auditLog
+    _id_  { _id: 1 }  (default)
+    eventId_1  { eventId: 1 }  unique
+    recordedAt_1  { recordedAt: 1 }  TTL 7948800 s
+    requestId_1_occurredAt_1  { requestId: 1, occurredAt: 1 }
+  categories
+    _id_  { _id: 1 }  (default)
+    campusId_1_code_1  { campusId: 1, code: 1 }  unique
+  groups
+    _id_  { _id: 1 }  (default)
+    campusId_1_name_1  { campusId: 1, name: 1 }  unique
+  notifications
+    _id_  { _id: 1 }  (default)
+    createdAt_1  { createdAt: 1 }  TTL 2592000 s
+    sourceHistoryId_1_userId_1  { sourceHistoryId: 1, userId: 1 }  unique
+    userId_1_read_1_createdAt_-1  { userId: 1, read: 1, createdAt: -1 }
+  reportingCounts
+    _id_  { _id: 1 }  (default)
+    campusId_1_categoryId_1_status_1  { campusId: 1, categoryId: 1, status: 1 }  unique
+  requestHistory
+    _id_  { _id: 1 }  (default)
+    actorId_1_idempotencyKey_1  { actorId: 1, idempotencyKey: 1 }  unique, partial {"idempotencyKey":{"$type":"string"}}
+    requestId_1_requestVersion_1  { requestId: 1, requestVersion: 1 }  unique
+  requests
+    _id_  { _id: 1 }  (default)
+    campusId_1_assigneeId_1_status_1  { campusId: 1, assigneeId: 1, status: 1 }
+    campusId_1_categoryId_1_assigneeId_1_status_1  { campusId: 1, categoryId: 1, assigneeId: 1, status: 1 }
+    campusId_1_requesterId_1_submittedAt_-1  { campusId: 1, requesterId: 1, submittedAt: -1 }
+    campusId_1_status_1_submittedAt_-1  { campusId: 1, status: 1, submittedAt: -1 }
+    campusId_1_submittedAt_1_categoryId_1  { campusId: 1, submittedAt: 1, categoryId: 1 }
+    description_text_location_text  { _fts: 'text', _ftsx: 1 }  weights {"description":2,"location":1}
+    reference_1  { reference: 1 }  unique
+  roles
+    _id_  { _id: 1 }  (default)
+    code_1  { code: 1 }  unique
+  sessions
+    _id_  { _id: 1 }  (default)
+    lastSeenAt_1  { lastSeenAt: 1 }  TTL 1800 s
+  users
+    _id_  { _id: 1 }  (default)
+    email_1  { email: 1 }  unique
+
+Created this run: 31 (auditLog._id_, auditLog.eventId_1, auditLog.requestId_1_occurredAt_1, auditLog.recordedAt_1, categories._id_, categories.campusId_1_code_1, groups._id_, groups.campusId_1_name_1, notifications._id_, notifications.userId_1_read_1_createdAt_-1, notifications.sourceHistoryId_1_userId_1, notifications.createdAt_1, reportingCounts._id_, reportingCounts.campusId_1_categoryId_1_status_1, requests._id_, requests.reference_1, requests.campusId_1_requesterId_1_submittedAt_-1, requests.campusId_1_status_1_submittedAt_-1, requests.campusId_1_categoryId_1_assigneeId_1_status_1, requests.campusId_1_assigneeId_1_status_1, requests.campusId_1_submittedAt_1_categoryId_1, requests.description_text_location_text, requestHistory._id_, requestHistory.requestId_1_requestVersion_1, requestHistory.actorId_1_idempotencyKey_1, roles._id_, roles.code_1, sessions._id_, sessions.lastSeenAt_1, users._id_, users.email_1)
+
+Comparison (declared indexes against what the server lists, per collection):
+  auditLog
+    PRESENT   eventId_1  { eventId: 1 }
+    PRESENT   requestId_1_occurredAt_1  { requestId: 1, occurredAt: 1 }
+    PRESENT   recordedAt_1  { recordedAt: 1 }
+  categories
+    PRESENT   campusId_1_code_1  { campusId: 1, code: 1 }
+  groups
+    PRESENT   campusId_1_name_1  { campusId: 1, name: 1 }
+  notifications
+    PRESENT   userId_1_read_1_createdAt_-1  { userId: 1, read: 1, createdAt: -1 }
+    PRESENT   sourceHistoryId_1_userId_1  { sourceHistoryId: 1, userId: 1 }
+    PRESENT   createdAt_1  { createdAt: 1 }
+  reportingCounts
+    PRESENT   campusId_1_categoryId_1_status_1  { campusId: 1, categoryId: 1, status: 1 }
+  requestHistory
+    PRESENT   requestId_1_requestVersion_1  { requestId: 1, requestVersion: 1 }
+    PRESENT   actorId_1_idempotencyKey_1  { actorId: 1, idempotencyKey: 1 }
+  requests
+    PRESENT   reference_1  { reference: 1 }
+    PRESENT   campusId_1_requesterId_1_submittedAt_-1  { campusId: 1, requesterId: 1, submittedAt: -1 }
+    PRESENT   campusId_1_status_1_submittedAt_-1  { campusId: 1, status: 1, submittedAt: -1 }
+    PRESENT   campusId_1_categoryId_1_assigneeId_1_status_1  { campusId: 1, categoryId: 1, assigneeId: 1, status: 1 }
+    PRESENT   campusId_1_assigneeId_1_status_1  { campusId: 1, assigneeId: 1, status: 1 }
+    PRESENT   campusId_1_submittedAt_1_categoryId_1  { campusId: 1, submittedAt: 1, categoryId: 1 }
+    PRESENT   description_text_location_text  { _fts: 'text', _ftsx: 1 }
+  roles
+    PRESENT   code_1  { code: 1 }
+  sessions
+    PRESENT   lastSeenAt_1  { lastSeenAt: 1 }
+  users
+    PRESENT   email_1  { email: 1 }
+
+Commands issued (name and collection, with counts; endSessions on close is not included):
+  buildInfo x1
+  connectionStatus x1
+  createIndexes auditLog x3
+  createIndexes categories x1
+  createIndexes groups x1
+  createIndexes notifications x3
+  createIndexes reportingCounts x1
+  createIndexes requestHistory x2
+  createIndexes requests x7
+  createIndexes roles x1
+  createIndexes sessions x1
+  createIndexes users x1
+  listIndexes auditLog x2
+  listIndexes categories x2
+  listIndexes groups x2
+  listIndexes notifications x2
+  listIndexes reportingCounts x2
+  listIndexes requestHistory x2
+  listIndexes requests x2
+  listIndexes roles x2
+  listIndexes sessions x2
+  listIndexes users x2
+
+Ended (UTC): 2026-10-14T16:09:50.136Z
+RESULT PASS: 21 of 21 declared indexes present with matching options (missing 0, different 0, undeclared 0)
+
+Note added 15/10/2026 (UTC):
+- Date of the run: 2026-10-14 (UTC). The file name carries no date; this note states it.
+- Expected results: none were written to a file before runs 1 and 2. The predicted outcome
+  (run 1: every collection absent, "Created this run: 31", that is the 21 declared indexes
+  plus 10 default _id_ indexes, RESULT PASS 21 of 21, exit 0; run 2: "Created this run: 0",
+  RESULT PASS 21 of 21, exit 0) was stated in a planning checklist on 14/10/2026 before the
+  runs. That checklist is not in the repository and carries no recorded time, so this record
+  does not rely on it as a prediction.
+- D4 drop: the test cluster's civicconnect database was dropped by R. van der Merwe through
+  the Atlas UI (Browse Collections) at 15:55 UTC on 2026-10-14, before run 1. Run 1's
+  "collection does not exist" for all ten collections is consistent with that.
+- Temporary user: civicconnect-temp-provisioner was created at 16:05 UTC on 2026-10-14,
+  restricted to the test cluster, with the custom role civicconnect-index-provisioner as its
+  only role, and a 6-hour expiry. It was deleted at 16:19 UTC on 2026-10-14. The output above
+  shows the user name and the server-reported privileges; the role name is from this record.
+- Credential file: the run used .env.provision in the repository root, which .gitignore
+  covers; it was never in the tracked tree. R. van der Merwe deleted it on 2026-10-14, at
+  about 16:14 UTC (just after PR #102 was opened at 16:14:24 UTC).
+- Command:
+    node --env-file=.env.provision scripts/atlas/provision-indexes.js --env test --out docs/evidence/M3-indexes/index_provisioning_test_run1.txt
+- Exit code: 0.
+- Commit: the "Commit" line above reports 07a67d3, the head of the DEF-018 branch
+  (task/def-018-test-flake) at the time, not dev's merge of PR #98 (1d0641a). The two differ
+  only in the Defect Register workbook; scripts/ and src/ are identical.
+- What this does not show:
+  - Step 5 on Node 22. The run was on Node 26.0.0; DEC-003 deploys Node 22 on the VM.
+  - DEC-003's ordering. The script was run by hand, not by the deploy script, so "the
+    application does not start before step 5 has completed" is not exercised here.

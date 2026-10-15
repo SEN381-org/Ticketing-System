@@ -1,0 +1,283 @@
+M3 index provisioning: duplicate-refusal checks L2 to L4 on the test cluster
+TD-004 (DEC-003 step 5); DEF-014, DEF-015, DEF-017; FR-2.6
+Date (UTC)  : 2026-10-14, run 16:13:39 to 16:13:39 (times printed by the script below)
+Expected    : written at 16:13:08 UTC, before the run (section 1)
+Preceded by : index_provisioning_test_run1.txt (31 indexes created, RESULT PASS 21 of 21) and
+              index_provisioning_test_run2.txt (0 created, RESULT PASS 21 of 21), same day
+Credential  : civicconnect-app, the application's own (server-reported, section 3); database civicconnect
+Environment : Atlas project CivicConnect-Test; host not recorded (the script checks it against the
+              test marker in scripts/lib/clusterMarkers.js and prints only the result)
+Node        : v26.0.0; mongoose 8.24.4 (the repository's)
+Code        : dev at 1d0641a (PR #98 merged); the check script is in section 4 and is not committed
+Command     : node --env-file=.env --import "data:text/javascript,import dns from 'node:dns';dns.setServers(['8.8.8.8','1.1.1.1']);" duplicate-refusal.mjs <repository root>
+Exit code   : 0
+
+L2 to L4 were named, but not defined, in the PR #98 records. They are defined here, with their
+expected results, before the run: L2 is DEF-014, L3 is DEF-015, L4 is DEF-017. S1 to S3 are
+supplementary checks of other unique indexes the provisioning created.
+
+================================================================================
+1. EXPECTED RESULTS (written before the run, unchanged)
+================================================================================
+Every check inserts one synthetic document, which must be accepted, and then a second document
+that repeats the unique key, which must be refused by the database with code 11000 naming the
+index. After each refusal exactly one document carries the key. The credential is the
+application's own (civicconnect-app), so an acceptance of the first document also shows that the
+refusal of the second is the unique index and not a missing privilege.
+
+  L2  DEF-014  requestHistory  actorId_1_idempotencyKey_1     same actorId and idempotencyKey,
+                                                              different requestId and requestVersion
+                                                              -> second refused, 11000
+  L2c DEF-014  requestHistory  (control for the partial filter) same actorId, idempotencyKey null,
+                                                              different requestId
+                                                              -> both accepted: the index applies
+                                                                 only to string keys
+  L3  DEF-015  requestHistory  requestId_1_requestVersion_1   same requestId and requestVersion,
+                                                              different idempotencyKey
+                                                              -> second refused, 11000
+  L4  DEF-017  users           email_1                        same email
+                                                              -> second refused, 11000
+  S1  FR-2.6   requests        reference_1                    same reference
+                                                              -> second refused, 11000
+  S2  -        categories      campusId_1_code_1              same campusId and code
+                                                              -> second refused, 11000
+  S3  -        groups          campusId_1_name_1              same campusId and name
+                                                              -> second refused, 11000
+
+Overall: 7 checks, all as above, exit code 0. Any other outcome is recorded as it happens, not
+adjusted.
+
+================================================================================
+2. RESULT
+================================================================================
+All seven checks as expected. Each duplicate was refused by the database with code 11000, naming
+the expected index, and exactly one document carried the key afterwards. Each first insert was
+accepted with the same credential, so the refusal is the unique index and not a missing privilege.
+The partial-filter control (L2c) shows the (actorId, idempotencyKey) index does not reject entries
+that carry no key.
+
+Before PR #98's provisioning, these indexes did not exist on this cluster: the duplicates in
+M3_API_Negative_Verification.txt (DEF-014, DEF-015) were accepted, and the L1 check
+(index_check_L1_test_2026-10-13.txt) listed 20 of 21 declared indexes absent.
+
+================================================================================
+3. OUTPUT (unedited; the duplicated values are removed by the script before printing)
+================================================================================
+Host check   : passed (host contains the recorded test marker; host not printed)
+Server user  : civicconnect-app
+Database     : civicconnect
+Started (UTC): 2026-10-14T16:13:39.578Z
+
+L2   DEF-014  requestHistory (actorId, idempotencyKey)
+  first insert : accepted
+  duplicate    : refused, code 11000, index actorId_1_idempotencyKey_1
+  message      : E11000 duplicate key error collection: civicconnect.requestHistory index: actorId_1_idempotencyKey_1 dup key: [removed]
+  documents with this key after the attempt: 1 (expected 1)
+
+L2c  DEF-014 control: same actorId, idempotencyKey null, different requests
+  both accepted; documents for this actor: 2 (expected 2)
+
+L3   DEF-015  requestHistory (requestId, requestVersion)
+  first insert : accepted
+  duplicate    : refused, code 11000, index requestId_1_requestVersion_1
+  message      : E11000 duplicate key error collection: civicconnect.requestHistory index: requestId_1_requestVersion_1 dup key: [removed]
+  documents with this key after the attempt: 1 (expected 1)
+
+L4   DEF-017  users (email)
+  first insert : accepted
+  duplicate    : refused, code 11000, index email_1
+  message      : E11000 duplicate key error collection: civicconnect.users index: email_1 dup key: [removed]
+  documents with this key after the attempt: 1 (expected 1)
+
+S1   FR-2.6   requests (reference)
+  first insert : accepted
+  duplicate    : refused, code 11000, index reference_1
+  message      : E11000 duplicate key error collection: civicconnect.requests index: reference_1 dup key: [removed]
+  documents with this key after the attempt: 1 (expected 1)
+
+S2   -        categories (campusId, code)
+  first insert : accepted
+  duplicate    : refused, code 11000, index campusId_1_code_1
+  message      : E11000 duplicate key error collection: civicconnect.categories index: campusId_1_code_1 dup key: [removed]
+  documents with this key after the attempt: 1 (expected 1)
+
+S3   -        groups (campusId, name)
+  first insert : accepted
+  duplicate    : refused, code 11000, index campusId_1_name_1
+  message      : E11000 duplicate key error collection: civicconnect.groups index: campusId_1_name_1 dup key: [removed]
+  documents with this key after the attempt: 1 (expected 1)
+
+Ended (UTC)  : 2026-10-14T16:13:39.751Z
+RESULT PASS: 7 checks, 0 not as expected
+
+================================================================================
+4. THE CHECK SCRIPT (run from outside the repository; not committed)
+================================================================================
+// Duplicate-refusal checks against the test cluster with the application credential.
+// Usage: node --env-file=<repo>/.env --import "<dns override>" duplicate-refusal.mjs <repo root>
+// Prints no URI, host, password or duplicated value.
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+
+const repo = path.resolve(process.argv[2] ?? '.');
+const load = async (rel) => import(pathToFileURL(path.join(repo, rel)).href);
+
+const { default: mongoose } = await load('node_modules/mongoose/index.js');
+mongoose.set('autoIndex', false);   // the app credential cannot build indexes; do not try
+mongoose.set('autoCreate', false);
+
+const { TEST_CLUSTER_MARKER } = await load('scripts/lib/clusterMarkers.js');
+const uri = process.env.MONGODB_URI;
+if (!uri) { console.log('NOT RUN: MONGODB_URI is not set'); process.exit(2); }
+let host;
+try { host = new URL(uri).hostname; } catch { console.log('NOT RUN: URI could not be parsed'); process.exit(2); }
+if (!host.includes(TEST_CLUSTER_MARKER)) { console.log('NOT RUN: host is not the test cluster'); process.exit(2); }
+console.log('Host check   : passed (host contains the recorded test marker; host not printed)');
+
+const { default: User } = await load('src/models/User.js');
+const { default: Request } = await load('src/models/Request.js');
+const { default: RequestHistory } = await load('src/models/RequestHistory.js');
+const { default: Category } = await load('src/models/Category.js');
+const { default: Group } = await load('src/models/Group.js');
+
+await mongoose.connect(uri, { serverSelectionTimeoutMS: 15000 });
+const { authInfo } = await mongoose.connection.db.admin().command({ connectionStatus: 1 });
+const users = (authInfo?.authenticatedUsers ?? []).map((u) => u.user);
+console.log(`Server user  : ${users.join(', ')}`);
+console.log(`Database     : ${mongoose.connection.db.databaseName}`);
+if (users.length !== 1 || users[0] !== 'civicconnect-app' || mongoose.connection.db.databaseName !== 'civicconnect') {
+  console.log('NOT RUN: expected the civicconnect-app credential on database civicconnect');
+  await mongoose.disconnect();
+  process.exit(2);
+}
+console.log(`Started (UTC): ${new Date().toISOString()}`);
+console.log();
+
+const oid = () => new mongoose.Types.ObjectId();
+const tag = randomBytes(4).toString('hex');
+const redact = (msg) => String(msg).replace(/dup key: \{.*\}/s, 'dup key: [removed]');
+const indexOf = (msg) => (/index: (\S+) dup key/.exec(String(msg)) ?? [])[1] ?? '(not named)';
+
+let failures = 0;
+async function check(id, label, model, first, second, filter, expectedIndex) {
+  console.log(`${id}  ${label}`);
+  try {
+    await model.create([first]);
+    console.log('  first insert : accepted');
+  } catch (e) {
+    console.log(`  first insert : REFUSED code ${e.code ?? '-'}: ${redact(e.message)}`);
+    failures += 1;
+    return;
+  }
+  try {
+    await model.create([second]);
+    console.log('  duplicate    : ACCEPTED (expected a refusal with code 11000)');
+    failures += 1;
+  } catch (e) {
+    const ok = e.code === 11000 && indexOf(e.message) === expectedIndex;
+    console.log(`  duplicate    : refused, code ${e.code ?? '-'}${e.codeName ? ` ${e.codeName}` : ''}, index ${indexOf(e.message)}`);
+    console.log(`  message      : ${redact(e.message)}`);
+    if (!ok) failures += 1;
+  }
+  const n = await model.countDocuments(filter);
+  console.log(`  documents with this key after the attempt: ${n} (expected 1)`);
+  if (n !== 1) failures += 1;
+  console.log();
+}
+
+const campusId = oid();
+const now = new Date();
+const history = (o) => ({
+  campusId, changeType: 'status', fromStatus: 'Received', toStatus: 'Rejected', body: `dup-check ${tag}`,
+  actorRole: 'Coordinator', occurredAt: now, ...o,
+});
+
+// L2 DEF-014: same actorId and idempotencyKey on different requests and versions.
+const actor14 = oid();
+const key14 = randomUUID();
+await check('L2 ', 'DEF-014  requestHistory (actorId, idempotencyKey)', RequestHistory,
+  history({ requestId: oid(), requestVersion: 1, actorId: actor14, idempotencyKey: key14 }),
+  history({ requestId: oid(), requestVersion: 1, actorId: actor14, idempotencyKey: key14 }),
+  { actorId: actor14, idempotencyKey: key14 }, 'actorId_1_idempotencyKey_1');
+
+// L2c control: the partial filter applies only to string keys, so two null keys are both accepted.
+{
+  const actor = oid();
+  console.log('L2c  DEF-014 control: same actorId, idempotencyKey null, different requests');
+  try {
+    await RequestHistory.create([history({ requestId: oid(), requestVersion: 1, actorId: actor, idempotencyKey: null })]);
+    await RequestHistory.create([history({ requestId: oid(), requestVersion: 1, actorId: actor, idempotencyKey: null })]);
+    const n = await RequestHistory.countDocuments({ actorId: actor });
+    console.log(`  both accepted; documents for this actor: ${n} (expected 2)`);
+    if (n !== 2) failures += 1;
+  } catch (e) {
+    console.log(`  REFUSED code ${e.code ?? '-'}: ${redact(e.message)} (expected both accepted)`);
+    failures += 1;
+  }
+  console.log();
+}
+
+// L3 DEF-015: same requestId and requestVersion with different keys.
+const request15 = oid();
+await check('L3 ', 'DEF-015  requestHistory (requestId, requestVersion)', RequestHistory,
+  history({ requestId: request15, requestVersion: 1, actorId: oid(), idempotencyKey: randomUUID() }),
+  history({ requestId: request15, requestVersion: 1, actorId: oid(), idempotencyKey: randomUUID() }),
+  { requestId: request15, requestVersion: 1 }, 'requestId_1_requestVersion_1');
+
+// L4 DEF-017: same email.
+const email = `dup-${tag}@example.test`;
+const user = () => ({ campusId, email, displayName: 'Duplicate check', roles: ['Requester'], passwordHash: 'not-a-real-hash' });
+await check('L4 ', 'DEF-017  users (email)', User, user(), user(), { email }, 'email_1');
+
+// S1 FR-2.6: same request reference.
+const reference = `CC-2099-${String(randomInt(1_000_000)).padStart(6, '0')}`;
+const requester = oid();
+const request = () => ({
+  campusId, categoryId: oid(), reference, location: 'Duplicate check', description: 'Synthetic request for the duplicate-refusal checks',
+  securityCategory: false, status: 'Received', requesterId: requester, submittedById: requester,
+  submittedAt: now, statusChangedAt: now, version: 0,
+});
+await check('S1 ', 'FR-2.6   requests (reference)', Request, request(), request(), { reference }, 'reference_1');
+
+// S2: same category code in one campus.
+const code = `dup-${tag}`;
+await check('S2 ', '-        categories (campusId, code)', Category,
+  { campusId, code, name: 'Duplicate check' }, { campusId, code, name: 'Duplicate check 2' }, { campusId, code }, 'campusId_1_code_1');
+
+// S3: same group name in one campus.
+const name = `dup-${tag}`;
+await check('S3 ', '-        groups (campusId, name)', Group,
+  { campusId, name }, { campusId, name }, { campusId, name }, 'campusId_1_name_1');
+
+console.log(`Ended (UTC)  : ${new Date().toISOString()}`);
+console.log(`RESULT ${failures === 0 ? 'PASS' : 'FAIL'}: 7 checks, ${failures} not as expected`);
+await mongoose.disconnect();
+process.exit(failures === 0 ? 0 : 1);
+
+================================================================================
+5. WHAT THIS DOES NOT SHOW
+================================================================================
+- Two requests racing with the same key or version. The checks are sequential inserts; they show
+  the index refuses a duplicate, which is what DEC-015 section 3 and DEC-016 decision 4 rely on in
+  a race, but no race was run.
+- Anything about staging or production. Their clusters have not been provisioned.
+- That the application turns an 11000 into the right HTTP response. The inserts go through the
+  models directly, not through the API.
+
+Data left on the test cluster (synthetic; DEF-006): requestHistory 5 entries, users 1, requests 1,
+categories 1, groups 1, all from this run.
+
+Note added 15/10/2026 (UTC):
+- Expected results (section 1) were written by R. van der Merwe at 16:13:08 UTC on
+  2026-10-14, before the 16:13:39 UTC run.
+- Correction to section 5, "Data left on the test cluster": the run left 4 requestHistory
+  entries, not 5 (L2 1, L2c 2, L3 1, as the script and the recorded counts show). The other
+  counts (users 1, requests 1, categories 1, groups 1) stand.
+- What this does not show, in addition to section 5:
+  - The runs were on Node 26.0.0; step 5 on the VM's Node 22 is not yet shown.
+  - The provisioning before these checks was run by hand, not by the deploy script, so
+    DEC-003's ordering ("the application does not start before step 5 has completed") is
+    not exercised.
+  - L4 inserts through the User model, which lowercases and trims email. It shows the index
+    refuses an identical stored email, not what happens to a write that bypasses the model.
