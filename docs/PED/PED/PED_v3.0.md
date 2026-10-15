@@ -22,7 +22,7 @@
 
 | | |
 |---|---|
-| **Team** | [SLOT: team number / name] |
+| **Team** | Stellenbosch Group G |
 | **Members** | Ethan Lindsay (Member A), Robert van der Merwe (Member B), Christiaan Burger (Member C) |
 | **Repository** | https://github.com/SEN381-org/Ticketing-System |
 | **Assessed baseline** | Tag `v3.0-M3-baseline` on `main` (M3.1). A document cannot contain the hash of the commit that contains it: the commit is given in the Moodle submission and by `git rev-parse v3.0-M3-baseline^{commit}` |
@@ -31,7 +31,7 @@
 | **RTM** | v0.10, `docs/Requirements/Requirements Traceability Matrix/Requirements_Traceability_Matrix_v0.10.xlsx` |
 | **CI and test evidence** | GitHub Actions, workflow "CI" (run 38737312900 at the release candidate); `docs/quality/M3_Test_Evidence_Records_v0.1.md`; `docs/evidence/` (index in M3.5 to M3.8) |
 | **Release Evidence Summary** | `docs/quality/M3_Release_Evidence_Summary_v0.1.md` |
-| **Staging** | `https://<staging VM IP>/`. The full IP is given in the Moodle submission and redacted in the repository (DEC-003 v0.4). The certificate is self-signed: to verify it, use the certificate supplied with the submission (`curl --cacert`), as in `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`. `GET /api/v1/health` reports the deployed commit in `release`. [SLOT: demonstration instructions if the assessor cannot reach the VM] |
+| **Staging** | `https://<staging VM IP>/`. The full IP is given in the Moodle submission and redacted in the repository (DEC-003 v0.4). The certificate is self-signed: to verify it, use the certificate supplied with the submission (`curl --cacert`), as in `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`. `GET /api/v1/health` reports the deployed commit in `release`. Staging runs at https://158.158.115.[redacted] with a self-signed certificate; accept the browser warning (certificate fingerprint in the deploy record, #111). If the VM is unreachable during the presentation, the demonstration uses the recorded deploy evidence (#111): /health showing release 30ff0c6, the smoke run 6/6 and the NFR-2.4 load run, plus a local run of the application at v3.0-M3-rc. |
 | **Date submitted** | 16/10/2026 |
 
 ---
