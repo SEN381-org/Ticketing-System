@@ -11,6 +11,11 @@
  * It never touches requestHistory or auditLog (append-only; the credential cannot delete there).
  * If any of the run's requests has a history entry, that request is left in place and counted.
  *
+ * Note: the run's users are deleted even when some of their requests have history. Those history
+ * entries, and the requests kept above, then name an actor (and a requester) that no longer
+ * exists. Use it only on a run whose fixtures have not been transitioned, or accept that result
+ * (staging data is synthetic). The load run's own fixtures (run 77b08804) were not cleaned up.
+ *
  * Without --confirm it only counts (a dry run). With --confirm it deletes, then counts again.
  *
  * Usage (on the VM):
