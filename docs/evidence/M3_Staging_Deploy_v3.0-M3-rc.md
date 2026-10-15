@@ -145,6 +145,14 @@ Credential file             : .env.provision in the repository root of R. van de
                               /civicconnect, user civicconnect-temp-provisioner (host and
                               password not printed)
 Run from                    : that workstation, checked out at v3.0-M3-rc (30ff0c6), detached
+Network access              : the staging cluster's Atlas access list held R. van der Merwe's
+                              workstation IP as well as the VM's. He added it before this step,
+                              when he created the provisioner role and the temporary user. That
+                              entry is how a run from Stellenbosch, on the workstation's Node 26,
+                              reached a cluster whose list DEC-003 v0.4 (Database access)
+                              restricts to the VM's IP. It was an exception for step 5, not
+                              recorded in DEC-003. When it was added, and when (or whether) it was
+                              removed, are not recorded.
 
 Expected results, written before the run (UTC 2026-10-15T13:27:47Z):
   Run 1: Created this run: 31 (21 declared + 10 default _id_); RESULT PASS: 21 of 21; exit 0
@@ -193,9 +201,7 @@ Run on the VM against the HTTPS endpoint, trusting the staging certificate expli
 
 ```
 Start (UTC): 2026-10-15T14:19:22Z
-$ curl -sS --cacert /etc/ssl/certs/staging.crt -w '
-HTTP %{http_code}
-' https://158.158.115.[redacted]/api/v1/health
+$ curl -sS --cacert /etc/ssl/certs/staging.crt -w '\nHTTP %{http_code}\n' https://158.158.115.[redacted]/api/v1/health
 {"application":"up","database":"up","release":"30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc"}
 HTTP 200
 End (UTC)  : 2026-10-15T14:19:22Z
@@ -271,9 +277,7 @@ which falls inside this uptime. The unit file's contents are not recorded here.
 ## 6. Health response
 
 ```
-$ date -u +%FT%TZ; curl -sS --cacert /etc/ssl/certs/staging.crt -w '
-HTTP %{http_code}
-' https://158.158.115.[redacted]/api/v1/health; date -u +%FT%TZ
+$ date -u +%FT%TZ; curl -sS --cacert /etc/ssl/certs/staging.crt -w '\nHTTP %{http_code}\n' https://158.158.115.[redacted]/api/v1/health; date -u +%FT%TZ
 2026-10-15T14:19:22Z
 {"application":"up","database":"up","release":"30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc"}
 HTTP 200
@@ -281,6 +285,11 @@ HTTP 200
 ```
 
 `release` = `30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc` = `v3.0-M3-rc` (section 2): **match**.
+
+This check ran at 14:19:22 UTC, before the configuration correction (section 3): the application
+was then connected to the `test` database, and "database: up" shows only that the ping
+succeeded. The first health check after the correction (by 16:12:28 UTC) is smoke check 1, at
+2026-10-15T17:02:22Z (section 9): 200, database up, release `30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc`.
 
 The `release` value must equal the tag's commit in section 2. A mismatch, or `unknown`, means
 the deployed process is not the release candidate.
@@ -333,7 +342,7 @@ The choices below fill those gaps. They are the team's, not the requirement's.
 | Transition rate | 1 in 6 iterations (about one per user per minute) | Team choice: mostly reads, per the same assumption, with enough transitions to exercise the transaction and the unique indexes |
 | Ramp-up | Logins staggered over 60 s | Team choice. Each login is one scrypt verification of 32 MiB on a 2-vCPU VM (DEC-018); 100 at once would test the login burst, not the sustained load NFR-2.4 states. The ramp's requests still count towards pass/fail |
 | Request timeout | 30 s, counted as a failed request | Team choice: a request that does not answer within 30 s has failed for its user |
-| Fixtures | 100 synthetic Coordinators, each with 1 request to read and 12 to reject, created on the VM with `perf/generate-fixtures.js` and the application's credential | The staging cluster admits only the VM's IP (DEC-003 v0.4); the access list is not widened |
+| Fixtures | 100 synthetic Coordinators, each with 1 request to read and 12 to reject, created on the VM with `perf/generate-fixtures.js` and the application's credential | DEC-003 v0.4 restricts the staging cluster's access list to the VM's IP, so the fixtures were written from the VM and the list was not widened for them. (It also held the deployer's workstation IP, added for step 5; see step 5) |
 
 ### Expected results and pass/fail (written before the run)
 
@@ -520,7 +529,8 @@ and leaves them in place (synthetic data; DEC-003 *Environment map*).
 Written (UTC): 2026-10-15T16:56:32Z
 
 Run on the VM, not from South Africa: the script seeds its fixture directly on the staging
-cluster through MONGODB_URI, and the cluster admits only the VM's IP (DEC-003 v0.4). The HTTP
+cluster through MONGODB_URI, and DEC-003 v0.4 restricts the cluster's access list to the VM's IP
+(the workstation entry made for step 5 is recorded there). The HTTP
 calls go to the public HTTPS address, through Nginx, trusting the staging certificate via
 NODE_EXTRA_CA_CERTS.
 
@@ -623,8 +633,9 @@ These were not captured during the deploy, and are stated here rather than recon
 
 - The terminal output of steps 1 to 4 (including Vite's build summary) and of the first restart,
   the deploy session's start time, the git version on the VM, the exact load-run command line,
-  the cleanup outputs for runs f44598a6 and c0a3b855, and the time the fixture file was deleted
-  on the VM.
+  the cleanup outputs for runs f44598a6 and c0a3b855, the time the fixture file was deleted
+  on the VM, and when the workstation's entry on the staging access list was added and removed
+  (step 5).
 
 The checkout's commit (step 1) and the client build's output (step 3) were not captured during
 the deploy either; both were checked on the VM afterwards and are recorded in those steps.
