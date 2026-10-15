@@ -44,7 +44,7 @@ version that ships. The local run is evidence that the tests pass at `28674dd`.
 | BB-2 | Black-box, state transition | FR-6.6 | `requestStatus.test.js` — Closed and Rejected require a recorded reason — FR-6.6 | Pass, **partial** | NV-96; NV-97 NOT CAUGHT (the gap) |
 | BB-3 | Black-box, state transition, negative | FR-6.1, FR-6.2 | `requestStatus.test.js` — an unknown status is refused rather than permitted by default | Pass, **partial** | NV-98 |
 | BB-4 | Black-box, decision table | FR-6.6, FR-1.5, B-1 (depends on OI-15) | five tests, §4.4 | Pass, column 8 not covered | NV-23, NV-99, NV-100; columns 1, 5, 7 see §4.4 |
-| BB-5 | Black-box, decision table | FR-1.5, FR-3.6, FR-4.1 | eight tests, §4.5 | Pass, 1 cell not covered | NV-24, NV-32, NV-49 |
+| BB-5 | Black-box, decision table | FR-1.5, FR-3.6, FR-4.1 | eight tests, §4.5 | Pass, 1 cell not covered | NV-24, NV-32, NV-44, NV-49 |
 
 Against the brief §9/§10 minimums, these ten records give 5 unit/component and 5 black-box
 functional cases, two techniques (state transition and decision table) and seven negative
@@ -210,10 +210,10 @@ it. It would then never reach closure, and PROC-001 would never anonymise it (CO
 | # | Role held | Security category | Expected | Basis | Test | Seen to fail |
 |---|---|---|---|---|---|---|
 | 1 | Coordinator or Manager | no | permitted | FR-6.6, OI-15 | requestStatus: Closed and Rejected require a recorded reason (Manager) | Not broken |
-| 2 | Coordinator or Manager | yes | refused | FR-1.5 | statusTransitionService: a Coordinator cannot close a security-category request — B-1, FR-1.5; Manager: authorisationGuard TD-002 (act) | NV-23 |
+| 2 | Coordinator or Manager | yes | refused | FR-1.5 | statusTransitionService: a Coordinator cannot close a security-category request — B-1, FR-1.5; Manager: authorisationGuard TD-002 (act) | NV-23 (TD-002 (act) only; NV-23 ran `authorisationGuard.test.js` alone, so the statusTransitionService test is not broken) |
 | 3 | Security Officer only | no | refused | B-1, OI-15 | requestStatus: a Security Officer is not a general disposition role — B-1 | NV-100 |
 | 4 | Security Officer only | yes | permitted | B-1, FR-6.6 | requestStatus: a Security Officer may close a resolved security-category request; statusTransitionService: a Security Officer can close a resolved security-category request | NV-99 (all three tests) |
-| 5 | Technician only | no | refused | OI-15 | requestStatus: a Technician may not close a request — FR-6.4 | NV-81 (E2E run only) |
+| 5 | Technician only | no | refused | OI-15 | requestStatus: a Technician may not close a request — FR-6.4 | Not broken (NV-81 broke this rule but recorded the E2E run only) |
 | 6 | Technician only | yes | refused | FR-1.5 | authorisationGuard TD-002 (act) | NV-23 |
 | 7 | Requester or Administrator only | no | refused | FR-6.6 ("staff user"); OI-15 for Administrator | requestStatus: a Requester may not move a request at all; an Administrator holds no lifecycle authority | Not broken |
 | 8 | Requester or Administrator only | yes | refused | FR-1.5 | **not covered** | — |
@@ -238,14 +238,14 @@ it. It would then never reach closure, and PROC-001 would never anonymise it (CO
 
 | # | Actor | Security category | Category authorised / own | Expected | Basis | Test | Seen to fail |
 |---|---|---|---|---|---|---|---|
-| 1 | Staff, not Security Officer | no | authorised | 200 | FR-4.1 | a Coordinator authorised for the category gets 200 | Not broken (§6) |
+| 1 | Staff, not Security Officer | no | authorised | 200 | FR-4.1 | a Coordinator authorised for the category gets 200 | NV-44 |
 | 2 | Staff, not Security Officer | no | not authorised | refused, no data | FR-4.1 | service: staff not authorised for the category get AuthorisationError; staff not authorised for the category get 403 with no request data | NV-32 |
 | 3 | Staff, not Security Officer | yes | authorised | refused, no data | FR-1.5 | a security request viewed by non-Security-Officer staff is 403; TD-002 (view) | NV-32, NV-24 |
 | 4 | Security Officer | yes | authorised | permitted | FR-1.5 | TD-002 (view), last assertion | NV-24 does not break this cell |
 | 5 | Security Officer | yes | not authorised | refused | FR-4.1 | **not covered** | — |
 | 6 | Requester | no | own | 200 | FR-3.6 | a requester viewing their own non-security request gets 200 | NV-44 |
 | 7 | Requester | any | another user's | refused, indistinguishable from a missing id | FR-3.6, AC-FR-3.6, DEC-015 §4 | service: a requester asking for another requester's request gets NotFoundError; another user's request is indistinguishable from a missing id | NV-32 |
-| 8 | Administrator only | any | — | refused, 403, no data | Project-lead decision; FR-1.3. Not a requirement | an Administrator-only actor viewing an existing request is 403 with no request data | Not broken (§6) |
+| 8 | Administrator only | any | — | refused, 403, no data | Project-lead decision; FR-1.3. Not a requirement | an Administrator-only actor viewing an existing request is 403 with no request data | NV-32, NV-44 |
 | 9 | Requester who also holds a staff role, refused | no | not authorised | 403, not 404 | Project-lead decision (staff first). Not a requirement | a Requester who also holds a staff role, refused, is 403 with no request data | NV-49 (NV-41 was NOT CAUGHT before the test was fixed) |
 
 | Field | Entry |
@@ -298,6 +298,8 @@ before and after match), and the full suite then passed: 194 tests, 186 pass, 0 
 refused. E2E-1 rejects with a reason. The test is not strengthened, because tests are frozen at
 `v3.0-M3-rc`.
 
-Not broken: the positive cells BB-4 columns 1 and 7 and BB-5 columns 1 and 8. A deny-all break
-would fail them, but it would fail most of the suite too, so it would say little about these
-cells in particular.
+Not broken at unit level: BB-4 columns 1, 5 and 7, and the statusTransitionService test in column 2
+(NV-23 broke only the TD-002 (act) test). Column 5's rule was broken by NV-81, but against the E2E
+suite only. Column 1 is a permitted cell: a deny-all break would fail it, but it would fail most of
+the suite too, so it would say little about that cell. Columns 5 and 7 and column 2's service test
+are refusals with no recorded unit-level break.
