@@ -1,0 +1,38 @@
+Negative verification NV-96 - the FR-6.6 reason clause removed from checkTransition (unit suite)
+M3 test evidence records (docs/quality/M3_Test_Evidence_Records_v0.1.md), record BB-2; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-15T11:57:13.623Z (UTC)
+Node   : v24.16.0  (.nvmrc pins 22; nvm is not installed on this machine)
+Branch : task/M3-test-evidence-records
+Commit : 28674dd. The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Command: node --test --test-reporter=tap   (the full unit suite; integration tests skip without MONGODB_URI)
+
+CLAIM
+  FR-6.6 / AC-FR-6.6: a close or reject without a reason is refused. NV-78 made this break against the E2E suite only; this run is against the unit suite. Without the clause, BB-2 fails.
+
+1. The protected behaviour was broken in src/domain/requestStatus.js (never in a test).
+     --- src/domain/requestStatus.js (original)
+     +++ src/domain/requestStatus.js (sabotaged)
+     -  if (REASON_REQUIRED.includes(to) && !context.hasReason) {
+     +  if (false && REASON_REQUIRED.includes(to) && !context.hasReason) {  // SABOTAGE
+
+2. Expected result (written to this file before the run, derived from the claim and the test source, not from output):
+     "Closed and Rejected require a recorded reason — FR-6.6" FAILS (Resolved -> Closed by a Manager without a reason is permitted). Other tests may also fail; not predicted.
+3. Result with the sabotage applied:
+
+     not ok - Closed and Rejected require a recorded reason — FR-6.6
+     # tests 194
+     # pass 185
+     # fail 1
+     # skipped 8
+     exit code 1
+
+   Outcome: CAUGHT. Every expected test failed.
+
+4. src/domain/requestStatus.js was restored by writing back its original content. SHA-256:
+     before 40d7ec007d581d05cba7c1b6783af96fc971ab329d056128751faf8c2f0f1f36
+     after  40d7ec007d581d05cba7c1b6783af96fc971ab329d056128751faf8c2f0f1f36  (same as before the run)
+   The full suite was re-run: 194 tests, 186 pass, 0 fail, 8 skipped (exit code 0).
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it fails, and with the behaviour restored it passes.

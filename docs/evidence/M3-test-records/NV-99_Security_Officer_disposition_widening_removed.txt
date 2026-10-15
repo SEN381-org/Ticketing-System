@@ -1,0 +1,42 @@
+Negative verification NV-99 - dispositionRolesFor ignores securityCategory (no Security Officer widening)
+M3 test evidence records (docs/quality/M3_Test_Evidence_Records_v0.1.md), record BB-4; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-15T11:57:33.187Z (UTC)
+Node   : v24.16.0  (.nvmrc pins 22; nvm is not installed on this machine)
+Branch : task/M3-test-evidence-records
+Commit : 28674dd. The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Command: node --test --test-reporter=tap   (the full unit suite; integration tests skip without MONGODB_URI)
+
+CLAIM
+  B-1 / FR-6.6 with FR-1.5 (BB-4 column 4): a Security Officer may close a security-category request. Without the widening, the column 4 tests fail.
+
+1. The protected behaviour was broken in src/domain/requestStatus.js (never in a test).
+     --- src/domain/requestStatus.js (original)
+     +++ src/domain/requestStatus.js (sabotaged)
+     -  return securityCategory
+     -    ? Object.freeze([...DISPOSITION_ROLES, ROLE.SECURITY_OFFICER])
+     -    : DISPOSITION_ROLES;
+     +  return DISPOSITION_ROLES;  // SABOTAGE: no Security Officer widening
+
+2. Expected result (written to this file before the run, derived from the claim and the test source, not from output):
+     "a Security Officer may close a resolved security-category request — B-1, FR-6.6", "every security-category disposition has a role that can perform it — B-1" and "a Security Officer can close a resolved security-category request — B-1" FAIL. Other tests may also fail; not predicted.
+3. Result with the sabotage applied:
+
+     not ok - a Security Officer may close a resolved security-category request — B-1, FR-6.6
+     not ok - every security-category disposition has a role that can perform it — B-1
+     not ok - a Security Officer can close a resolved security-category request — B-1
+     # tests 194
+     # pass 183
+     # fail 3
+     # skipped 8
+     exit code 1
+
+   Outcome: CAUGHT. Every expected test failed.
+
+4. src/domain/requestStatus.js was restored by writing back its original content. SHA-256:
+     before 40d7ec007d581d05cba7c1b6783af96fc971ab329d056128751faf8c2f0f1f36
+     after  40d7ec007d581d05cba7c1b6783af96fc971ab329d056128751faf8c2f0f1f36  (same as before the run)
+   The full suite was re-run: 194 tests, 186 pass, 0 fail, 8 skipped (exit code 0).
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it fails, and with the behaviour restored it passes.

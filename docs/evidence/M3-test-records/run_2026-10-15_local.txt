@@ -1,0 +1,110 @@
+Test evidence records UT-1 to UT-5 and BB-1 to BB-5: local execution
+Run on : 2026-10-15 11:42 UTC
+Node   : v24.16.0  (CI runs Node 22; the -rc CI run is cited separately once the tag exists)
+Branch : dev
+Commit : 28674dd
+Command: node --test tests/requestStatus.test.js tests/statusTransitionService.test.js tests/authorisationGuard.test.js tests/models.test.js tests/requestRead.test.js
+
+✔ every non-public route in the composed application carries the guard — NFR-3.3, CON-019
+✔ every PUBLIC_ROUTES entry states why it needs no guard — DEC-018 §5
+✔ every PUBLIC_ROUTES entry matches a registered route, so the list cannot go stale
+✔ the request router guards every route it registers
+✔ the transition route is the DEC-015 resource, not a field update; the read route is GET /:id — R-03, DEC-015 §1
+✔ every role named in the rule set exists in FR-1.2
+✔ the guard refuses before the handler runs — DEC-012 path A
+✔ an unauthenticated request is refused by the same guard
+✔ a permitted role passes the guard
+✔ an identity supplied by the client is refused — R-06, CON-019
+✔ an operation with no documented rule cannot be guarded
+✔ an unknown operation is refused rather than permitted by default
+✔ the boundary cannot decide object-level access — DEC-012 path B
+✔ a requester never sees a restricted status on a security request — FR-3.5, DEC-012 point 3
+✔ TD-002 constraint: category authorisation never opens a security request without the Security Officer role (act) — FR-1.5
+✔ TD-002 constraint: category authorisation never opens a security request without the Security Officer role (view) — FR-1.5
+✔ status values are exactly the FR-6.1 set
+✔ role values are exactly the FR-1.2 controlled role set
+✔ a request with only category, location and description as business input is valid — FR-2.2
+✔ each of the three FR-2.2 mandatory fields is required
+✔ title is not part of the model — FR-2.2 treats no other field as mandatory
+✔ a request is campus-scoped — SCP-019
+✔ a status outside FR-6.1 is rejected by the model
+✔ an anonymised request is valid without its personal fields — NFR-4.2 / PROC-001
+✔ requestHistory records the version it produced and requires an actor at insert — FR-6.3
+✔ requestHistory refuses updateOne — FR-6.7, DB-01 layer 2
+✔ requestHistory refuses findByIdAndUpdate — FR-6.7, DB-01 layer 2
+✔ requestHistory refuses findByIdAndDelete — FR-6.7, DB-01 layer 2
+✔ requestHistory refuses deleteMany — FR-6.7, DB-01 layer 2
+✔ requestHistory refuses document deleteOne — FR-6.7, DB-01 layer 2
+✔ requestHistory refuses bulkWrite (update) — FR-6.7, DB-01 layer 2
+✔ a user must hold at least one role from the FR-1.2 set — AC-FR-1.2
+✔ service returns exactly reference, status, version — DEC-015 §1
+✔ service: missing request is NotFoundError — DEC-015 §4
+✔ service: staff not authorised for the category get AuthorisationError — FR-4.2 (provisional, OI-01), FR-4.1, DEC-012
+✔ service: non-Security-Officer staff on a security request get AuthorisationError — FR-1.5
+✔ service: a requester asking for another requester's request gets NotFoundError — FR-3.6, DEC-015 §4
+✔ service: an Administrator-only actor is refused with AuthorisationError, not 404 — project-lead decision; DEC-015 §4 is silent, FR-1.3
+✔ service: a Requester who also holds a staff role, refused, gets AuthorisationError not 404 — project-lead decision (staff first), FR-1.2
+✔ service: status is visibleStatusFor output for a requester on a security request — FR-3.5
+✔ GET with no session is 401 and carries no request data — AC-FR-1.1, DEC-012
+✔ GET 200 body has exactly the three keys and ETag "v<version>" — DEC-015 §1
+✔ a Coordinator authorised for the category gets 200 — FR-4.2 (provisional, OI-01), FR-4.1
+✔ staff not authorised for the category get 403 with no request data — FR-4.2 (provisional, OI-01), FR-4.1, DEC-012
+✔ a security request viewed by non-Security-Officer staff is 403 — FR-1.5
+✔ an Administrator-only actor viewing an existing request is 403 with no request data — project-lead decision; DEC-015 §4 is silent, FR-1.3
+✔ a requester viewing their own non-security request gets 200 — FR-3.6
+✔ another user's request is indistinguishable from a missing id, in status, body and headers — FR-3.6, DEC-015 §4
+✔ a Requester who also holds a staff role, refused, is 403 with no request data — project-lead decision (staff first), FR-1.2
+✔ a requester viewing their own security request sees the mapped status — FR-3.5, DEC-012 point 3
+✔ an unknown request id is 404 NOT_FOUND — DEC-015 §4
+✔ the ETag from GET, used verbatim as If-Match on the transition route, is accepted — DEC-015 §3
+✔ an ETag read before another writer changed the version is refused 412, and a fresh one is accepted — DEC-015 §3, DEC-016
+✔ the status set is exactly the seven values FR-6.1 baselines
+✔ the role set is exactly the six values FR-1.2 baselines
+✔ a new request begins at Received — FR-6.1
+✔ every status in the transition model is a baselined status value
+✔ every status is reachable, or reached through another resource — FR-6.2
+✔ Assigned is not reachable through the transition model — N-1
+✔ Closed and Rejected are terminal
+✔ a permitted move by a permitted role is allowed — FR-6.2
+✔ a Security Officer may close a resolved security-category request — B-1, FR-6.6
+✔ a Security Officer is not a general disposition role — B-1
+✔ every security-category disposition has a role that can perform it — B-1
+✔ In Progress may be rejected directly — N-2
+✔ a move that skips a status is refused — FR-6.2
+✔ Resolved requires resolution information — FR-6.5
+✔ Closed and Rejected require a recorded reason — FR-6.6
+✔ a Technician may not close a request — FR-6.4
+✔ a Requester may not move a request at all — FR-6.4
+✔ an Administrator holds no lifecycle authority — FR-6.7 names them explicitly
+✔ a user holding several roles is allowed if any one permits the move — FR-1.2
+✔ an unknown status is refused rather than permitted by default
+✔ a permitted transition writes exactly one history entry
+✔ the entry records the acting user, both statuses and the version it produced — AC-FR-6.7
+✔ the status change and the history entry are one unit of work — DEC-016
+✔ publication happens after the transaction resolves, not inside it — R-16
+✔ a failed history append publishes nothing — R-15
+✔ both writes happen inside the unit of work, with its session — DEC-016, FR-6.3
+✔ nothing commits when the history write fails — DEC-016, R-15
+✔ a stale version is refused before any write — DEC-015 / 412
+✔ an illegal transition is refused and nothing is written — FR-6.2
+✔ an actor without category authorisation is refused — DEC-012 point 2, FR-4.1
+✔ a security-category request is refused to a non Security Officer — FR-1.5
+✔ a replayed idempotency key returns the original result and writes nothing — DEC-015
+✔ the same key with a different body is refused — DEC-015 / 422
+✔ a failing subscriber does not fail the transition — DEC-011 containment
+✔ the event payload carries what the subscribers need — FR-3.5, FR-8.2
+✔ a Security Officer can close a resolved security-category request — B-1
+✔ a Coordinator cannot close a security-category request — B-1, FR-1.5
+✔ closing records the reason and the closure clock — FR-6.6, NFR-4.2
+✔ a move to Resolved records the resolution summary, when and by whom — FR-6.5
+✔ the consequences of an event are enumerable from one registry — DEC-011
+ℹ tests 93
+ℹ suites 0
+ℹ pass 93
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1120.1923
+
+Exit code: 0

@@ -1,0 +1,63 @@
+Negative verification NV-91 - the history append moved outside unitOfWork.run()
+M3 test evidence records (docs/quality/M3_Test_Evidence_Records_v0.1.md), record UT-1; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-15T11:56:36.149Z (UTC)
+Node   : v24.16.0  (.nvmrc pins 22; nvm is not installed on this machine)
+Branch : task/M3-test-evidence-records
+Commit : 28674dd. The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Command: node --test --test-reporter=tap   (the full unit suite; integration tests skip without MONGODB_URI)
+
+CLAIM
+  FR-6.3 / DEC-016 Decision 1: the status change and its history entry are written inside one unit of work. If the history append runs after unitOfWork.run() resolves, UT-1 fails.
+
+1. The protected behaviour was broken in src/services/statusTransitionService.js (never in a test).
+     --- src/services/statusTransitionService.js (original)
+     +++ src/services/statusTransitionService.js (sabotaged)
+     -    let result;
+     -
+     +    let result;
+     +    let pendingHistory;  // SABOTAGE
+     +
+
+     -      const entry = await history.append({
+     +      pendingHistory = ({  // SABOTAGE: history write deferred
+
+     -      }, { session });
+     -
+     -      result = {
+     +      });
+     +
+     +      result = {
+
+     -        historyId:        entry._id,
+     +        historyId:        null,  // SABOTAGE
+
+     -    });
+     -
+     -    // 3 — publish
+     +    });
+     +    await history.append(pendingHistory);  // SABOTAGE: outside unitOfWork.run()
+     +
+     +    // 3 — publish
+
+2. Expected result (written to this file before the run, derived from the claim and the test source, not from output):
+     "both writes happen inside the unit of work, with its session — DEC-016, FR-6.3" FAILS (the history write is not inside run() and has no session). "nothing commits when the history write fails — DEC-016, R-15" also FAILS (the unit of work completes before the failing append). Other tests may also fail; not predicted.
+3. Result with the sabotage applied:
+
+     not ok - both writes happen inside the unit of work, with its session — DEC-016, FR-6.3
+     not ok - nothing commits when the history write fails — DEC-016, R-15
+     # tests 194
+     # pass 184
+     # fail 2
+     # skipped 8
+     exit code 1
+
+   Outcome: CAUGHT. Every expected test failed.
+
+4. src/services/statusTransitionService.js was restored by writing back its original content. SHA-256:
+     before 0c99af72054e910de42390a5d1564d3f83ba53b54f6968d8c9b4b685e5e531e3
+     after  0c99af72054e910de42390a5d1564d3f83ba53b54f6968d8c9b4b685e5e531e3  (same as before the run)
+   The full suite was re-run: 194 tests, 186 pass, 0 fail, 8 skipped (exit code 0).
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it fails, and with the behaviour restored it passes.
