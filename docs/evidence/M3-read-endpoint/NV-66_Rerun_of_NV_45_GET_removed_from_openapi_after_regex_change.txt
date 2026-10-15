@@ -1,0 +1,57 @@
+Negative verification NV-66 - Re-run of NV-45 against the lint-rewritten regexes: GET /requests/{id} removed from openapi.yaml
+M3 read endpoint (GET /api/v1/requests/{id}); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint (PR #89)
+Commit : 190fb9c (HEAD). The code under test is UNCOMMITTED working-tree changes on this commit.
+         The sabotage was applied to the working tree, then restored by writing back the original
+         bytes (held in memory by the script). Git was not used.
+Baseline: 167 tests, 167 pass, 0 fail; npm run lint clean.
+
+CONTEXT
+  Verified after the fact. Two regexes in tests/openapiRoutes.test.js were rewritten to satisfy
+  ESLint no-regex-spaces (literal runs of spaces became {n} quantifiers):
+    /^  (\/\S*):\s*$/                       ->  /^ {2}(\/\S*):\s*$/
+    /^    (get|put|...|trace):\s*$/          ->  /^ {4}(get|put|...|trace):\s*$/
+  The change had been confirmed only by a green run, which is not evidence. Old-vs-new
+  equivalence over the real file is in the INDEX; this record is the sabotage-fail-restore half.
+CLAIM
+  With the rewritten regexes the contract test still detects a route the application registers
+  that openapi.yaml does not document (DEC-015). Same sabotage as NV-40 / NV-45.
+
+1. The protected behaviour was broken in docs/api/openapi.yaml.
+   SHA-256 before: 152cdbda005d52f943afe4d80fa257901fc39dcb19cafa51823df01d23b60d1d
+     Removed the text from "  /requests/{id}:" up to (not including) "  /requests/{id}/transitions:"
+     (the GET operation and its responses, 53 lines).
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok 86 - every route the composed application registers is documented in openapi.yaml - DEC-015
+       registered but not documented
+       + [ 'GET /api/v1/requests/{id}' ]    - []
+     ok 87 - every operation documented in openapi.yaml is registered in the composed application - DEC-015
+     # tests 167
+     # pass 166
+     # fail 1
+
+   Expected to fail (derived before execution from the claim above):
+     "every route the composed application registers is documented in openapi.yaml - DEC-015",
+       naming 'GET /api/v1/requests/{id}' as the only registered-but-undocumented operation.
+     The reverse-direction test was expected to PASS (deleting documentation cannot create a
+       documented-but-unregistered operation).
+   Outcome: CAUGHT - the expected test failed (see FINDING below where one is stated)
+
+3. The file was restored by writing back its original bytes. SHA-256 after restore:
+     152cdbda005d52f943afe4d80fa257901fc39dcb19cafa51823df01d23b60d1d
+   Identical to the value taken before the run. The full suite was re-run:
+
+     # tests 167
+     # pass 167
+     # fail 0
+INTERPRETATION
+  The assertion detects the condition it tests under the new regexes: with the operation removed
+  it fails naming exactly that operation (the same failure as NV-45), and passes when restored.
+  What this shows: the {2} and {4} regexes still read the indentation of the real contract.
+  What this does NOT show: that old and new accept the same lines (INDEX equivalence table), or
+  that a broken regex is detected (NV-67, NV-68).

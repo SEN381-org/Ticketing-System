@@ -1,0 +1,160 @@
+listIndexes refused to the application's database credential on the test cluster
+================================================================================
+Date (local):   2026-10-12
+Branch:         task/M3-request-read-endpoint (PR #89), working tree on top of 190fb9c
+Node:           v22.20.0
+Driver:         mongodb 6.20.0 (the project's own, resolved from the repository root)
+Environment:    the test cluster, database "civicconnect", credential civicconnect-app
+                (both confirmed by the script as true/false only; see below)
+Command:        node --env-file=.env.test <script> <repository>/package.json
+                The script was kept outside the repository. Its text is reproduced in full below.
+
+Purpose
+  TD-004 and DEF-014/DEF-015 infer from DEC-003 v0.2 that the civicconnect-app role cannot
+  build the schema's indexes. This run tried to list the indexes that exist on the test
+  cluster, using that credential, to compare them with the 21 indexes the schemas declare
+  (src/models/*.js).
+
+Rules the run followed
+  - Read-only: listIndexes was the only command issued, once per collection. No listCollections,
+    no reads of documents, no writes, no createIndex, no drops. Connecting and authenticating
+    are the only other server interactions.
+  - The connection string was loaded by Node from .env.test into the process environment and
+    never printed, echoed or logged, in whole or in part. Every error message was passed
+    through a redaction step (the string itself, its host, user name and password, and any
+    *.mongodb.net host name) before printing. The database name and the user name were
+    checked only as true/false against their already-recorded values.
+  - The script refused to connect unless the host in MONGODB_URI contains the test-cluster
+    marker, the same rule as tests/integration/_harness.js.
+
+Result (raw output captured from the run at 2026-10-12T18:56:39Z, unedited; the redaction step removed nothing)
+--------------------------------------------------------------------------------
+Host check passed (host contains the test-cluster marker; host not printed).
+Database is "civicconnect": true
+
+== requestHistory
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.requestHistory]
+
+== requests
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.requests]
+
+== users
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.users]
+
+== sessions
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.sessions]
+
+== notifications
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.notifications]
+
+== auditLog
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.auditLog]
+
+== reportingCounts
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.reportingCounts]
+
+== categories
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.categories]
+
+== groups
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.groups]
+
+== roles
+  listIndexes refused: name=MongoServerError code=8000 codeName=AtlasError
+  message: user is not allowed to do action [listIndexes] on [civicconnect.roles]
+
+Separate check, same env file:
+user is civicconnect-app: true
+--------------------------------------------------------------------------------
+
+Interpretation
+  Shows: on the test cluster, the civicconnect-app credential is refused listIndexes on every
+  collection the schemas declare indexes for (MongoServerError 8000, AtlasError). The
+  application cannot list its own indexes. That fits DEC-003 v0.2, whose grants to this role
+  are per collection and name only CRUD actions.
+  Does NOT show: which indexes exist on the test cluster. That is still unknown; it needs a
+  user or Atlas account with listIndexes. Nor does it show that createIndex is refused. That
+  is a different action. It was not attempted, and stays inferred from the role definition.
+  Nor does it show anything about staging or production.
+
+Cited by: TD-004 (Technical Debt Register v0.2); DEF-014 and DEF-015 (Defect Register v0.2, PR #88).
+
+Script (complete text, as run)
+--------------------------------------------------------------------------------
+// Read-only: listIndexes only. Never prints the connection string or any part of it.
+import { createRequire } from 'node:module';
+import dns from 'node:dns';
+const require = createRequire(process.argv[2]);           // repo package.json → the project's driver
+const { MongoClient } = require('mongodb');
+dns.setServers(['8.8.8.8', '1.1.1.1']);                   // as the project's test:integration script does
+
+const uri = process.env.MONGODB_URI;
+if (!uri) { console.log('MONGODB_URI not set in the env file'); process.exit(2); }
+
+// Redact anything that could come from the URI before printing any message.
+let host = '', user = '', pass = '';
+try { const u = new URL(uri); host = u.hostname; user = decodeURIComponent(u.username); pass = decodeURIComponent(u.password); }
+catch { console.log('URI could not be parsed; refusing'); process.exit(2); }
+const secrets = [uri, host, user, pass].filter((s) => s && s.length > 2);
+const redact = (s) => {
+  let out = String(s);
+  for (const x of secrets) out = out.split(x).join('[redacted]');
+  return out.replace(/[A-Za-z0-9._-]*mongodb\.net(:\d+)?/g, '[redacted-host]').replace(/mongodb(\+srv)?:\/\/\S+/g, '[redacted-uri]');
+};
+
+// Same host rule as tests/integration/_harness.js: only the test cluster.
+if (!host.includes('civicconnecttest')) { console.log('Host check FAILED: not the test cluster; refusing to connect'); process.exit(2); }
+console.log('Host check passed (host contains the test-cluster marker; host not printed).');
+
+const EXPECTED = {
+  requestHistory: ['requestId_1_requestVersion_1', 'actorId_1_idempotencyKey_1'],
+  requests: ['reference_1', 'campusId_1_requesterId_1_submittedAt_-1', 'campusId_1_status_1_submittedAt_-1',
+    'campusId_1_categoryId_1_assigneeId_1_status_1', 'campusId_1_assigneeId_1_status_1',
+    'campusId_1_submittedAt_1_categoryId_1', 'description_text_location_text'],
+  users: ['email_1'], sessions: ['lastSeenAt_1'],
+  notifications: ['userId_1_read_1_createdAt_-1', 'sourceHistoryId_1_userId_1', 'createdAt_1'],
+  auditLog: ['eventId_1', 'requestId_1_occurredAt_1', 'recordedAt_1'],
+  reportingCounts: ['campusId_1_categoryId_1_status_1'], categories: ['campusId_1_code_1'],
+  groups: ['campusId_1_name_1'], roles: ['code_1'],
+};
+
+const client = new MongoClient(uri, { serverSelectionTimeoutMS: 20000, appName: 'readonly-index-listing' });
+try {
+  await client.connect();
+  const db = client.db();
+  console.log(`Database is "civicconnect": ${db.databaseName === 'civicconnect'}`);
+  for (const [coll, expected] of Object.entries(EXPECTED)) {
+    console.log(`\n== ${coll}`);
+    let idx;
+    try { idx = await db.collection(coll).listIndexes().toArray(); }
+    catch (e) {
+      console.log(`  listIndexes refused: name=${e.name} code=${e.code} codeName=${e.codeName}`);
+      console.log(`  message: ${redact(e.message)}`);
+      continue;
+    }
+    for (const i of idx) {
+      const props = [i.unique && 'UNIQUE', i.partialFilterExpression && `PARTIAL ${JSON.stringify(i.partialFilterExpression)}`,
+        i.expireAfterSeconds != null && `TTL ${i.expireAfterSeconds}s`, i.weights && `weights ${JSON.stringify(i.weights)}`,
+        i.sparse && 'SPARSE'].filter(Boolean).join(', ');
+      const tag = i.name === '_id_' ? '(default)' : expected.includes(i.name) ? '(declared)' : '(NOT DECLARED)';
+      console.log(`  ${i.name}  keys ${JSON.stringify(i.key)}${props ? '  [' + props + ']' : ''}  ${tag}`);
+    }
+    const names = idx.map((i) => i.name);
+    const missing = expected.filter((n) => !names.includes(n));
+    console.log(`  declared but ABSENT: ${missing.length ? missing.join(', ') : 'none'}`);
+  }
+} catch (e) {
+  console.log(`Connection/command failed: name=${e.name} code=${e.code} codeName=${e.codeName}`);
+  console.log(`message: ${redact(e.message)}`);
+} finally {
+  await client.close();
+}

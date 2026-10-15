@@ -1,0 +1,71 @@
+GATE-01 — Staged demonstration of the CI layer-boundary gate (M3 §9)
+Requirement / decision : NFR-1.7, DEC-014, RSK-016 (PED §6A.5, §11.1)
+Date                   : 2026-10-13
+Performed by           : C. Burger
+PR                     : #90 (base dev, closed unmerged)
+Branch / commit        : demo/ci-gate-layer-check @ 19601c34b234b7606d6ac3d31f856fe6e3d1705b
+Run                    : https://github.com/SEN381-org/Ticketing-System/actions/runs/38357191208
+                         (job 115162700603)
+
+Purpose
+Show that a required CI check blocks a pull request that breaks the closed-layer rule:
+a presentation-layer file importing from the data layer.
+
+Change made (the only change in the commit)
+src/routes/healthRoutes.js, line 8:
+    export { default as User } from '../models/User.js';
+Written as a re-export so ESLint raises nothing and only the layer check is exercised.
+
+Precondition
+All five CI jobs set as required status checks on dev and main in the "dev rule"
+ruleset on 2026-10-13: Build and test (Node 22), Secret scan (full history),
+Static analysis (ESLint), Dependency audit (npm), CodeQL analysis.
+
+Expected result (stated before the run)
+"Build and test (Node 22)" fails at the layer boundary step; the test suite still
+passes; the merge is blocked.
+
+Actual result
+Build and test (Node 22)         FAILED in 11 s
+  Run the test suite             passed (3 s)
+  Layer boundary check           failed:
+    src/routes/healthRoutes.js:8:export { default as User } from '../models/User.js';
+    Error: A route or middleware file imports a model or repository directly.
+           NFR-1.7 requires every dependency to cross exactly one layer boundary (PED §6A.5).
+    Process completed with exit code 1.
+Static analysis (ESLint)         passed
+Dependency audit (npm)           passed
+CodeQL analysis                  passed
+Merge box                        "Merging is blocked"
+
+Outcome
+PASS: the gate detected the breach, named the file and line, and blocked the merge.
+The PR was closed unmerged and the branch deleted. No breaching code reached dev.
+
+Separate unplanned finding on the same run (not part of the demonstration)
+Secret scan (full history) also FAILED: 6 findings, generic-api-key, 110 commits scanned.
+All six are in commit de84ab19 on the unmerged #89 branch (NV-55, NV-60, NV-61 in
+docs/evidence/M3-client/), which are SHA-256 hashes of client/src/api.js, not credentials.
+Cause: the scan checked out every branch and Gitleaks read all of them (--all), while the
+.gitleaksignore that exempts these lines existed only on #89's branch. Consequence: every
+PR into dev failed this required check, so one unmerged branch blocked the whole team.
+Fixed in task/M3-ci-follow-ups: the required PR scan now reads only the history of HEAD
+(what the PR would merge), and every branch is scanned weekly by the non-blocking
+secret-scan-all-branches.yml workflow.
+
+Screenshots 
+GATE-01_1_required_checks_ruleset.png      "dev rule" ruleset: the five required status checks
+GATE-01_2_pr90_checks_merge_blocked.png    PR #90: Build and test and Secret scan failed, all five
+                                           checks Required, "Merging is blocked"
+GATE-01_3_layer_check_log.png              Build and test log: test suite passed, layer check
+                                           failed on src/routes/healthRoutes.js:8
+GATE-01_4_secret_scan_log.png              Secret scan log: six generic-api-key findings in
+                                           commit de84ab19 (author email redacted)
+
+What this does not show
+- That the layer check catches every bypass. The pattern used in this run matched
+  `from '…/models|repositories/'` only, so a side-effect import (import '../models/X.js'),
+  a dynamic import() or a ../../src/ path would have passed it. The pattern was widened
+  in task/M3-ci-follow-ups to cover those forms. A cross-module collection read is
+  still not detected and stays a reviewer responsibility (PED §11.1).
+- Anything about runtime behaviour. The check is a static text match on source files.

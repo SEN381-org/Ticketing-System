@@ -1,0 +1,37 @@
+Negative verification NV-05 — The rejected 30–31 minute tolerance
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Comparing against 30 min + the refresh interval would let a session survive 30 minutes of real inactivity. The user-view test catches exactly the design DEC-018 §3 rejects.
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+     if (idle >= IDLE_LIMIT_MS) return null;
+   Replaced with:
+     if (idle >= IDLE_LIMIT_MS + REFRESH_INTERVAL_MS) return null;   // SABOTAGE: 30-31 min design
+
+2. Result of `node --test tests/authService.test.js`:
+
+     not ok - idle boundary: 29:59 since lastSeenAt is accepted, 30:00 is refused — NFR-3.4
+     not ok - user's view: a session is never valid 30:00 after the last request, even with a stale lastSeenAt — AC-NFR-3.4
+     # tests 15
+     # pass 13
+     # fail 2
+
+   Expected to fail: user's view: a session is never valid 30:00 after the last request
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

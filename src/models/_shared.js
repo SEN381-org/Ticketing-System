@@ -1,39 +1,26 @@
 /**
  * Shared model definitions. Authoritative source: docs/architecture/data/
- * Data_and_Persistence_Baseline_v0.2.md §3.1.
+ * Data_and_Persistence_Baseline_v0.3.md §3.1.
  *
  * src/domain/requestStatus.js and src/domain/accessRules.js import STATUS and
  * ROLE from here rather than declaring their own, so the domain and the
  * persistence layer cannot drift apart. That was the cause of review comments
  * R-04 and R-07, and it is closed.
+ *
+ * STATUS, ROLE and TERMINAL_STATUSES are now defined in shared/domainValues.js,
+ * a module with no imports so that the browser client can use the same values
+ * as the server. They are re-exported here so every existing importer is
+ * unchanged. There must be exactly one definition: in M2 the application slice
+ * used invented statuses and roles that contradicted FR-6.1 and FR-1.2, recorded
+ * at the time in the AI Usage Register (v0.12, row 48, 2026-10-01). It predates
+ * the Defect Register, so it has no DEF identifier.
  */
 
 import mongoose from 'mongoose';
 
+export { STATUS, ROLE, TERMINAL_STATUSES } from '../../shared/domainValues.js';
+
 const { Schema } = mongoose;
-
-/** FR-6.1 / AC-FR-6.1 — exact baselined values. */
-export const STATUS = Object.freeze({
-  RECEIVED: 'Received',
-  ASSIGNED: 'Assigned',
-  IN_PROGRESS: 'In Progress',
-  ON_HOLD: 'On Hold',
-  RESOLVED: 'Resolved',
-  CLOSED: 'Closed',
-  REJECTED: 'Rejected',
-});
-
-export const TERMINAL_STATUSES = Object.freeze([STATUS.CLOSED, STATUS.REJECTED]);
-
-/** FR-1.2 — the controlled role set. */
-export const ROLE = Object.freeze({
-  REQUESTER: 'Requester',
-  TECHNICIAN: 'Technician',
-  COORDINATOR: 'Coordinator',
-  MANAGER: 'Manager',
-  SECURITY_OFFICER: 'Security Officer',
-  ADMINISTRATOR: 'Administrator',
-});
 
 /** SCP-019 — every collection is campus-scoped from the first document. */
 export const campusRef = () => ({

@@ -1,0 +1,39 @@
+Negative verification NV-07 — Identical login failure (message)
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  An unknown email is indistinguishable from a wrong password or a revoked account (DEC-018 §5, CON-019).
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+           await recordFailure(null, occurredAt);
+           throw loginRefused();
+   Replaced with:
+           await recordFailure(null, occurredAt);
+           throw new AuthenticationError('No such account');   // SABOTAGE
+
+2. Result of `node --test tests/authService.test.js tests/app.test.js`:
+
+     not ok - a failed login is one identical 401 whatever the cause — DEC-018 §5
+     not ok - unknown email, wrong password and revoked account fail identically — DEC-018 §5
+     # tests 29
+     # pass 27
+     # fail 2
+
+   Expected to fail: unknown email, wrong password and revoked account fail identically; a failed login is one identical 401 whatever the cause
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

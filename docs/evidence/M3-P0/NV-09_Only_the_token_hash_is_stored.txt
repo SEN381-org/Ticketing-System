@@ -1,0 +1,43 @@
+Negative verification NV-09 — Only the token hash is stored
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  The raw session identifier never reaches the sessions collection (DEC-018 §3).
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+           _id:          hashToken(token),
+   Replaced with:
+           _id:          token,   // SABOTAGE: raw token stored
+
+2. Result of `node --test tests/authService.test.js`:
+
+     not ok - a successful login stores only the hash of the token — DEC-018 §3
+     not ok - a valid session resolves to the DEC-018 actor shape, read from the user
+     not ok - idle boundary: 29:59 since lastSeenAt is accepted, 30:00 is refused — NFR-3.4
+     not ok - lastSeenAt is not refreshed within 60 s, and is refreshed at 60 s — DEC-018 §3
+     not ok - user's view: a session is never valid 30:00 after the last request, even with a stale lastSeenAt — AC-NFR-3.4
+     not ok - revocation terminates existing sessions through the epoch — FR-1.4, AC-FR-1.4
+     not ok - a role change applies at the next request: nothing is cached in the session — NFR-2.7, FR-1.6
+     not ok - logout ends the session, audits once, and is idempotent — DEC-018 §5
+     # tests 15
+     # pass 7
+     # fail 8
+
+   Expected to fail: a successful login stores only the hash of the token
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

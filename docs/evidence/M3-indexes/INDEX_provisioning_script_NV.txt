@@ -1,0 +1,39 @@
+Index-provisioning script and tests/indexProvisioning.test.js — negative verification index (negative verification, method as docs/evidence/R-01_negative_verification.txt)
+
+Run on : 2026-10-13 UTC
+Node   : v22.20.0
+Branch : task/M3-index-provisioning
+Commit : 386f1b6 (HEAD at the start of the work). scripts/atlas/, scripts/lib/clusterMarkers.js and tests/indexProvisioning.test.js are UNCOMMITTED working-tree content.
+
+Each entry broke one protected behaviour in scripts/atlas/indexComparison.js (never in the test), ran
+tests/indexProvisioning.test.js, recorded the failing test names, restored the file by writing back its exact
+original content, confirmed the SHA-256 before and after, and re-ran the full suite. Expected failures were written
+down in the driver before the run. The run was scripted so each sabotage was applied and reverted mechanically.
+SHA-256 of scripts/atlas/indexComparison.js before and after every entry: d6a384d35e33fd854c32bce73c6150724308bc30aa3bb2bf8bf68391d617f3c1
+
+Identifiers NV-83 to NV-90 were allocated by the team on 13/10/2026 (written as NV-pending-A to NV-pending-H until then).
+
+Test count: 19 tests in tests/indexProvisioning.test.js (U1 to U18 plus one test for an absent collection).
+Full suite before the work: 175 tests, 167 pass, 8 skipped, 0 fail. After, and after each restore below:
+194 tests, 186 pass, 8 skipped, 0 fail.
+
+NV-83  CAUGHT  comparator ignores unique  (NV-83_comparator_ignores_unique.txt)
+NV-84  CAUGHT  comparator ignores expireAfterSeconds  (NV-84_comparator_ignores_expireAfterSeconds.txt)
+NV-85  CAUGHT  key field order treated as insignificant  (NV-85_key_order_ignored.txt)
+NV-86  CAUGHT  privilege check accepts any action  (NV-86_privilege_check_accepts_any_action.txt)
+NV-87  CAUGHT  host guard looks at the whole URI  (NV-87_host_guard_on_whole_URI.txt)
+NV-88  CAUGHT  exit code ignores DIFFERENT  (NV-88_exit_code_ignores_DIFFERENT.txt)
+NV-89  CAUGHT  redaction removed  (NV-89_redaction_removed.txt)
+NV-90  CAUGHT  command allow-list removed  (NV-90_command_allow_list_removed.txt)
+
+Not yet done (they need the owner's credentials and a recreated test database): live verifications L1 to L4 and the
+provisioning runs. Nothing in this folder shows behaviour against a real cluster. The privilege probe is
+createIndexes_privilege_probe_2026-10-13.txt.
+
+RECORDED GAP, not resolved: first full run, 3 failures, test names not captured, not reproduced in 15 later runs.
+  The first full-suite run after the test file was added reported 194 tests, 183 pass, 3 fail, 8 skipped. Which three
+  tests failed was not captured, so it is not known whether they were in the files added here or in the existing suite.
+  The 15 later full-suite runs all gave 186 pass, 0 fail: 14 during the build (five before the sabotage runs, the eight
+  re-runs above, and one after them) and one independent run on 13/10/2026. Not reproducing is not an explanation: the
+  cause is unknown. It may be another occurrence of the intermittent failures recorded as DEF-013 or DEF-016, or a new
+  one. It was not re-run to make it pass. Raised for the Defect Register.

@@ -1,0 +1,37 @@
+Negative verification NV-11 — The email never reaches the audit record (M-1)
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  A failed login for an unknown email records no address (NFR-1.4, DEC-017 M-1).
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+           await recordFailure(null, occurredAt);
+   Replaced with:
+           await audit.recordSecurityEvent({ origin: 'auth', eventType: 'auth.login.failure', outcome: 'failure', occurredAt, actorSource: 'unattributed', documentId: email });   // SABOTAGE
+
+2. Result of `node --test tests/authService.test.js`:
+
+     not ok - every login attempt is audited, minimised, and the email is never recorded — NFR-1.4, M-1
+     # tests 15
+     # pass 14
+     # fail 1
+
+   Expected to fail: every login attempt is audited, minimised, and the email is never recorded
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  It does NOT show: It shows the email is absent from the event passed to the repository. The stored document is written by auditRepository, which is not exercised without a database.

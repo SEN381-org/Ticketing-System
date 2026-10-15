@@ -1,0 +1,48 @@
+Negative verification NV-59 — A dynamic import() from the server src/ tree
+M3 client (client/, tests/clientBoundary.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 17:25 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : a22b450 (HEAD). The code under test (client/, tests/clientBoundary.test.js) is UNCOMMITTED working-tree content. The sabotage was applied to the working tree, then restored by writing back the original content (or removing the file created for the run).
+Baseline: 167 tests, 167 pass, 0 fail (before the sabotage, with the strengthened clientBoundary test).
+
+CLAIM
+  No client/src file reaches src/ by dynamic import() (DEC-014).
+
+1. The protected behaviour was broken in the CLIENT (never in the test).
+     --- client/src/App.jsx (original)
+     +++ client/src/App.jsx (sabotaged)
+     client/src/App.jsx, appended at end:
+       + export const lazyServer = () => import('../../src/app.js');
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - no client/src file imports from the server src/ tree — DEC-014
+     not ok - the only import leaving client/ is shared/domainValues.js, and the client uses it — DEC-014
+     # tests 167
+     # pass 165
+     # fail 2
+
+   Expected to fail (written down before the run, derived from the claim above):
+     no client/src file imports from the server src/ tree — DEC-014
+     the only import leaving client/ is shared/domainValues.js, and the client uses it — DEC-014
+   Outcome: CAUGHT — every expected test failed, and nothing else failed
+
+3. The file was restored by writing back its original content.
+   SHA-256 of client/src/App.jsx before : 1a6cc939e205f6fbf496c13949629aef9f2345b9f3895a05ca54db37c461f8f5
+   SHA-256 of client/src/App.jsx after  : 1a6cc939e205f6fbf496c13949629aef9f2345b9f3895a05ca54db37c461f8f5
+   SHA-256 of the whole client/src tree (path + content of every file) before : 62b234f4afb2f291932fef9b9060412269dc060d4f65f157b01e8b9889a51ebc
+                                                                              after  : 62b234f4afb2f291932fef9b9060412269dc060d4f65f157b01e8b9889a51ebc
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 167
+     # pass 167
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: A dynamic import() of src/ is detected.
+  What this does NOT show: import(variable) or a specifier built at run time.

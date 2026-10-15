@@ -1,0 +1,36 @@
+Negative verification NV-13 — Logout audits only a session that existed
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Logout is idempotent and records an event only when a session was actually ended (DEC-018 §5, §6).
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+         if (!ended) return;
+   Replaced with:
+         if (!ended) { await audit.recordSecurityEvent({ origin: 'auth', eventType: 'auth.logout', outcome: 'success', occurredAt: clock(), actorSource: 'session' }); return; }   // SABOTAGE
+
+2. Result of `node --test tests/authService.test.js`:
+
+     not ok - logout ends the session, audits once, and is idempotent — DEC-018 §5
+     # tests 15
+     # pass 14
+     # fail 1
+
+   Expected to fail: logout ends the session, audits once, and is idempotent
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

@@ -1,0 +1,48 @@
+Negative verification NV-61 — A path that goes through shared/ and back up into src/
+M3 client (client/, tests/clientBoundary.test.js); negative verification, method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-12 17:25 UTC
+Node   : v22.20.0
+Branch : task/M3-request-read-endpoint
+Commit : a22b450 (HEAD). The code under test (client/, tests/clientBoundary.test.js) is UNCOMMITTED working-tree content. The sabotage was applied to the working tree, then restored by writing back the original content (or removing the file created for the run).
+Baseline: 167 tests, 167 pass, 0 fail (before the sabotage, with the strengthened clientBoundary test).
+
+CLAIM
+  A detour through shared/ cannot hide an import of src/: specifiers are resolved, not string-matched.
+
+1. The protected behaviour was broken in the CLIENT (never in the test).
+     --- client/src/api.js (original)
+     +++ client/src/api.js (sabotaged)
+     client/src/api.js, appended at end:
+       + import detour from '../../shared/../src/app.js';
+
+2. Result of `npm test` (the full suite, with the sabotage applied):
+
+     not ok - no client/src file imports from the server src/ tree — DEC-014
+     not ok - the only import leaving client/ is shared/domainValues.js, and the client uses it — DEC-014
+     # tests 167
+     # pass 165
+     # fail 2
+
+   Expected to fail (written down before the run, derived from the claim above):
+     no client/src file imports from the server src/ tree — DEC-014
+     the only import leaving client/ is shared/domainValues.js, and the client uses it — DEC-014
+   Outcome: CAUGHT — every expected test failed, and nothing else failed
+
+3. The file was restored by writing back its original content.
+   SHA-256 of client/src/api.js before : 0a81e0614df7f39359913089832567bcbd0370ec8836fd9e9fff3c9b269420d8
+   SHA-256 of client/src/api.js after  : 0a81e0614df7f39359913089832567bcbd0370ec8836fd9e9fff3c9b269420d8
+   SHA-256 of the whole client/src tree (path + content of every file) before : 62b234f4afb2f291932fef9b9060412269dc060d4f65f157b01e8b9889a51ebc
+                                                                              after  : 62b234f4afb2f291932fef9b9060412269dc060d4f65f157b01e8b9889a51ebc
+   Identical to the values recorded before the run.
+   The full suite was re-run:
+
+     # tests 167
+     # pass 167
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.
+  What this shows: The path is normalised before the src/ test, so the detour is caught.
+  What this does NOT show: Symlinks (the check does not touch the file system).

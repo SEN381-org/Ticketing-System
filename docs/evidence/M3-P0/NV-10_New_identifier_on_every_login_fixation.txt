@@ -1,0 +1,36 @@
+Negative verification NV-10 — New identifier on every login (fixation)
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Every login issues a fresh identifier (DEC-018 §3).
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+         const token = newToken();
+   Replaced with:
+         const token = 'f'.repeat(43);   // SABOTAGE: fixed identifier
+
+2. Result of `node --test tests/authService.test.js`:
+
+     not ok - every login issues a new identifier (no fixation) — DEC-018 §3
+     # tests 15
+     # pass 14
+     # fail 1
+
+   Expected to fail: every login issues a new identifier (no fixation)
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

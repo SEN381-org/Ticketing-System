@@ -1,0 +1,66 @@
+E2E local run - final recorded run, restored code
+M3 thin client + E2E-1 / E2E-2a / E2E-2b (PR #89); the evidence DEC-019 'Evidence still required' item 2 names as the condition for #89 leaving draft
+
+Date / time : 2026-10-12, started 21:27:13 UTC (command issued 21:27:10, finished 21:27:23; wall-clock from the machine's clock)
+Git commit  : 43a53a74b2bc10fe0f850f5f4fd34e72cca4a667 (HEAD, branch task/M3-request-read-endpoint).
+              The working tree has UNCOMMITTED changes, including all of e2e/. git status --short at the time of the run:
+                 M .gitignore
+                 M docs/decisions/ADR/DEC-019_Client_Build_and_E2E_Tooling_v0.1.md
+                 M eslint.config.js
+                 M package.json
+                ?? e2e/
+              (docs/evidence/M3-e2e/ was created after this run.) client/ is tracked and unmodified. src/, client/ and shared/ were
+              unmodified: git diff --stat -- src client shared shows nothing; SHA-256 over src/, client/src/, e2e/ sources and shared/
+              before and after the run: 64a386c675f2c8224ae615e381bf64603f770a28de1fc4e1efaa8a4748685732 (identical to the value taken before every NV run).
+Node        : v22.20.0
+Playwright  : @playwright/test 1.64.0 (pinned in e2e/package.json)
+Chromium    : Chrome for Testing 156.0.8078.4 (Playwright chromium build 1248, from browsers.json of the installed playwright-core; not queried from the launched binary)
+Environment : Atlas test cluster, database civicconnect, credential civicconnect-app. No connection string is recorded here. The API (node --env-file=<repo .env.test> src/server.js) and the fixtures read the same env file. The client is a fresh vite build served by vite preview on port 4391, proxying /api to 127.0.0.1 (stands in for Nginx locally).
+Command     : npm run test:e2e   (E2E_ENV_FILE unset, so the repo-root .env.test is used)
+Exit code   : 0
+
+Output (list reporter, stdout of the command, unedited apart from ANSI colour codes removed):
+
+
+> civicconnect@0.1.0 test:e2e
+> npm --prefix e2e test
+
+
+> civicconnect-e2e@0.0.0 test
+> playwright test
+
+
+Running 3 tests using 1 worker
+
+  ok 1 [chromium] › journey.spec.js:33:1 › E2E-1: Coordinator rejects a Received request (1.8s)
+  ok 2 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.9s)
+  x  3 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.4s)
+
+  3 passed (10.4s)
+
+E2E-2b actual failure text, quoted from e2e/test-results/results.json (it is an expected failure, test.fail('DEF-011: DEC-015 section 4 requires 403; code returns 422')):
+
+  Error: expect(received).toBe(expected) // Object.is equality
+  
+  Expected: 403
+  Received: 422
+
+Playwright stats from results.json: {"expected":3,"unexpected":0,"skipped":0,"flaky":0}.
+Cluster writes of this run (DEF-006; they stay on the cluster): 3 fixtures (3 Users, 3 Received requests), 3 sessions with their login audit events (approximate, from reading the code, not queried), and 1 history entry (E2E-1's Received to Rejected). E2E-2a and E2E-2b wrote no history.
+
+INTERPRETATION
+What it shows (as scoped in the headers of e2e/journey.spec.js and e2e/wrong-role.spec.js):
+  - A real Chromium session through the composed production entry point (src/server.js, composeApplication) against the Atlas test cluster: the __Host-sid cookie round trip; the sign-in prompt shown in place with the URL unchanged (AC-FR-1.1, detail address only); the read path returning exactly {reference, status, version} with ETag "v0" from the requests collection (this is the check that catches NV-43; see NV-71, NV-72); If-Match taken from the server's ETag; the server, not the client, refusing a missing reason with 422 (AC-FR-6.6 first attempt refused, and nothing written); the stored reason and the single history entry checked field by field (AC-FR-6.3); sign-out ending the session.
+  - E2E-2a: a Technician bypassing the UI is refused (status >= 400, problem+json, no request data in the body), nothing is written (AC-FR-6.4, AC-NFR-3.3, AC-FR-1.3 first two clauses).
+  - E2E-2b: the expected failure for DEF-011 is live. DEC-015 section 4 requires 403 FORBIDDEN; the code returns 422. The text above is the 422. When DEF-011 is fixed this test reports 'Expected to fail, but passed' and the run goes red until the mark is removed (shown by NV-82).
+What it does NOT show:
+  - The vite preview stands in for Nginx. Nginx/TLS and the real same-origin deployment are not exercised. DEC-003 v0.3 (Deployment procedure, Prerequisite) requires a staging run before a production release tag.
+  - Chromium only; no other browser (NFR-1.1 is not claimed).
+  - Local run, NOT in CI (DEC-019 section 2). It writes fixtures to the cluster.
+  - AC-FR-6.6 'displays it in the history' is not covered: no history is displayed by the client.
+  - The POST /sessions 201 body keys are NOT asserted (known gap; the response status is).
+  - AC-FR-1.3's recording clause (the rejected attempt is recorded) is not built and not asserted.
+  - FR-4.2 is not verified: the endpoint returns three fields only.
+  - Atomicity, replay, indexes (DEF-014), the audit trigger, idle expiry, refusal of plain HTTP, a list address.
+  - A single run on one occasion; no --repeat-each stability measurement was made (plan lists one as a future record). Any login or cookie failure would be a possible DEF-013 occurrence, none occurred.
+  - The run is the restored-state confirmation for NV-71 to NV-82: it passes and src/, client/, e2e/ hash identically to before.

@@ -69,6 +69,43 @@ export class IdempotencyKeyRequiredError extends AppError {
   }
 }
 
+/** No route matches. Distinct from NotFoundError, whose message names a request. */
+export class RouteNotFoundError extends AppError {
+  constructor() {
+    super('No resource exists at this address',
+      { status: 404, type: 'https://civicconnect.example/problems/not-found', code: 'NOT_FOUND' });
+  }
+}
+
+/** DEC-015 §5 — boundary validation. The message names the offending field. */
+export class ValidationError extends AppError {
+  constructor(message) {
+    super(message,
+      { status: 400, type: 'https://civicconnect.example/problems/invalid-request', code: 'INVALID_REQUEST' });
+  }
+}
+
+/**
+ * DEC-015 §5 — a write must be JSON. This is half of the CSRF mitigation: a
+ * cross-site HTML form cannot send `application/json`, so refusing anything else
+ * closes the form-post route that SameSite=Lax leaves open for top-level POSTs.
+ */
+export class UnsupportedMediaTypeError extends AppError {
+  constructor() {
+    super('A request with a body must be sent as application/json',
+      { status: 415, type: 'https://civicconnect.example/problems/unsupported-media-type',
+        code: 'UNSUPPORTED_MEDIA_TYPE' });
+  }
+}
+
+/** DEC-015 §5 — body over the 32 kB limit. */
+export class PayloadTooLargeError extends AppError {
+  constructor() {
+    super('The request body is too large',
+      { status: 413, type: 'https://civicconnect.example/problems/payload-too-large', code: 'PAYLOAD_TOO_LARGE' });
+  }
+}
+
 /** DEC-015 — same idempotency key, different request body. */
 export class IdempotencyConflictError extends AppError {
   constructor() {

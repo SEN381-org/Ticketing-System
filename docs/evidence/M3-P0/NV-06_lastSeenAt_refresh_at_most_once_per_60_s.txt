@@ -1,0 +1,37 @@
+Negative verification NV-06 — lastSeenAt refresh at most once per 60 s
+M3 Phase 0 (DEC-018)
+
+Run on : 2026-10-11 15:34 UTC
+Node   : v22.20.0
+Branch : feat/m3-phase0-composition-root
+Commit : 70d1825 (sabotage applied to the working tree, then restored)
+
+CLAIM
+  Activity is not written on every request (RSK-019 write budget, DEC-018 §3).
+
+1. The protected behaviour was broken in src/services/authService.js.
+   Original:
+     if (idle >= REFRESH_INTERVAL_MS) await sessions.touch(id, now);
+   Replaced with:
+     await sessions.touch(id, now);   // SABOTAGE: refresh on every request
+
+2. Result of `node --test tests/authService.test.js`:
+
+     not ok - lastSeenAt is not refreshed within 60 s, and is refreshed at 60 s — DEC-018 §3
+     not ok - user's view: a session is never valid 30:00 after the last request, even with a stale lastSeenAt — AC-NFR-3.4
+     # tests 15
+     # pass 13
+     # fail 2
+
+   Expected to fail: lastSeenAt is not refreshed within 60 s, and is refreshed at 60 s
+   Outcome: every expected test failed
+
+3. The file was restored and the full suite re-run:
+
+     # tests 129
+     # pass 129
+     # fail 0
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it
+  fails, and with the behaviour restored it passes.

@@ -1,0 +1,54 @@
+SMOKE-01  M3 Phase 0 reachability smoke check. DEC-018 evidence item 2.
+
+Server startup output (node --env-file=.env.test src/server.js, branch
+feat/m3-phase0-composition-root at c1514d0):
+
+  CivicConnect listening on http://127.0.0.1:3000 (database user: civicconnect-app)
+
+The server and the smoke script below report the same database user. Both
+read that name from the connection string they were given (the same
+.env.test). The cluster did not confirm the authenticated user server-side.
+
+Smoke script output (node --env-file=.env.test scripts/smoke/phase0-smoke.js
+--base-url http://127.0.0.1:3000):
+
+  M3 Phase 0 smoke check (reachability only)
+  Run at        : 2026-10-11T20:59:58.208Z
+  Node          : v22.20.0
+  Base URL      : http://127.0.0.1:3000
+  Database user : civicconnect-app
+  
+  Fixture       : user 6acbf8ce4599dfd79719c972, request 6acbf8ce4599dfd79719c974 (CC-2026-374098), status Received
+  
+  PASS  1 health is public and reports the database up  — 200 {"application":"up","database":"up"}
+  PASS  2 transition without a session is refused  — 401
+  PASS  3 login sets __Host-sid and stores only its hash  — 201; attributes: Path=/; HttpOnly; Secure; SameSite=Lax
+  PASS  4 transition with the session commits, with exactly one history entry  — 201 ETag "v1"; status Rejected, version 1, history entries 1
+  PASS  5 logout ends the session  — 204; session document removed: true
+  PASS  6 the old cookie no longer works  — 401
+  
+  6/6 checks passed.
+
+Exit code: 0
+
+What this shows: a server composed by src/composition.js, connected to the
+Atlas test cluster as civicconnect-app, is reachable over HTTP end to end.
+The health route is public, the guard refuses a request with no session, and
+login sets __Host-sid and stores only its hash. A transition with the
+session commits with one history entry. Logout deletes the session, and the
+old cookie is then refused.
+
+What this does not show:
+- That any index exists on the cluster. Mongoose's automatic createCollection
+  and createIndexes would be refused under DEC-003 v0.2's grants (CRUD or
+  find+insert only for civicconnect-app). This run did not observe the
+  refusal, because Mongoose discards that failure silently. The
+  indexes were not inspected in this run and are expected to be absent,
+  including the sessions TTL index, unique users.email and the requestHistory
+  unique indexes (DEC-015 idempotency, requestVersion). No check above
+  depends on an index. The run proves reachability, not that any index exists.
+- Transaction atomicity, which needs a fault injected inside the transaction.
+- Idle expiry, TLS (Phase 1), load, or the deployed VPS environment.
+- Graceful shutdown. The graceful-shutdown path was not exercised, because
+  Windows has no SIGTERM and the server was stopped with a forced kill. This is
+  not a defect. It is simply not evidenced by this run.

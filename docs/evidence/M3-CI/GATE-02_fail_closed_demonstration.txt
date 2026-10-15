@@ -1,0 +1,77 @@
+GATE-02 — Staged demonstration that the fail-closed fixes in PR #95 work (M3 §9)
+Requirement / decision : NFR-1.7, NFR-3.5, DEC-014, RSK-016 (PED M3.5.4)
+Date                   : 2026-10-13
+Performed by           : C. Burger
+Requested by           : E. Lindsay, review of PR #95 (a fixed gate needs evidence of being
+                         seen to fail, not an assertion that it was tested)
+PR                     : #97 (base dev, closed unmerged), branch demo/gate02-fail-closed,
+                         cut from task/M3-ci-fail-closed (#95)
+Run                    : https://github.com/SEN381-org/Ticketing-System/actions/runs/38437891644
+                         (job 115436561306)
+OLD gate code          : origin/dev at 386f1b61f1d13de07ddd4bfabb8db7624a6d1af8
+NEW gate code          : PR #97 merge ref at 489ae15d41acfa447f5f2029666b5b1633a1b9c1
+
+Purpose
+Show, in CI, that three gates which used to pass silently without checking anything now
+fail or warn. The gaps were found by R. van der Merwe reviewing #91 and fixed in #95.
+
+Method
+The demo workflow (.github/workflows/gate02-demo.yml, on the demo branch only) runs the
+OLD and NEW gate code side by side. It does not copy the code: it takes the layer step's
+`run` block out of each version of ci.yml and the extraction script out of each commit,
+and prints their SHA-256 (screenshot GATE-02_2). Each sabotage exists only inside the job
+and is undone before the step ends; nothing broken was committed. Each step asserts the
+expected outcome, so the job is green only if every assertion held. The NEW script's
+SHA-256 in the log (b445a6ea…) is that of scripts/ci/extract-office-documents.sh as
+committed on #95, so the run tested the final version, including the trap.
+
+Expected result (stated before the run)
+OLD passes silently in cases A1, A2 and B and gives no warning in case C.
+NEW fails in A1, A2 and B, warns on each non-zip Office file in C, and produces the same
+manifest as OLD. The NEW layer check passes on the intact tree.
+
+Actual result                                              OLD          NEW
+A1  src/middleware missing, model import in src/routes     exit 0       exit 1
+      OLD printed the breach line and then "No presentation-to-data-access imports
+      found." NEW: "src/middleware not found, so the layer check has nothing to scan."
+A2  src/routes missing, repository import in src/middleware exit 0       exit 1
+      Same pattern. NEW: "src/routes not found, ..."
+B   Office extraction given an invalid revision            exit 0       exit 128
+      OLD: git reported the bad revision, then "Extracted 0 Office document versions"
+      and success. NEW stops on the git error.
+C   Office files in HEAD's history                         0 warnings   2 warnings
+      Both: "Extracted 91 Office document versions; 2 blobs scanned as raw bytes".
+      NEW warns on each non-zip file: the two committed Excel lock files
+      docs/AI-Usage/AI Usage Register/~$AI Usage Register v0.3.xlsx and v0.4.xlsx.
+      HEAD manifests identical; --all manifests identical (95 entries).
+Control  NEW layer check on the intact tree                 —            passed
+
+Job "GATE-02 fail-closed demonstration": succeeded (1 min 41 s).
+Annotations (2 errors, 3 warnings, 1 notice) are expected: the 2 errors are NEW's
+messages in A1 and A2, 2 warnings are case C's lock files, and the third warning is
+GitHub's Node.js 20 deprecation notice for actions/checkout@v4.
+
+Outcome
+PASS. All five assertions held. PR #97 was closed unmerged and its branch deleted.
+
+Screenshots
+GATE-02_1_run_overview_all_steps_green.png   Run summary: every step green
+GATE-02_2_old_and_new_code_extracted.png     OLD and NEW commit IDs; SHA-256 of the four
+                                             extracted files
+GATE-02_3_caseA1_middleware_missing.png      Case A1 log: OLD exit 0, NEW exit 1
+GATE-02_4_caseA2_routes_missing.png          Case A2 log: OLD exit 0, NEW exit 1
+GATE-02_5_caseB_invalid_revision.png         Case B log: OLD exit 0, NEW exit 128
+GATE-02_6_caseC_nonzip_office_files.png      Case C log: NEW warnings on the two lock
+                                             files; identical manifests
+GATE-02_7_control_intact_tree.png            Control: NEW passes on the intact tree
+
+What this does not show
+- Anything about the real CI jobs failing on a pull request. The gates were run inside
+  a demonstration job, not by breaking a branch. Removing src/middleware for real would
+  fail the test suite before the layer step runs, which would hide the layer step.
+- That the layer check catches every bypass. It still does not catch require or
+  createRequire, or a cross-module collection read (PED M3.5.4).
+- That a non-zip Office file is scanned usefully. It is scanned as raw bytes, which
+  cannot read text inside an encrypted workbook. The new behaviour is a warning, not a
+  failure, so the two lock files will warn on every run until they are removed from
+  history.

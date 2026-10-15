@@ -58,8 +58,23 @@ function readCommand(req) {
   };
 }
 
-export function createRequestRouter({ statusTransitionService }) {
+export function createRequestRouter({ statusTransitionService, requestQueryService }) {
   const router = express.Router();
+
+  // Provisional: FR-4.2 is Proposed, not baselined (OI-01). DEC-015 §1.
+  router.get(
+    '/:id',
+    requireOperation('request:read'),                // enforcement point 1
+    async (req, res, next) => {
+      try {
+        const result = await requestQueryService.getRequest(req.params.id, req.actor);
+        res.set('ETag', etagFor(result.version));
+        res.status(200).json(result);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.post(
     '/:id/transitions',
