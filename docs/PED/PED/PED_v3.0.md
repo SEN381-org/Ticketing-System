@@ -2305,6 +2305,10 @@ exposure.
 | Duplicate keys under concurrency (DEC-015, DEC-016) | Only the database can stop a true race | Indexes provisioned and confirmed, duplicates refused with 11000 (L2 to L4) |
 | Session security (DEC-018) | Credentials and identity | NV-01 to NV-22: fixation, hash-only storage, identical failure messages and timing, idle boundary |
 | Secrets in history (NFR-3.5) | A leaked secret cannot be unpublished | Full-history scan including Office text, on every pull request, plus the weekly all-branch scan |
+| Layer boundaries erode silently (RSK-016, NFR-1.7, DEC-014) | High (2 × 3); a bypass works, so no functional test fails | Required layer check on every pull request, shown to block (GATE-01, PR #90) and to fail closed (GATE-02, PR #97); client and shared-module boundary tests (NV-35 to NV-37, NV-58 to NV-62). For the layer check, `require` and cross-module reads stay with the reviewer |
+
+Test effort goes where probability and impact are highest (Amland, 2000; Felderer and
+Schieferdecker, 2014).
 
 **Method.** Every expected result is derived from the project record before execution, and
 an assertion that protects something important is shown to fail with that thing broken
@@ -2597,6 +2601,10 @@ Sources cited in this part and not already in §13. They are kept here because �
 of the M2 baseline and is not edited (see the note at the head of this part). Humble and
 Farley (2010) and Shahin, Ali Babar and Zhu (2017) are in §13.
 
+Amland, S. (2000) 'Risk-based testing: risk analysis fundamentals and metrics for software
+testing including a financial application case study', *Journal of Systems and Software*,
+53(3), pp. 287–295. doi:10.1016/S0164-1212(00)00019-4.
+
 Bacchelli, A. and Bird, C. (2013) 'Expectations, outcomes, and challenges of modern code
 review', in *Proceedings of the 35th International Conference on Software Engineering
 (ICSE 2013)*. San Francisco, CA: IEEE, pp. 712–721. doi:10.1109/ICSE.2013.6606617.
@@ -2605,6 +2613,10 @@ Decan, A., Mens, T. and Constantinou, E. (2018) 'On the impact of security
 vulnerabilities in the npm package dependency network', in *Proceedings of the 15th
 International Conference on Mining Software Repositories (MSR 2018)*. Gothenburg: ACM,
 pp. 181–191. doi:10.1145/3196398.3196401.
+
+Felderer, M. and Schieferdecker, I. (2014) 'A taxonomy of risk-based testing',
+*International Journal on Software Tools for Technology Transfer*, 16(5), pp. 559–568.
+doi:10.1007/s10009-014-0332-3.
 
 Inozemtseva, L. and Holmes, R. (2014) 'Coverage is not strongly correlated with test
 suite effectiveness', in *Proceedings of the 36th International Conference on Software
