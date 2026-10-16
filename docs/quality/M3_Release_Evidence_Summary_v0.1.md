@@ -4,7 +4,7 @@
 |---|---|
 | **Release candidate** | `v3.0-M3-rc` (`30ff0c6`), deployed to staging 15/10/2026 |
 | **Version** | 0.1 |
-| **Author** | Ethan Lindsay (drafted); agreed by R. van der Merwe and C. Burger [SLOT: agreement recorded in the pull request reviews] |
+| **Author** | Ethan Lindsay (drafted). Agreed by the team through the approvals on PR #116 |
 | **Date** | 16 October 2026 |
 | **Basis** | M3 brief §15 and §16. Each line points to its evidence; PED v3.0 M3.5 to M3.10 interpret it |
 
