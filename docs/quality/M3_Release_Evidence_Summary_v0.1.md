@@ -35,7 +35,7 @@ holding synthetic data; each is listed below with its owner.
 
 | Residual risk | Why it remains | Current mitigation | Next action / owner |
 |---|---|---|---|
-| An idempotency key is honoured across requests (DEF-009) | The fingerprint omits method and path; fixing it changes DEC-015 behaviour, after the release candidate was frozen | The client generates a fresh random key for every transition (`client/src/api.js`); found and recorded by the API tests | Fix with DEF-007 to DEF-011 together, and run the integration cases in CI (TD-008). R. van der Merwe |
+| An idempotency key is honoured across requests (DEF-009) | The fingerprint omits method and path; fixing it changes DEC-015 behaviour, after the release candidate was frozen | The client generates a fresh random key for every transition (`client/src/api.js`); found and recorded by the API tests | Fix with DEF-007 to DEF-011 together, and run the integration cases in CI (TD-008). Ethan (fix), Robert (tests) |
 | Field-level restriction of security-category requests is not built (DEC-012 point 3) | Blocked on the stakeholder conflict CFL-002 / OI-16 | Non-Security-Officer staff are refused the whole request (stricter than FR-1.5) | Resolve OI-16, then build the serialiser. E. Lindsay |
 | Unauthorised attempts leave no record (AC-FR-1.3) | Recorded as debt, not built (TD-005) | Every attempt is refused before any write | Record refusals before any production deployment. E. Lindsay |
 | Login can be brute-forced at the rate the hash allows (CodeQL #1, RSK-021) | No throttling or lockout was required or designed | Slow scrypt hash; synthetic data only | Decide a throttling design before production. Team |

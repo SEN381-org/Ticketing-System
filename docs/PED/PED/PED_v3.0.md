@@ -31,7 +31,7 @@
 | **RTM** | v0.10, `docs/Requirements/Requirements Traceability Matrix/Requirements_Traceability_Matrix_v0.10.xlsx` |
 | **CI and test evidence** | GitHub Actions, workflow "CI" (run 38737312900 at the release candidate); `docs/quality/M3_Test_Evidence_Records_v0.1.md`; `docs/evidence/` (index in M3.5 to M3.8) |
 | **Release Evidence Summary** | `docs/quality/M3_Release_Evidence_Summary_v0.1.md` |
-| **Staging** | `https://<staging VM IP>/`. The full IP is given in the Moodle submission and redacted in the repository (DEC-003 v0.4). The certificate is self-signed: to verify it, use the certificate supplied with the submission (`curl --cacert`), as in `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`. `GET /api/v1/health` reports the deployed commit in `release`. Staging runs at https://158.158.115.[redacted] with a self-signed certificate; accept the browser warning (certificate fingerprint in the deploy record, #111). If the VM is unreachable during the presentation, the demonstration uses the recorded deploy evidence (#111): /health showing release 30ff0c6, the smoke run 6/6 and the NFR-2.4 load run, plus a local run of the application at v3.0-M3-rc. The client has no page at `/` (it shows "No such page"); the demo starts at `https://158.158.115.[redacted]/requests/<request id>`, where the sign-in prompt appears in place. |
+| **Staging** | `https://<staging VM IP>/requests/<request id>`: the client has no page at `/`, and the sign-in prompt appears in place. The full IP is given in the Moodle submission and redacted in the repository (DEC-003 v0.4). The certificate is self-signed: verify it with `curl --cacert staging.crt`, using the certificate supplied with the submission (fingerprint in `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`), or accept the browser warning. `GET /api/v1/health` reports the deployed commit in `release`. Demonstration accounts and a request id are given at the presentation, not in the repository. If the VM is unreachable during the presentation, the demonstration uses the recorded deploy evidence (#111): `/health` showing release 30ff0c6, the smoke run 6/6 and the NFR-2.4 load run, plus a local run of the application at v3.0-M3-rc. |
 | **Date submitted** | 16/10/2026 |
 
 ---
@@ -87,7 +87,7 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 1.12 | — | E. Lindsay, R. van der Merwe | **Not undertaken at M2; carried into M3.** Planned as: assumptions and dependencies updated against the architecture, data, technology, design, security, deployment and cost evidence produced at this milestone *(the remainder of the row previously planned as 1.9; renumbered from 1.10, then 1.11)* | — |
 | 2.0 | 30/09/2026 | E. Lindsay | Milestone 2 baseline. Architecture, Technology & Initial Design Baseline identified in §12: what is baselined and what is deliberately not. M1 conditions reviewed and their final M2 status recorded in Appendix B (C-01, C-02 and C-05 open; C-03 partially closed; C-04 closed), with the M2 baseline sign-off block. Citations aligned to the versions held in the repository: AI Usage Register v0.9, Scope Baseline v0.3, Non-Functional Requirements v0.3, Acceptance Criteria v0.3, Data and Persistence Baseline v0.2, Team Working Agreement v0.2. The Data and Persistence Baseline (R. van der Merwe) and the Team Working Agreement (team) moved from draft to approved status by a header-only change, so that no baselined artefact describes itself as a draft; their content is unchanged. Appendix A extended with the files it did not list (Requirements Control, the RTM v0.5 change notes, the DEC-011 and DEC-012 diagram sources, the R-01 negative-verification evidence, the PED references and the three briefs). Version row 1.12 recorded as not undertaken at M2. PED v1.11 archived | R. van der Merwe, C. Burger |
 | 2.1 | 13/10/2026 | C. Burger | M3 part added after §12, structured on the M3 brief §6 as an evidence index (M3.1–M3.10), with an owner for each section. M3.4 Construction and configuration written: rulesets (Branch Safety, dev rule), the approval-of-most-recent-push rule enabled on 13/10/2026, review evidence (PR #85, #88, #62, #90), configuration and secrets controls (PR #84, #85), construction notes (PR #83) and TD-004 as a known gap. M3.5 CI and automated verification written: the five required checks (PR #86), the scope and layer-check changes in PR #91 and the weekly all-branch secret scan, blocking evidence (PR #86, GATE-01 on PR #90, PR #92) and what CI does not cover. M3 references listed in the part, to move into §13 at v3.0. B evidence pack added in `docs/evidence/M3-B/`. Header and contents updated. §1 to §13 and Appendices A and B are unchanged from v2.0. PED v2.0 archived | E. Lindsay, R. van der Merwe |
-| 2.2 | 15/10/2026 | R. van der Merwe | M3.8 Performance and reliability written: the NFR-2.4 load run on staging (100 concurrent authenticated users for 600 s, PASS: 0 failed requests, 0 server errors), its workload with what NFR-2.4 fixes and what the team chose, the environment, results, interpretation and limits; the staging deployment evidence, failures found during the deploy, environment differences and rollback. Evidence: `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`, `docs/evidence/M3-perf/`. No other section changed |
+| 2.2 | 15/10/2026 | R. van der Merwe | M3.8 Performance and reliability written: the NFR-2.4 load run on staging (100 concurrent authenticated users for 600 s, PASS: 0 failed requests, 0 server errors), its workload with what NFR-2.4 fixes and what the team chose, the environment, results, interpretation and limits; the staging deployment evidence, failures found during the deploy, environment differences and rollback. Evidence: `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`, `docs/evidence/M3-perf/`. No other section changed | E. Lindsay, C. Burger |
 | 3.0 | 16/10/2026 | E. Lindsay | Milestone 3 version. M3 submission information block added after the title (brief §5.3). M3 part completed: M3.1 overview with the two tags and the rule that only `docs/` and `perf/` change between them; M3.2 M2 baseline conformance table; M3.3 controlled changes (DEC-018, DEC-019, DEC-003 v0.2 to v0.4 and OI-21, CR-001 status, the registers, RTM v0.10, `/health` release, DEF-020, the step-5 access-list exception), with the baselined Hostinger lines recorded as superseded rather than edited; M3.8 as written by R. van der Merwe at v2.2 (PR #114), unchanged; M3.4 updated with C. Burger's M3 lines (staging branch removed; environments as built under DEC-003 v0.4; TD-004 repaid on test and staging), corrected against the record; M3.5 updated (PR #95 merged; CI at the release candidate; the weekly all-branch scan's first run; the lock files' permanent warnings; CodeQL alerts; TD-007, TD-008); M3.6, M3.7, M3.9 and M3.10 written, with C. Burger's Risk Register lines (Risk Register V0.8); AI Usage Register v0.14 cited. Release Evidence Summary v0.1 added. PED v2.2 archived | R. van der Merwe, C. Burger |
 
 Baselined content is not silently overwritten. Changes after this baseline follow the
@@ -2037,7 +2037,7 @@ Significant changes since v2.0, each with its reason, impact and record.
 | DEC-019 Client build and E2E tooling (new) | The critical journey needed a browser client | React client in `client/`; Playwright in `e2e/` | DEC-019 v0.1; PR #89 |
 | DEC-003 v0.2 | Sessions (DEC-018) | Grant list and proxy settings | PR #82 |
 | DEC-003 v0.3 | Client build and index provisioning added to the deploy procedure; test environment names (OI-19) | Steps 3 and 5 | PR #92 |
-| DEC-003 v0.4 | **OI-21: the VPS never existed.** Staging moved to an Azure VM (Spain Central, staging only); staging cluster in Azure `westeurope`, not colocated with the VM; production undecided; region rule for performance results | §6C's and §10.4's Hostinger lines are superseded by this version, not edited | PR #99; Open Items v0.7 (OI-21 closed) |
+| DEC-003 v0.4 | **OI-21: the VPS never existed.** Staging moved to an Azure VM (Spain Central, staging only); staging cluster in Azure `westeurope`, not colocated with the VM; production undecided; region rule for performance results | §6C's and §10.4's Hostinger lines are superseded by this version, not edited | PR #99. DEC-003 v0.4 addresses OI-21, which stays **Open** in Open Items v0.7: its closure condition asks for the staging cluster to be colocated with the VM, and it is not |
 | Data and Persistence Baseline v0.3 | DEC-018 sessions collection; corrections | — | PR #82 |
 | CR-001 (AC-NFR-1.10 v0.3) | Still **Proposed**. The integration test was written to it | The Acceptance Criteria register still holds v0.2 | `docs/change/CR-001_AC-NFR-1.10_v0.1.md` |
 | Defect Register and Technical Debt Register (new) | M3 brief §12 | DEF-001 to DEF-020; TD-001 to TD-008 | Registers v0.5 and v0.3 (PR #113) |
@@ -2046,6 +2046,19 @@ Significant changes since v2.0, each with its reason, impact and record.
 | Staging configuration correction | `MONGODB_URI` named no database (DEF-020) | Fixed on the VM before the load run | PR #111 |
 | Staging Nginx corrected (15/10/2026, 20:35:57 UTC) | The built client was not served: every path was proxied to Node | Nginx now serves `client/dist` and proxies only `/api/`; VM configuration only, the release candidate unchanged | Deploy record, dated note |
 | Access-list exception for step 5 | Index provisioning was run from a developer workstation | The workstation's IP was on the staging access list alongside the VM's; removed 15/10/2026 18:37 UTC. Not in DEC-003 | PR #111; next DEC-003 version |
+
+**RTM history at M3.** RTM v0.9 was committed on 12/10/2026 (`9c990bb`) and v0.10 on
+15/10/2026 (`a67b7bd`, `4a44632`). The four M3 chain columns (test cases, expected result,
+execution evidence, defect / M3 status) were added only in v0.10 because they cite execution
+evidence, most of which existed only once the release candidate had been tagged and run; the
+expected results themselves were derived before execution (M3.6, Method).
+
+**Earlier text left in two workbooks.** The 18 RTM cells in column I (Design / interface
+decision) that end "[further design entries pending - criterion E]" carry an M2 marker, not
+unfinished M3 work (each in-scope row's M3 chain is in columns O to R), and cell C9 of the
+Risk Register's "Defence Prep" sheet, the M1 defence note for RSK-001, ends with a drafting
+reminder ("[Cite the issue or PR reference as evidence.]") carried unchanged since V0.1,
+outside the register rows.
 
 **Hostinger and VPS in the baselined text.** §1.7.2 (DEC-003 row), §6C (host row and
 compatibility note), §10.2 (DEC-003 row), §12.1, Appendix B (C-04) and the version-history
@@ -2109,7 +2122,7 @@ reviewer understood of the change (Bacchelli and Bird, 2013), so the pull reques
 | PR #85, DB-01 layer 3 role (R. van der Merwe) | Two reviewers requested changes independently. Round 1: one blocker (the `auditLog` restriction was claimed but untested), four corrections and an out-of-date README section. Round 2: one sentence overclaimed what the evidence proved, fixed by adding a database-wide-grant check (check 8) instead of softening the wording. Both reviewers re-checked the latest push before approving. DEF-005 was raised by a reviewer during the review | PR #85; `docs/evidence/M3-B/B-03a` to `B-03d` |
 | PR #88, integration tests (R. van der Merwe) | Merged on four conditions set in review, and squash-merged so it lands on `dev` as one commit. One approval (C. Burger) was given while four of those problems were still present; the second reviewer found them, which is the failure the two-approval rule exists to catch. **Its last four commits were pushed after both approvals and were not re-approved**, so GitHub records its review decision as "Review required", as B-04 shows. The approval-of-most-recent-push rule (M3.4.1) did not exist yet; it would now block that merge | PR #88; `docs/evidence/M3-B/B-04_pr_history_m3.png` |
 | PR #91, CI follow-ups (C. Burger) | The reviewer re-ran the changes locally instead of reading them: the layer-check pattern against 15 import variants, the split-formatting-run fix and the fallback for a corrupt zip. He also reported five non-blocking gaps, each confirmed and recorded in M3.5.4 | PR #91 |
-| PR #99, DEC-003 v0.4 (R. van der Merwe) | Three review rounds; a reviewer withdrew an early approval. The rounds forced the record to state the cluster as built, its non-colocation with the VM, and the CTRLWEB exclusion that OI-21's closure required | PR #99 |
+| PR #99, DEC-003 v0.4 (R. van der Merwe) | Three review rounds; a reviewer withdrew an early approval. The rounds forced the record to state the cluster as built, its non-colocation with the VM, and the CTRLWEB exclusion that OI-21's closure condition names (OI-21 stays Open, M3.4.3) | PR #99 |
 | PR #105 (R. van der Merwe) | Review found the OpenAPI file syntactically broken although every CI check was green (the contract tests use regular expressions, not a parser); fixed and confirmed with a YAML parse. Recorded as TD-007 | PR #105 |
 | PR #111, staging deploy record (R. van der Merwe) | Review found that step 5 ran from a workstation the access list was said not to admit; the record now states the exception and its removal | PR #111 |
 | PR #62 (M2) | Review by R. van der Merwe with four blocking findings | PR #62 |
@@ -2133,7 +2146,9 @@ string, password or key is held in the repository (NFR-3.5).
 | Secrets kept out of logs | Startup prints the database user and the release, not the host | SMOKE-01; NV-22; PR #105 |
 | Committed secrets detected | Every pull request's history is scanned, including the text inside Office documents | M3.5 |
 
-**Environments (DEC-003 v0.4, PR #99, closes OI-21).**
+**Environments (DEC-003 v0.4, PR #99, addresses OI-21).** OI-21 stays Open in Open Items v0.7:
+its closure condition asks for the staging cluster to be colocated with the VM, and it is not
+(below).
 
 - **Host.** The Hostinger VPS assumed up to v0.3 was never provisioned. Staging runs on a
   disposable Azure VM (Azure for Students, Spain Central, `Standard_B2ls_v2`), which hosts
@@ -2364,7 +2379,12 @@ titles that cite the wrong requirement (DEF-019).
 **API/integration (R. van der Merwe).** Written to DEC-015 and DEC-016 before the code, so
 five known differences were expected to fail and did; they are DEF-007 to DEF-011. The
 transaction-boundary case passed against a real cluster. Each case was seen to fail
-(`docs/evidence/M3_API_Negative_Verification.txt`).
+(`docs/evidence/M3_API_Negative_Verification.txt`). The recorded run
+(`docs/evidence/M3_API_Test_Run.txt`) was on 12/10/2026 with `src/` at `b08debb`, on Node
+26.0.0, not at the release candidate. Between `b08debb` and `v3.0-M3-rc` the transition path
+is unchanged: `statusTransitionService.js`, the repositories, the unit of work and
+`src/domain/` have no diff; the status and role values moved to `shared/domainValues.js` with
+the same values; and `requestRoutes.js` gains only the GET route.
 
 **E2E/system (C. Burger; run at the release candidate by E. Lindsay).** At `v3.0-M3-rc`, in a
 clean worktree built from the tag's lockfiles, against the test cluster: E2E-1 passed (signed
@@ -2556,6 +2576,13 @@ below and in `docs/quality/M3_Release_Evidence_Summary_v0.1.md`, which holds the
 - **Not built:** DEC-012 point 3 (CFL-002, OI-16); the record of a rejected operation
   (AC-FR-1.3, TD-005); request submission, lists, assignment, notifications and reporting.
 - **Transition model unconfirmed** (OI-15).
+- **Carried from M2, not addressed in M3:** C-05, velocity measurement (R. van der Merwe,
+  Appendix B; Open); OI-13 / CR-003, the PROC-001 exception to FR-6.7 (R. van der Merwe;
+  OI-13 Open in Open Items v0.7, CR-003 Proposed); OI-14, no recovery path for the
+  `reportingCounts` projection (R. van der Merwe; Open, its M3 target missed; the subscriber is not
+  registered, TD-001); CON-019, adversarial testing against a deployed server (C. Burger;
+  not run on staging; the nearest evidence is E2E-2, which calls the API directly, run
+  locally at the tag).
 - **Staging is not production-shaped:** a disposable VM, a self-signed certificate on the IP,
   the cluster in another country from the VM, and a hand deploy with no deploy script,
   systemd unit, Nginx configuration or migration runner in the repository.
@@ -2591,7 +2618,7 @@ commit of dev → main #2.
 | ADRs | DEC-003 v0.4; DEC-002, DEC-010, DEC-015 to DEC-019 v0.1 | `docs/decisions/ADR` |
 | Data and Persistence Baseline | v0.3 | `docs/architecture/data` |
 | Risk Register | V0.8 | `docs/risk/Risk Register` |
-| AI Usage Register | v0.14 | `docs/AI-Usage/AI Usage Register` |
+| AI Usage Register | v0.14 (rows to 15/10/2026 for E. Lindsay; to 16/10/2026 for C. Burger and R. van der Merwe) | `docs/AI-Usage/AI Usage Register` |
 | API contract | `docs/api/openapi.yaml` (with `release` on health) | `docs/api` |
 | Staging deploy record | — | `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md` |
 
