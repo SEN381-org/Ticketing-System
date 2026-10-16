@@ -2603,7 +2603,7 @@ Farley (2010) and Shahin, Ali Babar and Zhu (2017) are in §13.
 
 Amland, S. (2000) 'Risk-based testing: risk analysis fundamentals and metrics for software
 testing including a financial application case study', *Journal of Systems and Software*,
-53(3), pp. 287–295. doi:10.1016/S0164-1212(00)00019-4.
+53(3), pp. 287–295.
 
 Bacchelli, A. and Bird, C. (2013) 'Expectations, outcomes, and challenges of modern code
 review', in *Proceedings of the 35th International Conference on Software Engineering
