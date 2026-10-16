@@ -1,0 +1,38 @@
+Negative verification NV-97 - the FR-6.6 reason clause applied to Closed only, not Rejected
+M3 test evidence records (docs/quality/M3_Test_Evidence_Records_v0.1.md), record BB-2; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-15T11:57:19.918Z (UTC)
+Node   : v24.16.0  (.nvmrc pins 22; nvm is not installed on this machine)
+Branch : task/M3-test-evidence-records
+Commit : 28674dd. The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Command: node --test --test-reporter=tap   (the full unit suite; integration tests skip without MONGODB_URI)
+
+CLAIM
+  Probes the gap recorded in BB-2: no unit test asserts that a reject WITHOUT a reason is refused. With Rejected exempted, the expectation is that nothing fails.
+
+1. The protected behaviour was broken in src/domain/requestStatus.js (never in a test).
+     --- src/domain/requestStatus.js (original)
+     +++ src/domain/requestStatus.js (sabotaged)
+     -  if (REASON_REQUIRED.includes(to) && !context.hasReason) {
+     +  if (to === STATUS.CLOSED && !context.hasReason) {  // SABOTAGE: Rejected exempt
+
+2. Expected result (written to this file before the run, derived from the claim and the test source, not from output):
+     NOT CAUGHT. "Closed and Rejected require a recorded reason — FR-6.6" PASSES, and no test in the unit suite fails: the only Rejected cases (requestStatus.test.js, app.test.js) all supply a reason. The integration tests are skipped without MONGODB_URI.
+3. Result with the sabotage applied:
+
+     (no failing test)
+     # tests 194
+     # pass 186
+     # fail 0
+     # skipped 8
+     exit code 0
+
+   Outcome: NOT CAUGHT, as expected. "Closed and Rejected require a recorded reason — FR-6.6" passed and no test failed.
+
+4. src/domain/requestStatus.js was restored by writing back its original content. SHA-256:
+     before 40d7ec007d581d05cba7c1b6783af96fc971ab329d056128751faf8c2f0f1f36
+     after  40d7ec007d581d05cba7c1b6783af96fc971ab329d056128751faf8c2f0f1f36  (same as before the run)
+   The full suite was re-run: 194 tests, 186 pass, 0 fail, 8 skipped (exit code 0).
+
+INTERPRETATION
+  The suite does not detect this break. BB-2 records it as a gap: a reject without a reason is not asserted. Tests are frozen at v3.0-M3-rc, so the test is not strengthened here.

@@ -1,0 +1,38 @@
+Negative verification NV-93 - the bulkWrite append-only middleware removed
+M3 test evidence records (docs/quality/M3_Test_Evidence_Records_v0.1.md), record UT-3; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-15T11:56:55.182Z (UTC)
+Node   : v24.16.0  (.nvmrc pins 22; nvm is not installed on this machine)
+Branch : task/M3-test-evidence-records
+Commit : 28674dd. The sabotage was applied to the working tree by a script, then restored by writing back the original content. Git was not used to restore anything.
+Command: node --test --test-reporter=tap   (the full unit suite; integration tests skip without MONGODB_URI)
+
+CLAIM
+  FR-6.7 / DB-01 layer 2: a mutating bulkWrite on requestHistory is refused with AppendOnlyViolation. Without the model-level middleware, the bulkWrite case of UT-3 fails and the other five operations are still refused.
+
+1. The protected behaviour was broken in src/models/RequestHistory.js (never in a test).
+     --- src/models/RequestHistory.js (original)
+     +++ src/models/RequestHistory.js (sabotaged)
+     -  next(mutating ? new Error('AppendOnlyViolation: mutating bulkWrite is not permitted on requestHistory') : undefined);
+     +  next();  // SABOTAGE: bulkWrite guard removed
+
+2. Expected result (written to this file before the run, derived from the claim and the test source, not from output):
+     "requestHistory refuses bulkWrite (update) — FR-6.7, DB-01 layer 2" FAILS (the rejection, if any, is not AppendOnlyViolation). The other five "requestHistory refuses …" tests PASS.
+3. Result with the sabotage applied:
+
+     not ok - requestHistory refuses bulkWrite (update) — FR-6.7, DB-01 layer 2
+     # tests 194
+     # pass 185
+     # fail 1
+     # skipped 8
+     exit code 1
+
+   Outcome: CAUGHT. Every expected test failed.
+
+4. src/models/RequestHistory.js was restored by writing back its original content. SHA-256:
+     before 561dd402b9a2702a93d181a94fe25a1f0de41d9617e9e1d19d5f2c61082f25a1
+     after  561dd402b9a2702a93d181a94fe25a1f0de41d9617e9e1d19d5f2c61082f25a1  (same as before the run)
+   The full suite was re-run: 194 tests, 186 pass, 0 fail, 8 skipped (exit code 0).
+
+INTERPRETATION
+  The assertion detects the condition it tests: with the behaviour broken it fails, and with the behaviour restored it passes.
