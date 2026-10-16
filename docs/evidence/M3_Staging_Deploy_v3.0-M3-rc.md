@@ -640,3 +640,71 @@ These were not captured during the deploy, and are stated here rather than recon
 
 The checkout's commit (step 1) and the client build's output (step 3) were not captured during
 the deploy either; both were checked on the VM afterwards and are recorded in those steps.
+
+---
+
+## Note added 15/10/2026 (UTC, E. Lindsay): client not served; Nginx corrected
+
+This note is appended; no line above it is changed.
+
+**Finding.** After the deploy, `https://158.158.115.[redacted]/` returned the API's 404 problem
+response, not the client. The Nginx site file proxied every path (`location /`) to Node on
+127.0.0.1:3000, so `client/dist`, built in step 3, was never served. DEC-003 v0.4 step 3,
+DEC-019 and DEC-015 §5 have Nginx serve `client/dist` as static files and proxy only `/api`;
+Express has no static route by design. This was a VM configuration gap, not a code defect:
+the release candidate `v3.0-M3-rc` is unchanged. The health check, the load run and the smoke
+test all call `/api/...`, so none of their results is affected. It is recorded here and in
+PED v3.0 M3.10 as a deployment finding, not as a Defect Register row.
+
+**State before the change** (captured on the VM at 2026-10-15T20:29:11Z):
+- `/etc/nginx/sites-enabled/civicconnect-staging`: a port-80 server returning 301 to HTTPS, and
+  a 443 server with the existing certificate lines and one `location /` proxying to
+  127.0.0.1:3000 with Host, X-Real-IP, X-Forwarded-For and X-Forwarded-Proto.
+- `client/dist` present: `index.html` and `assets/`, written at 14:05 UTC. Every directory on
+  the path is world-executable and `index.html` is world-readable, so the Nginx worker can
+  read it; no permission change was needed.
+- `PORT=3000` in the staging environment file.
+
+**Expected results, written before the change** (2026-10-15T20:31:06Z):
+1. `nginx -t` succeeds.
+2. `https://<IP>/`: 200, `text/html`.
+3. `https://<IP>/requests/x`: 200, `text/html` (fallback to `index.html`).
+4. `https://<IP>/api/v1/health`: 200, JSON, `release` = `30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc`, database up.
+5. `http://<IP>/`: 301 to HTTPS.
+6. `https://<IP>/api/v1/nonexistent`: 404 problem JSON, still answered by the API.
+
+**Change** (E. Lindsay, on the VM): the previous file was copied to
+`/etc/nginx/civicconnect-staging.bak-20261015`, outside `sites-enabled`, so it is not loaded.
+In the 443 server block:
+- `root /opt/civicconnect/client/dist;` and `index index.html;` added.
+- `location /api/` now proxies to `http://127.0.0.1:3000`, with the same four headers as before.
+- `location /` now serves files with `try_files $uri $uri/ /index.html;`.
+- `ssl_protocols TLSv1.2 TLSv1.3;` added, pinning NFR-3.2's TLS 1.2+ in this file.
+
+The certificate lines and the port-80 server are unchanged.
+
+```
+$ sudo nginx -t && sudo systemctl reload nginx && date -u +%FT%TZ
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+2026-10-15T20:35:57Z
+```
+
+**Checks after the change** (one run, 2026-10-15T20:36:24Z, on the VM, certificate verified with
+`--cacert /etc/ssl/certs/staging.crt`):
+
+```
+/              200 text/html
+/requests/x    200 text/html
+{"application":"up","database":"up","release":"30ff0c6df9f73cd8b14be9cf3e0dc659e1cacbcc"}
+/api/v1/health 200 application/json; charset=utf-8
+http://        301 -> https://158.158.115.[redacted]/
+/api/v1/nope   404 application/problem+json; charset=utf-8
+```
+
+Result: all six as expected. The output is as printed, except that the IP's last octet is redacted.
+
+**What this does not show.** The browser journey on staging was not run after the change. The
+client is now served, but there is still no submission route to create a request there.
+The Nginx configuration is still not in the repository, so this correction is recorded here
+and nowhere else (residual; next DEC-003 version).
