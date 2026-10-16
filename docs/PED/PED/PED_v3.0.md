@@ -88,7 +88,7 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 2.0 | 30/09/2026 | E. Lindsay | Milestone 2 baseline. Architecture, Technology & Initial Design Baseline identified in §12: what is baselined and what is deliberately not. M1 conditions reviewed and their final M2 status recorded in Appendix B (C-01, C-02 and C-05 open; C-03 partially closed; C-04 closed), with the M2 baseline sign-off block. Citations aligned to the versions held in the repository: AI Usage Register v0.9, Scope Baseline v0.3, Non-Functional Requirements v0.3, Acceptance Criteria v0.3, Data and Persistence Baseline v0.2, Team Working Agreement v0.2. The Data and Persistence Baseline (R. van der Merwe) and the Team Working Agreement (team) moved from draft to approved status by a header-only change, so that no baselined artefact describes itself as a draft; their content is unchanged. Appendix A extended with the files it did not list (Requirements Control, the RTM v0.5 change notes, the DEC-011 and DEC-012 diagram sources, the R-01 negative-verification evidence, the PED references and the three briefs). Version row 1.12 recorded as not undertaken at M2. PED v1.11 archived | R. van der Merwe, C. Burger |
 | 2.1 | 13/10/2026 | C. Burger | M3 part added after §12, structured on the M3 brief §6 as an evidence index (M3.1–M3.10), with an owner for each section. M3.4 Construction and configuration written: rulesets (Branch Safety, dev rule), the approval-of-most-recent-push rule enabled on 13/10/2026, review evidence (PR #85, #88, #62, #90), configuration and secrets controls (PR #84, #85), construction notes (PR #83) and TD-004 as a known gap. M3.5 CI and automated verification written: the five required checks (PR #86), the scope and layer-check changes in PR #91 and the weekly all-branch secret scan, blocking evidence (PR #86, GATE-01 on PR #90, PR #92) and what CI does not cover. M3 references listed in the part, to move into §13 at v3.0. B evidence pack added in `docs/evidence/M3-B/`. Header and contents updated. §1 to §13 and Appendices A and B are unchanged from v2.0. PED v2.0 archived | E. Lindsay, R. van der Merwe |
 | 2.2 | 15/10/2026 | R. van der Merwe | M3.8 Performance and reliability written: the NFR-2.4 load run on staging (100 concurrent authenticated users for 600 s, PASS: 0 failed requests, 0 server errors), its workload with what NFR-2.4 fixes and what the team chose, the environment, results, interpretation and limits; the staging deployment evidence, failures found during the deploy, environment differences and rollback. Evidence: `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`, `docs/evidence/M3-perf/`. No other section changed |
-| 3.0 | 16/10/2026 | E. Lindsay | Milestone 3 version. M3 submission information block added after the title (brief §5.3). M3 part completed: M3.1 overview with the two tags and the rule that only `docs/` and `perf/` change between them; M3.2 M2 baseline conformance table; M3.3 controlled changes (DEC-018, DEC-019, DEC-003 v0.2 to v0.4 and OI-21, CR-001 status, the registers, RTM v0.10, `/health` release, DEF-020, the step-5 access-list exception), with the baselined Hostinger lines recorded as superseded rather than edited; M3.8 as written by R. van der Merwe at v2.2 (PR #114), unchanged; M3.4 updated with C. Burger's M3 lines (staging branch removed; environments as built under DEC-003 v0.4; TD-004 repaid on test and staging), corrected against the record; M3.5 updated (PR #95 merged; CI at the release candidate; the weekly all-branch scan's first run; the lock files' permanent warnings; CodeQL alerts; TD-007, TD-008); M3.6, M3.7, M3.9 and M3.10 written; a slot for C. Burger's Risk Register lines. Release Evidence Summary v0.1 added. PED v2.2 archived | [SLOT] |
+| 3.0 | 16/10/2026 | E. Lindsay | Milestone 3 version. M3 submission information block added after the title (brief §5.3). M3 part completed: M3.1 overview with the two tags and the rule that only `docs/` and `perf/` change between them; M3.2 M2 baseline conformance table; M3.3 controlled changes (DEC-018, DEC-019, DEC-003 v0.2 to v0.4 and OI-21, CR-001 status, the registers, RTM v0.10, `/health` release, DEF-020, the step-5 access-list exception), with the baselined Hostinger lines recorded as superseded rather than edited; M3.8 as written by R. van der Merwe at v2.2 (PR #114), unchanged; M3.4 updated with C. Burger's M3 lines (staging branch removed; environments as built under DEC-003 v0.4; TD-004 repaid on test and staging), corrected against the record; M3.5 updated (PR #95 merged; CI at the release candidate; the weekly all-branch scan's first run; the lock files' permanent warnings; CodeQL alerts; TD-007, TD-008); M3.6, M3.7, M3.9 and M3.10 written, with C. Burger's Risk Register lines (Risk Register V0.8); AI Usage Register v0.14 cited. Release Evidence Summary v0.1 added. PED v2.2 archived | R. van der Merwe, C. Burger |
 
 Baselined content is not silently overwritten. Changes after this baseline follow the
 change control process in Master Brief §14.
@@ -2316,9 +2316,22 @@ for the black-box cases: the rules' inputs are enumerations (seven statuses, six
 security flag) and free text with no stated length. The one real boundary, the 30-minute idle
 limit, is tested at 29:59 and 30:00 (NV-04, NV-05).
 
-**Risk Register.** [SLOT: C. Burger — the Risk Register lines for M3: RSK-019 as observed in
-the NFR-2.4 run, RSK-021 with CodeQL alert #1, and any risk raised or re-scored at M3, with
-the register version.]
+**Risk Register (V0.8, C. Burger, PR #118).** RSK-021 was raised at M3 (V0.7, DEC-018).
+V0.8 reviews two risks against the M3 evidence; both stay open and neither score changes.
+
+- **RSK-019, Atlas free-cluster ceiling (2 × 2 = 4): open, reviewed at M3.** Observed in the
+  NFR-2.4 load run on staging (15/10/2026, `v3.0-M3-rc`, `civicconnectstaging`, M0): 6,735
+  requests in the window (11.04 requests/s), 0 failed. The early-warning indicator was not
+  read: the Atlas metrics for the run were not captured, so database load (about 40 to 50
+  ops/s) is an estimate against the 70 ops/s trigger, not a measurement. DEC-003 v0.4 leaves
+  production undecided, so the risk applies to staging now and to production once its
+  cluster is chosen. Next action: capture Atlas operation and storage metrics during the next
+  load run.
+- **RSK-021, no login throttling (2 × 3 = 6, High): open, accepted at M3 (DEC-018).**
+  Corroborated by CodeQL alert #1 (M3.5.4), open on `dev` since PR #83 and in the release
+  candidate. Nothing yet monitors `auth.login.failure` events, so the indicator has not been
+  read. Next action: decide a throttle or lockout through a DEC-018 revision, then close the
+  alert with a reference to that decision.
 
 ## M3.7 Black-box, integration and system validation
 
@@ -2571,8 +2584,8 @@ merge used a bypass. dev → main was a merge commit, and the tags are annotated
 | Decision Log | v0.8 | `docs/decisions/Decision Log` |
 | ADRs | DEC-003 v0.4; DEC-002, DEC-010, DEC-015 to DEC-019 v0.1 | `docs/decisions/ADR` |
 | Data and Persistence Baseline | v0.3 | `docs/architecture/data` |
-| Risk Register | [SLOT: version after C. Burger's update] | `docs/risk/Risk Register` |
-| AI Usage Register | [SLOT: version after the M3 rows] | `docs/AI-Usage/AI Usage Register` |
+| Risk Register | V0.8 | `docs/risk/Risk Register` |
+| AI Usage Register | v0.14 | `docs/AI-Usage/AI Usage Register` |
 | API contract | `docs/api/openapi.yaml` (with `release` on health) | `docs/api` |
 | Staging deploy record | — | `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md` |
 
