@@ -2050,9 +2050,9 @@ Significant changes since v2.0, each with its reason, impact and record.
 **Hostinger and VPS in the baselined text.** §1.7.2 (DEC-003 row), §6C (host row and
 compatibility note), §10.2 (DEC-003 row), §12.1, Appendix B (C-04) and the version-history
 row 1.4 name Hostinger or a VPS. They are the M2
-baseline and are left as written; DEC-003 v0.4 supersedes them, and the Decision Log's DEC-003
-row and DEC-002 v0.1's "the VPS the team already has" are corrected in their next versions
-(OI-21).
+baseline and are left as written; DEC-003 v0.4 supersedes them. The Decision Log's DEC-003
+row is corrected in Decision Log v0.9 (PR #114), which keeps the old wording in the row;
+DEC-002 v0.1's "the VPS the team already has" is corrected in its next version (OI-21).
 
 **For the next DEC-003 version** (not done at M3): the hand deploy against "run by the deploy
 script"; the health row (`release`); whether the public commit hash on `/health` is accepted
@@ -2581,7 +2581,7 @@ merge used a bypass. dev → main was a merge commit, and the tags are annotated
 | Test Evidence Records | v0.1 | `docs/quality/M3_Test_Evidence_Records_v0.1.md` |
 | Release Evidence Summary | v0.1 | `docs/quality/M3_Release_Evidence_Summary_v0.1.md` |
 | Open Items | v0.7 | `docs/Requirements/Open Items` |
-| Decision Log | v0.8 | `docs/decisions/Decision Log` |
+| Decision Log | v0.9 | `docs/decisions/Decision Log` |
 | ADRs | DEC-003 v0.4; DEC-002, DEC-010, DEC-015 to DEC-019 v0.1 | `docs/decisions/ADR` |
 | Data and Persistence Baseline | v0.3 | `docs/architecture/data` |
 | Risk Register | V0.8 | `docs/risk/Risk Register` |
