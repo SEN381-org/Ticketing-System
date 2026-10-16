@@ -2618,7 +2618,7 @@ commit of dev → main #2.
 | ADRs | DEC-003 v0.4; DEC-002, DEC-010, DEC-015 to DEC-019 v0.1 | `docs/decisions/ADR` |
 | Data and Persistence Baseline | v0.3 | `docs/architecture/data` |
 | Risk Register | V0.8 | `docs/risk/Risk Register` |
-| AI Usage Register | v0.14 | `docs/AI-Usage/AI Usage Register` |
+| AI Usage Register | v0.14 (rows to 15/10/2026 for E. Lindsay; to 16/10/2026 for C. Burger and R. van der Merwe) | `docs/AI-Usage/AI Usage Register` |
 | API contract | `docs/api/openapi.yaml` (with `release` on health) | `docs/api` |
 | Staging deploy record | — | `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md` |
 
