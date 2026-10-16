@@ -2250,7 +2250,7 @@ Ali Babar and Zhu, 2017).
 | PR #86 | The secret-scan job failed on the pull request that added the new gates (exit code 126) | Fixed on the branch; merged only after all checks passed | Run 38226655226 |
 | GATE-01, PR #90 | Deliberate layer breach in `src/routes/healthRoutes.js`. Build and test failed at the layer step while the tests passed. Merging was blocked | PR closed unmerged, branch deleted | `docs/evidence/M3-CI/GATE-01_layer_boundary_demonstration.txt`; run 38357191208 |
 | Unplanned, same run | Secret scan failed on findings from another member's unmerged branch | PR #91 limits the required scan to the PR's history and adds the weekly all-branch scan | PR #91, run 38363171917 |
-| GATE-02, PR #95 | The old gate code passed silently where it should fail | Fixed in PR #95 | Run 38437891644; `docs/evidence/M3-CI/GATE-02_fail_closed_demonstration.txt` |
+| GATE-02, PR #97 (cut from PR #95's branch) | The old gate code passed silently where it should fail | PR #97 closed unmerged; the fixes merged in PR #95 | Run 38437891644; `docs/evidence/M3-CI/GATE-02_fail_closed_demonstration.txt` |
 
 GATE-02 shows the old code passing silently where the new code fails:
 
@@ -2568,7 +2568,9 @@ below and in `docs/quality/M3_Release_Evidence_Summary_v0.1.md`, which holds the
 - **CI gaps:** TD-007, TD-008, the layer check's text match, and OI-20.
 
 **Gate summary.** All five required checks pass at the release candidate (M3.5.1). No
-merge used a bypass. dev → main was a merge commit, and the tags are annotated on `main`.
+merge used a bypass. dev → main #1 (PR #106) was a merge commit, and `v3.0-M3-rc` is an
+annotated tag on `main` (15/10/2026). `v3.0-M3-baseline` is created the same way, on the merge
+commit of dev → main #2.
 
 **Controlled artefacts at this milestone.**
 
