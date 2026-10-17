@@ -1,0 +1,41 @@
+# CivicConnect staging: systemd unit (DEC-003 v0.5, Process model and Secrets rows)
+#
+# Installed on the staging VM as /etc/systemd/system/civicconnect-staging.service.
+#
+# Source: the staging deploy record, docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md
+# (sections 1, 5 and 7). The record states that the unit file's contents were not
+# captured, so lines marked NOT RECORDED are not taken from it: compare this file
+# with the VM before relying on it (deploy/README.md).
+#
+# No secret is held here. MONGODB_URI, PORT and RELEASE_COMMIT are in the
+# environment file, which is never committed (NFR-3.5).
+
+[Unit]
+# Recorded (section 5): "civicconnect-staging.service - CivicConnect Staging".
+Description=CivicConnect Staging
+# NOT RECORDED. Start after the network is up: the application connects to Atlas.
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+# Recorded (section 1): the service user owns /opt/civicconnect.
+User=ticketuser
+Group=ticketuser
+WorkingDirectory=/opt/civicconnect
+# Recorded (section 7): mode 600, owned by root. systemd reads it as root before
+# starting the process, so the service user never needs to read it itself.
+EnvironmentFile=/etc/civicconnect/staging.env
+# Recorded from the live VM (diff of 17/10/2026 22:57 UTC); staging.env does not set NODE_ENV.
+Environment=NODE_ENV=staging
+# Recorded (section 5): the process tree is npm start -> node src/server.js.
+# NOT RECORDED: the path to npm. /usr/bin/npm is where a system-wide Node 22
+# install puts it; check with "command -v npm" on the VM.
+ExecStart=/usr/bin/npm start
+# DEC-003 Process model: restart on failure. NOT RECORDED on the VM.
+Restart=on-failure
+RestartSec=5
+
+[Install]
+# Recorded (section 5): the unit is enabled, so it starts on boot.
+WantedBy=multi-user.target
