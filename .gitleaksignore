@@ -14,3 +14,12 @@ de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-60_Import_of
 de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-60_Import_of_another_shared_file.txt:generic-api-key:33
 de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-61_Path_through_shared_back_into_src.txt:generic-api-key:33
 de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-61_Path_through_shared_back_into_src.txt:generic-api-key:34
+#
+# 2026-10-17, PR #123. generic-api-key on two lines of the form
+#   "openapi.yaml SHA-256 before|after: <64 hex digits>"
+# in the TD-007 negative-verification record. They are SHA-256 hashes of docs/api/openapi.yaml,
+# recorded to prove it was restored byte for byte after each break; the "api" in the file name
+# next to a high-entropy value matches the generic API-key pattern. They are not credentials.
+# Reviewed by E. Lindsay.
+38b055aec0d1b7f30f15dbd83b3f6339187124a1:docs/evidence/M4-CI/TD-007_openapi_parse_negative_verification.txt:generic-api-key:9
+38b055aec0d1b7f30f15dbd83b3f6339187124a1:docs/evidence/M4-CI/TD-007_openapi_parse_negative_verification.txt:generic-api-key:50

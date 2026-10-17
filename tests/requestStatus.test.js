@@ -145,7 +145,7 @@ test('a Requester may not move a request at all — FR-6.4', () => {
   }
 });
 
-test('an Administrator holds no lifecycle authority — FR-6.7 names them explicitly', () => {
+test('an Administrator holds no lifecycle authority — proposed transition model, OI-15', () => {
   assert.ok(!TRANSITION_ROLES.includes(ROLE.ADMINISTRATOR));
   for (const [from, moves] of Object.entries(TRANSITIONS)) {
     for (const move of moves) {

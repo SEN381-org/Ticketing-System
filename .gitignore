@@ -8,3 +8,8 @@ node_modules/
 client/dist/
 e2e/test-results/
 e2e/playwright-report/
+
+# Load-test fixtures hold synthetic users' passwords (perf/, NFR-2.4); kept out of git wherever they are written
+perf-fixtures*.json
+# Local copy of the staging certificate used to trust staging over TLS (DEC-003 v0.4)
+staging.crt
