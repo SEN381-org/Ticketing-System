@@ -10,7 +10,6 @@
 // the server's refusal is shown.
 
 import { useCallback, useEffect, useState } from 'react';
-import { ROLE } from '../../shared/domainValues.js';
 import {
   ApiError, addAction, addComment, addDetail, assign, getHistory, getRequest, itemsOf, listUsers, signIn, transition,
 } from './api.js';
@@ -105,21 +104,25 @@ export default function RequestDetail({ id }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // The people a request can be given to: Technicians and Security Officers (FR-5.1).
+  // The people a request can be given to (FR-5.1): only the roles the server lists for this
+  // request in permittedAssignment.assigneeRoles (decision #10: Security Officers for a
+  // security request, Technicians otherwise), so the picker never offers someone it refuses.
   const canAssign = Boolean(request?.permittedAssignment?.assign);
+  const assigneeRoles = request?.permittedAssignment?.assigneeRoles;
+  const poolRoles = Array.isArray(assigneeRoles) ? assigneeRoles.join(',') : '';
   const canAccept = Boolean(request?.permittedAssignment?.accept);
   const shown = request !== null;
   const categoryId = request?.categoryId;
   useEffect(() => {
-    if (!shown || !canAssign) return;
-    Promise.all([ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER].map((role) => listUsers({ role, categoryId })))
+    if (!shown || !canAssign || !poolRoles) { setPool([]); return; }
+    Promise.all(poolRoles.split(',').map((role) => listUsers({ role, categoryId })))
       .then((rs) => {
         const merged = new Map();
         for (const r of rs) for (const u of itemsOf(r.data)) merged.set(u.id, u);
         setPool([...merged.values()]);
       })
       .catch(() => setPool([]));
-  }, [shown, canAssign, categoryId]);
+  }, [shown, canAssign, categoryId, poolRoles]);
 
   const onSignIn = async (email, password) => {
     setError(null);
