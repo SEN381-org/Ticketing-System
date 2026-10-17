@@ -107,7 +107,7 @@ test('E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3
       const body = await get.json();
       expect(body.description).toBe(description);
       expect(body.status).toBe(STATUS.RECEIVED);
-      expect(body.permittedAssignment).toEqual({ assign: false, accept: true });
+      expect(body.permittedAssignment).toEqual({ assign: false, accept: true, assigneeRoles: [] });
       await expect(so.page.getByTestId('reference')).toHaveText(reference);
       await expect(so.page.getByText(description)).toBeVisible();
       await expect(so.page.getByRole('button', { name: ACCEPT })).toBeVisible();
@@ -165,7 +165,7 @@ test('E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3
       expect(body.status).toBe(STATUS.RECEIVED);                                  // the mapped one
       expect(MAPPED).toContain(body.status);
       expect(body.permittedTransitions).toEqual([]);
-      expect(body.permittedAssignment).toEqual({ assign: false, accept: false });
+      expect(body.permittedAssignment).toEqual({ assign: false, accept: false, assigneeRoles: [] });
 
       await expect(req.page.getByTestId('status')).toHaveText(STATUS.RECEIVED);
       await expect(req.page.getByText(description)).toHaveCount(0);

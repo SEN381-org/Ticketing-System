@@ -19,6 +19,8 @@ import {
   Empty, Loading, NoAccess, PageHead, Problem, StatusBadge, asError, formatWhen, useActionKey, useCategories, useLoad, usePages,
 } from '../ui.jsx';
 
+const COLUMNS = ['Ref', 'Category', 'Location', 'Status', `${STATUS.ASSIGNED} to`, 'Submitted', 'Action'];
+
 const SORTS = [
   { value: '-submittedAt', label: 'Newest first' },
   { value: 'submittedAt', label: 'Oldest first' },
@@ -191,23 +193,24 @@ export default function StaffList() {
         </Empty>
       ) : (
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Requests">
-          <table className="table">
-            <thead>
-              <tr>
-                <th scope="col">Ref</th><th scope="col">Category</th><th scope="col">Location</th>
-                <th scope="col">Status</th><th scope="col">{`${STATUS.ASSIGNED} to`}</th><th scope="col">Submitted</th><th scope="col">Action</th>
+          {/* Explicit roles: on phones the rows are laid out as cards (NFR-1.2), and a
+              table whose display is changed by CSS can lose its table semantics. */}
+          <table className="table table--cards" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                {COLUMNS.map((c) => <th key={c} scope="col" role="columnheader">{c}</th>)}
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {pages.items.map((i) => (
-                <tr key={i.id}>
-                  <td><Link className="mono" to={`/requests/${encodeURIComponent(i.id)}`}>{i.reference}</Link></td>
-                  <td className="table__title">{categories.nameOf(i.categoryId) ? <span className="cap">{categories.nameOf(i.categoryId)}</span> : null}</td>
-                  <td>{i.location}</td>
-                  <td><StatusBadge status={i.status} /></td>
-                  <td className={i.assigneeId ? undefined : 'muted'}>{assigneeText(i)}</td>
-                  <td className="mono muted">{formatWhen(i.submittedAt)}</td>
-                  <td><RowAction item={i} onDone={refreshAll} /></td>
+                <tr key={i.id} role="row">
+                  <td role="cell" data-label={COLUMNS[0]}><Link className="mono" to={`/requests/${encodeURIComponent(i.id)}`}>{i.reference}</Link></td>
+                  <td role="cell" data-label={COLUMNS[1]} className="table__title">{categories.nameOf(i.categoryId) ? <span className="cap">{categories.nameOf(i.categoryId)}</span> : null}</td>
+                  <td role="cell" data-label={COLUMNS[2]}>{i.location}</td>
+                  <td role="cell" data-label={COLUMNS[3]}><StatusBadge status={i.status} /></td>
+                  <td role="cell" data-label={COLUMNS[4]} className={i.assigneeId ? undefined : 'muted'}>{assigneeText(i)}</td>
+                  <td role="cell" data-label={COLUMNS[5]} className="mono muted">{formatWhen(i.submittedAt)}</td>
+                  <td role="cell" data-label={COLUMNS[6]} className="table__action"><RowAction item={i} onDone={refreshAll} /></td>
                 </tr>
               ))}
             </tbody>

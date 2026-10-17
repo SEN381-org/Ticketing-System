@@ -450,9 +450,11 @@ fieldset.field > legend { padding: 0; margin-bottom: var(--space-2); }
 
 /* ---- chips ---- */
 .chips { display: flex; gap: var(--space-2); overflow-x: auto; padding: 2px; margin: -2px; }
-/* On a phone the row runs to the screen edge, and an edge fade shows which side has more (set by Chips). */
+/* On a phone the chips wrap onto rows, so none is reached by scrolling sideways (NFR-1.2).
+   From 40rem they stay one row, with an edge fade showing which side has more (set by Chips). */
 @media (max-width: 40rem) {
-  .chips:not(.chips--wrap) { margin-inline: calc(-1 * var(--space-4)); padding-inline: var(--space-4); scrollbar-width: none; }
+  .chips:not(.chips--wrap) { flex-wrap: wrap; overflow: visible; }
+  .chips[data-fade] { -webkit-mask-image: none; mask-image: none; }
 }
 .chips[data-fade="end"] { -webkit-mask-image: linear-gradient(to right, var(--color-ink) calc(100% - 3rem), transparent); mask-image: linear-gradient(to right, var(--color-ink) calc(100% - 3rem), transparent); }
 .chips[data-fade="start"] { -webkit-mask-image: linear-gradient(to left, var(--color-ink) calc(100% - 3rem), transparent); mask-image: linear-gradient(to left, var(--color-ink) calc(100% - 3rem), transparent); }
@@ -985,3 +987,18 @@ fieldset.field > legend { padding: 0; margin-bottom: var(--space-2); }
 
 .crow__action > .btn { width: 100%; }
 .panel form + form { margin-top: var(--space-5); }
+
+/* Phones: the queue table is laid out as one card per request, each value under its column
+   name, so nothing is reached by scrolling sideways (NFR-1.2). */
+@media (max-width: 39.99rem) {
+  .table-wrap:has(.table--cards) { overflow-x: visible; border: 0; background: none; }
+  .table--cards, .table--cards tbody, .table--cards tr, .table--cards td { display: block; min-width: 0; width: auto; }
+  .table--cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table--cards tbody { display: flex; flex-direction: column; gap: var(--space-3); }
+  .table--cards tr { border: 1px solid var(--color-line); border-radius: var(--radius-panel); background: var(--color-surface); padding: var(--space-3) var(--space-4); }
+  .table--cards td, .table--cards td:first-child, .table--cards td:last-child { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding: 4px 0; border-top: 0; text-align: right; }
+  .table--cards td::before { content: attr(data-label); flex: 0 0 auto; font-size: 0.75rem; font-weight: 600; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-muted); text-align: left; }
+  .table--cards td.table__action { flex-wrap: wrap; }
+  .table--cards td.table__action:empty { display: none; }
+  .table--cards .assign-inline .select { min-width: 0; width: 100%; }
+}

@@ -31,7 +31,7 @@ import { test, expect } from '@playwright/test';
 import { ROLE, STATUS } from '../shared/domainValues.js';
 import { useCluster } from './support/cluster.js';
 import { createCampus, addUser, insertRequest, BRIEF_CATEGORY_NAME } from './support/campus.js';
-import { openSession, goAs, isPost } from './support/session.js';
+import { openSession, goAs, isPost, isGetPath } from './support/session.js';
 import { VIEWPORT_360, MIN_TARGET, measure } from './support/viewport.js';
 
 useCluster();
@@ -109,6 +109,154 @@ test('E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2)', async ({ br
       await goAs(page, '/notifications', technician);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await checkScreen(page, 'Technician: notifications', problems);
+    });
+  } finally {
+    await Promise.all([req.context.close(), tech.context.close()]);
+  }
+
+  expect(problems, problems.join('\n')).toEqual([]);
+});
+
+/**
+ * E2E-13: the same AC at 360 px, measured after each interaction, not only on arrival.
+ *
+ * Basis: AC-NFR-1.2, "when each Requester and Technician function is exercised". E2E-6
+ * measures each screen as it opens; the controls an interaction brings up (field errors,
+ * a filter applied, the resolution box, a confirmation) were never measured.
+ *
+ * Expected results, written before the first run from the AC (strict reading):
+ *  After every numbered interaction below, at 360 x 740:
+ *   - document.documentElement.scrollWidth is at most 360;
+ *   - every rendered control is at least 44 x 44 (threshold 43.99);
+ *   - no box inside the page scrolls sideways while holding a control
+ *     (innerScrollers is empty): "no horizontal scrolling is required" applies to a
+ *     control reached by scrolling a box sideways as much as to the page.
+ *  Requester: R1 Submit with nothing filled (field errors shown); R2 a status chip
+ *  chosen on My requests; R3 text typed in "Add more detail"; R4 the detail added
+ *  (201, confirmation shown).
+ *  Technician: T1 a search applied; T2 the Unassigned filter on; T3 Accept on an
+ *  unassigned request's row (201); T4 Resolved chosen (the resolution box shown);
+ *  T5 the transition submitted (201); T6 a comment posted (201).
+ *  Prediction from the code before the run: the queue is a table with min-width 880 px
+ *  inside an overflow-x box, and the My requests status chips are one sideways-scrolling
+ *  row, so innerScrollers is expected NOT to be empty at R2, T1, T2 and T3. If so, the
+ *  test fails and the failure lists them; AC-NFR-1.2 stays Partial until that changes.
+ *
+ * Shows: the measurements after each listed interaction, on the built client against
+ * the real server.
+ * Does NOT show: other widths, zoom, touch input, the Coordinator, Manager or
+ * Administrator screens, or interactions not listed.
+ */
+async function checkAfter(page, name, problems) {
+  await checkScreen(page, name, problems);
+  const { innerScrollers } = await measure(page);
+  for (const s of innerScrollers) {
+    problems.push(`${name}: sideways scrolling box "${s.name}" (${s.scrollWidth} > ${s.clientWidth}) holds controls`);
+  }
+}
+
+test('E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2)', async ({ browser, baseURL }) => {
+  const campus = await createCampus();
+  const requester = await addUser(campus, ROLE.REQUESTER);
+  const technician = await addUser(campus, ROLE.TECHNICIAN);
+  const own = await insertRequest(campus, requester);
+  const open = await insertRequest(campus, requester);
+  const working = await insertRequest(campus, requester, { status: STATUS.IN_PROGRESS, assignee: technician });
+  const problems = [];
+
+  const req = await openSession(browser, baseURL, { viewport: VIEWPORT_360 });
+  const tech = await openSession(browser, baseURL, { viewport: VIEWPORT_360 });
+  try {
+    await test.step('Requester interactions', async () => {
+      const { page } = req;
+      await goAs(page, '/requests/new', requester);
+      const [empty] = await Promise.all([
+        page.waitForResponse(isPost('/api/v1/requests')),
+        page.getByRole('button', { name: 'Submit request' }).click(),
+      ]);
+      expect(empty.status()).toBe(400);
+      await expect(page.getByText('Choose a category.')).toBeVisible();
+      await checkAfter(page, 'R1 Requester: New request with field errors', problems);
+
+      await goAs(page, '/requests/mine', requester);
+      await page.getByRole('group', { name: 'Filter by status' }).getByRole('button', { name: STATUS.RECEIVED }).click();
+      await expect(page.getByRole('link', { name: new RegExp(own.reference) })).toBeVisible();
+      await checkAfter(page, 'R2 Requester: My requests, status chip chosen', problems);
+
+      await goAs(page, `/requests/${own.requestId}`, requester);
+      await page.getByLabel('Add more detail').fill(`E2E ${campus.runId} it is the left-hand light`);
+      await checkAfter(page, 'R3 Requester: detail typed', problems);
+      const [detail] = await Promise.all([
+        page.waitForResponse(isPost(`/api/v1/requests/${own.requestId}/details`)),
+        page.getByRole('button', { name: 'Add detail' }).click(),
+      ]);
+      expect(detail.status()).toBe(201);
+      await expect(page.getByRole('status').filter({ hasText: 'Detail added.' })).toBeVisible();
+      await checkAfter(page, 'R4 Requester: detail added', problems);
+    });
+
+    await test.step('Technician interactions', async () => {
+      const { page } = tech;
+      await goAs(page, '/requests', technician);
+      await expect(page.getByRole('row', { name: new RegExp(open.reference) })).toBeVisible();
+      // Each measurement waits for the list the interaction asked for to be on screen: a
+      // reload empties the list first, so a listed row means the new data has rendered.
+      const rowOf = (r) => page.getByRole('row', { name: new RegExp(r.reference) });
+      const isList = (unassignedOnly) => (r) => isGetPath('/api/v1/requests')(r)
+        && (new URL(r.url()).searchParams.get('assigneeId') === 'none') === unassignedOnly;
+
+      await page.getByLabel('Search requests').fill(campus.runId);
+      await Promise.all([
+        page.waitForResponse(isPost('/api/v1/requests/search')),
+        page.getByRole('button', { name: 'Search', exact: true }).click(),
+      ]);
+      await expect(rowOf(open)).toBeVisible();
+      await checkAfter(page, 'T1 Technician: search applied', problems);
+      await Promise.all([
+        page.waitForResponse(isList(false)),
+        page.getByRole('button', { name: 'Clear search' }).click(),
+      ]);
+      await expect(rowOf(working)).toBeVisible();
+
+      await Promise.all([
+        page.waitForResponse(isList(true)),
+        page.getByRole('button', { name: 'Unassigned' }).click(),
+      ]);
+      await expect(rowOf(open)).toBeVisible();
+      await expect(rowOf(working)).toHaveCount(0);           // assigned, so not in the Unassigned list
+      await checkAfter(page, 'T2 Technician: Unassigned filter on', problems);
+
+      const [accept] = await Promise.all([
+        page.waitForResponse(isPost(`/api/v1/requests/${open.requestId}/assignments`)),
+        page.waitForResponse(isList(true)),                  // the list reloaded after it
+        rowOf(open).getByRole('button', { name: 'Accept' }).click(),
+      ]);
+      expect(accept.status()).toBe(201);
+      await expect(rowOf(own)).toBeVisible();                // still unassigned
+      await expect(rowOf(open)).toHaveCount(0);              // accepted, so no longer listed
+      await checkAfter(page, 'T3 Technician: request accepted', problems);
+
+      await goAs(page, `/requests/${working.requestId}`, technician);
+      await page.getByLabel('New status').selectOption(STATUS.RESOLVED);
+      await expect(page.getByLabel('Resolution')).toBeVisible();
+      await checkAfter(page, 'T4 Technician: Resolved chosen', problems);
+      await page.getByLabel('Reason', { exact: true }).fill(`E2E ${campus.runId} fixed`);
+      await page.getByLabel('Resolution').fill(`E2E ${campus.runId} lamp replaced`);
+      const [moved] = await Promise.all([
+        page.waitForResponse(isPost(`/api/v1/requests/${working.requestId}/transitions`)),
+        page.getByRole('button', { name: 'Submit transition' }).click(),
+      ]);
+      expect(moved.status()).toBe(201);
+      await expect(page.getByTestId('status')).toHaveText(STATUS.RESOLVED);
+      await checkAfter(page, 'T5 Technician: transition submitted', problems);
+
+      await page.getByLabel('Add a comment').fill(`E2E ${campus.runId} checked twice`);
+      const [comment] = await Promise.all([
+        page.waitForResponse(isPost(`/api/v1/requests/${working.requestId}/comments`)),
+        page.getByRole('button', { name: 'Post comment' }).click(),
+      ]);
+      expect(comment.status()).toBe(201);
+      await checkAfter(page, 'T6 Technician: comment posted', problems);
     });
   } finally {
     await Promise.all([req.context.close(), tech.context.close()]);
