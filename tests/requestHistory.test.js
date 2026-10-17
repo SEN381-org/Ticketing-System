@@ -722,3 +722,41 @@ test('FR-3.4, FR-3.6: a user sees only their own notifications', async () => {
     }
   });
 });
+
+// ---------- AC-FR-3.3: the first assignment's status change, for the requester ----------
+
+// Basis: AC-FR-3.3 "each status change is listed with its date"; decision 17/10/2026: the
+// requester sees the status part (from, to, date) of the assignment entry that moved the
+// status, never who was assigned. Input: a first assignment Received -> Assigned to u4 at
+// 09:00, a status change Assigned -> In Progress at 10:00, and a reassignment to u5 at 11:00
+// that changes no status. Expected (written before the run): the requester's entries are
+// created, status (Received -> Assigned, 09:00), status (Assigned -> In Progress, 10:00); the
+// reassignment is absent; neither u4 nor u5 nor any assignee field appears in the response.
+test('AC-FR-3.3: the requester sees the first assignment as its status change, with its date, and never the assignee', async () => {
+  const rows = [
+    { _id: 'h1', requestId: RID, requestVersion: 1, changeType: 'created', fromStatus: null, toStatus: STATUS.RECEIVED,
+      actorId: 'u2', actorRole: ROLE.REQUESTER, occurredAt: new Date(Date.UTC(2026, 9, 1, 8, 0, 0)) },
+    { _id: 'h2', requestId: RID, requestVersion: 2, changeType: 'assignment', fromStatus: STATUS.RECEIVED,
+      toStatus: STATUS.ASSIGNED, fromAssigneeId: null, toAssigneeId: 'u4', ...SEED_ASSIGNED_BY,
+      occurredAt: new Date(Date.UTC(2026, 9, 1, 9, 0, 0)) },
+    { _id: 'h3', requestId: RID, requestVersion: 3, changeType: 'status', fromStatus: STATUS.ASSIGNED,
+      toStatus: STATUS.IN_PROGRESS, actorId: 'u4', actorRole: ROLE.TECHNICIAN, occurredAt: new Date(Date.UTC(2026, 9, 1, 10, 0, 0)) },
+    { _id: 'h4', requestId: RID, requestVersion: 4, changeType: 'assignment', fromStatus: null, toStatus: null,
+      fromAssigneeId: 'u4', toAssigneeId: 'u5', ...SEED_ASSIGNED_BY, occurredAt: new Date(Date.UTC(2026, 9, 1, 11, 0, 0)) },
+  ];
+  const { app } = harness({ ...baseRequest(), status: STATUS.IN_PROGRESS, version: 4 }, { seedHistory: rows });
+  await serve(app, async (base) => {
+    const res = await history(base, await login(base, 'req@example.test'));
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    const { entries } = JSON.parse(text);
+    assert.deepEqual(entries.map((e) => [e.changeType, e.fromStatus, e.toStatus, e.occurredAt]), [
+      ['created', null, STATUS.RECEIVED, '2026-10-01T08:00:00.000Z'],
+      ['status', STATUS.RECEIVED, STATUS.ASSIGNED, '2026-10-01T09:00:00.000Z'],
+      ['status', STATUS.ASSIGNED, STATUS.IN_PROGRESS, '2026-10-01T10:00:00.000Z'],
+    ]);
+    assert.doesNotMatch(text, /"u4"|"u5"/, 'no assignee identifier reaches the requester');
+    assert.doesNotMatch(text, /AssigneeId/, 'no assignee field reaches the requester');
+    for (const e of entries) assert.ok(e.actorId === null || e.actorId === 'u2', 'no staff identifier');
+  });
+});

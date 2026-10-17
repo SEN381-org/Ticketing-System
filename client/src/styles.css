@@ -492,7 +492,6 @@ fieldset.field > legend { padding: 0; margin-bottom: var(--space-2); }
 .notice svg { flex: none; margin-top: 2px; }
 .notice p { margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--tone-received-fg); }
 .notice h2 { margin: 0 0 var(--space-1); }
-.notice--placeholder { border-style: dashed; border-color: var(--color-signal); }
 .success {
   padding: var(--space-4);
   border-radius: var(--radius-panel);

@@ -11,9 +11,14 @@
  * action entries, so the safer reading is taken (recorded as a question in the
  * handover notes):
  *   staff who may view the request    every entry, with actor and assignment detail
- *   a Requester on their own request  created, status and detail entries only; no
- *                                     comment, action, assignment or resolution
- *                                     entry; the staff actor's identifier is withheld
+ *   a Requester on their own request  created, status and detail entries; no comment,
+ *                                     action or resolution entry; the staff actor's
+ *                                     identifier is withheld. An assignment entry that
+ *                                     changed the status (the first assignment,
+ *                                     Received to Assigned) is shown as its status
+ *                                     change only: from, to and date, never who was
+ *                                     assigned (AC-FR-3.3 "each status change is listed
+ *                                     with its date"; decision 17/10/2026)
  *   a Requester on a security-category request, in addition (FR-1.5 read literally):
  *                                     no body or reason at all, statuses mapped through
  *                                     visibleStatusFor (FR-3.5), and entries that change
@@ -32,6 +37,10 @@ import { assertMayView, isStaffActor } from './viewAccess.js';
 
 const REQUESTER_TYPES = Object.freeze(['created', 'status', 'detail']);
 
+/** An assignment entry that moved the status: the requester sees that move (AC-FR-3.3). */
+const changedStatus = (e) => e.changeType === 'assignment'
+  && Boolean(e.fromStatus) && Boolean(e.toStatus) && e.fromStatus !== e.toStatus;
+
 const sameInstant = (a, b) => Boolean(a && b) && new Date(a).getTime() === new Date(b).getTime();
 
 export function createRequestHistoryService({ requests, history }) {
@@ -48,8 +57,8 @@ export function createRequestHistoryService({ requests, history }) {
 
     const shown = isStaffActor(actor)
       ? entries.map((e) => staffView(e, request))
-      : entries.filter((e) => REQUESTER_TYPES.includes(e.changeType))
-        .map((e) => requesterView(e, actor, security))
+      : entries.filter((e) => REQUESTER_TYPES.includes(e.changeType) || changedStatus(e))
+        .map((e) => (changedStatus(e) ? assignmentStatusView(e, actor, security) : requesterView(e, actor, security)))
         .filter((e) => !(security && e.changeType === 'status' && e.fromStatus === e.toStatus));
     return { requestId, entries: shown };
   }
@@ -90,6 +99,21 @@ function staffView(entry, request) {
     view.body = entry.body ?? null;                         // FR-7.1, FR-7.2, FR-2.4
   }
   return view;
+}
+
+/**
+ * The status change carried by an assignment entry, for a Requester (AC-FR-3.3). Built
+ * field by field from an allow-list: the assignee identifiers (fromAssigneeId,
+ * toAssigneeId) and the staff actor's identifier are never copied.
+ */
+function assignmentStatusView(entry, actor, security) {
+  return {
+    ...common(entry),
+    changeType: 'status',
+    actorId:    null,
+    fromStatus: visibleStatusFor(entry.fromStatus, security, actor),
+    toStatus:   visibleStatusFor(entry.toStatus, security, actor),
+  };
 }
 
 /** DEC-012 enforcement point 3, for the entries a Requester may see at all. */

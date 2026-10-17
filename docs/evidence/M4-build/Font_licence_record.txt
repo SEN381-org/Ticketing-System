@@ -1,0 +1,27 @@
+Font licence record — client/public/fonts (M4, 17/10/2026)
+
+Purpose: the M4 design handoff (E. Lindsay) names three type families. They are self-hosted
+so the client makes no third-party request (no Google Fonts or other CDN call).
+
+Source: npm packages unpacked with `npm pack` in a folder outside the repository. They are not
+dependencies of the project (no package.json changed).
+
+| Family | Package | Version | Files committed | Licence |
+|---|---|---|---|---|
+| Bricolage Grotesque | @fontsource/bricolage-grotesque | 5.3.0 | bricolage-grotesque-latin-700-normal.woff2 | SIL Open Font License 1.1 (bricolage-grotesque-OFL.txt) |
+| IBM Plex Sans | @fontsource/ibm-plex-sans | 5.3.0 | ibm-plex-sans-latin-400-normal.woff2, -500-, -600- | SIL Open Font License 1.1 (ibm-plex-sans-OFL.txt) |
+| IBM Plex Mono | @fontsource/ibm-plex-mono | 5.3.0 | ibm-plex-mono-latin-500-normal.woff2 | SIL Open Font License 1.1 (ibm-plex-mono-OFL.txt) |
+
+Only the latin subsets of the weights the design uses are committed. The OFL requires the
+licence to accompany the fonts, so each family's licence text sits beside its files. The fonts
+are not modified or renamed internally (OFL Reserved Font Name terms are therefore not engaged).
+
+Metadata check (17/10/2026): each woff2 was decoded and its `name` table dumped. Only foundry and
+licence strings are present: copyright, family and style names, version, PostScript name, the
+OFL URL and variation-axis labels. The woff2 metadata and private-data blocks are empty. No AI,
+tool-provenance or C2PA content was found.
+
+One string to note: Bricolage Grotesque's name ID 5 (version) reads
+"Version 1.001;gftools[0.9.33.dev8+g029e19f]". gftools is the Google Fonts project's own font
+build tool; the string is upstream build metadata in the foundry's file, unchanged. Reviewed and
+accepted by E. Lindsay, 17/10/2026.

@@ -1,0 +1,37 @@
+Negative verification NV-159 — AC-FR-3.3: the requester's view of an assignment entry built by copying the whole entry
+Track AC-FR-3.3 follow-up. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T14:08:59Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/requestHistory.test.js
+File broken : src/services/requestHistoryService.js (never a test)
+
+CLAIM
+  The requester sees the first assignment only as its status change. If the view were built by copying the entry, the assignee identifiers would reach the requester; the AC-FR-3.3 test detects that.
+
+BREAK
+  -   return {
+  -     ...common(entry),
+  -     changeType: 'status',
+  +   return {
+  +     ...entry,
+  +     ...common(entry),
+  +     changeType: 'status',
+
+EXPECTED (written before the run)
+  'AC-FR-3.3: the requester sees the first assignment as its status change, with its date, and never the assignee' fails on the assignee assertions; the other 36 tests pass.
+
+RESULT WITH THE BREAK
+  tests 37, pass 36, fail 1, exit 1
+  failing: AC-FR-3.3: the requester sees the first assignment as its status change, with its date, and never the assignee
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : b19276979ac45441ab081c5b161ca8a2dda3de20ffe3466d31a6a80b64120ca4
+  SHA-256 after  : b19276979ac45441ab081c5b161ca8a2dda3de20ffe3466d31a6a80b64120ca4
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 37, pass 37, fail 0, exit 0
+
+INTERPRETATION
+  Shows: no assignee identifier or field reaches the requester through the new status entry.
+  Does NOT show: behaviour against a real cluster (E2E-4 step 6 covers the requester's history on the test cluster).
