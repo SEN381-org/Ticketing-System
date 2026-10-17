@@ -132,7 +132,10 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
         reference:        request.reference,
         securityCategory: request.securityCategory,
       };
-      result = { ...resultOf({ ...entry, requestId: request._id ?? requestId,
+      // `entry` is a Mongoose document from the real repository: its `_id` is a
+      // getter, not an own property, so spreading the document would drop it and
+      // the response would lose historyId (found by integration case 2b, 17/10/2026).
+      result = { ...resultOf({ _id: entry._id, requestId: request._id ?? requestId,
                                fromStatus, toStatus, occurredAt, requestVersion: version }),
                  replayed: false };
     });

@@ -301,3 +301,29 @@ test('a reject without a reason is refused — TD-006, FR-6.6, AC-FR-6.6', () =>
   const withReason = checkTransition(STATUS.RECEIVED, STATUS.REJECTED, [ROLE.COORDINATOR], { hasReason: true });
   assert.equal(withReason.allowed, true);
 });
+
+// ---------- integration case 2b (17/10/2026): a document whose _id is a getter ----------
+
+test('the original result carries historyId when the repository returns a document — DEF-007, DEC-015 §3', async () => {
+  // Expected: historyId equals the stored entry's id even though `_id` is not an own
+  // property, as on a Mongoose document; the replay then has the same body.
+  class Doc { constructor(data) { Object.assign(this, data); } get _id() { return 'hist-doc-1'; } }
+  const entries = [];
+  const realAppend = entries.push.bind(entries);
+  const history = {
+    append: async (entry) => { realAppend({ ...entry, _id: 'hist-doc-1' }); return new Doc(entry); },
+    findByIdempotencyKey: async (actorId, key) => entries.find((e) => e.actorId === actorId && e.idempotencyKey === key) ?? null,
+  };
+  const docService = createStatusTransitionService({
+    requests: { findById: async () => ({ _id: REQUEST_ID, status: STATUS.RECEIVED, version: 0, categoryId: CAT,
+      campusId: 'c1', requesterId: 'u-req', reference: 'CC-2026-000001', securityCategory: false, resolution: { summary: null } }),
+    applyChange: async (id, expected) => ({ version: expected + 1 }) },
+    history, unitOfWork: { run: async (work) => { await work('s'); } }, clock: () => AT,
+  });
+  const command = { expectedVersion: 0, reason: 'duplicate', idempotencyKey: 'k-doc', fingerprint: 'f-doc' };
+  const original = await docService.transition(REQUEST_ID, STATUS.REJECTED, COORDINATOR, command);
+  const replay = await docService.transition(REQUEST_ID, STATUS.REJECTED, COORDINATOR, command);
+  assert.equal(original.historyId, 'hist-doc-1');
+  const body = (r) => { const copy = JSON.parse(JSON.stringify(r)); delete copy.replayed; return copy; };
+  assert.deepEqual(body(replay), body(original));
+});
