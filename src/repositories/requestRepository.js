@@ -55,4 +55,26 @@ export const requestRepository = {
     if (matchedCount === 0) throw new PreconditionFailedError(id, expectedVersion);
     return { version: expectedVersion + 1 };
   },
+
+  /** FR-5.1 - FR-5.5. The ownership condition is part of the filter; see buildAssignmentFilter. */
+  applyAssignment: async (id, expectedVersion, expectedAssigneeId, $set, actor, { session } = {}) => {
+    const { matchedCount } = await Request.updateOne(
+      buildAssignmentFilter(id, expectedVersion, expectedAssigneeId),
+      buildChangeUpdate($set, actor),
+      { session, runValidators: true },
+    );
+    if (matchedCount === 0) throw new PreconditionFailedError(id, expectedVersion);
+    return { version: expectedVersion + 1 };
+  },
 };
+
+/**
+ * The filter `applyAssignment` sends. Extracted so the ownership condition can be
+ * asserted without a database. FR-5.3: an accept must not overwrite an owner, so
+ * the update matches only if the owner is still the one the service read
+ * (`null` for an accept or a first assignment). The version condition alone
+ * would also catch most races; this one states the rule at the write itself.
+ */
+export function buildAssignmentFilter(id, expectedVersion, expectedAssigneeId) {
+  return { _id: id, version: expectedVersion, anonymisedAt: null, assigneeId: expectedAssigneeId ?? null };
+}

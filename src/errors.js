@@ -127,3 +127,15 @@ export class IdempotencyConflictError extends AppError {
       { status: 422, type: 'https://civicconnect.example/problems/idempotency-key-reused', code: 'IDEMPOTENCY_CONFLICT' });
   }
 }
+
+/**
+ * DEC-015 §4 row 422 — a domain rule refused an assignment: the request already
+ * has an owner (FR-5.3), the named user may not hold it (FR-5.1, FR-5.2), or the
+ * request is not in a state that can be assigned.
+ */
+export class AssignmentRefusedError extends AppError {
+  constructor(message) {
+    super(message,
+      { status: 422, type: 'https://civicconnect.example/problems/assignment-refused', code: 'ASSIGNMENT_REFUSED' });
+  }
+}

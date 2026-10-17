@@ -30,6 +30,7 @@ import { createSessionRouter, SESSIONS_BASE } from './routes/sessionRoutes.js';
 import { createRequestRouter, API_BASE as REQUESTS_BASE } from './routes/requestRoutes.js';
 import { createSubmissionRouter, createCategoryRouter, CATEGORIES_BASE } from './routes/submissionRoutes.js';
 import { createRequestListRouter } from './routes/requestListRoutes.js';
+import { createAssignmentRouter } from './routes/assignmentRoutes.js';
 import { RouteNotFoundError } from './errors.js';
 
 function mount(app, path, router) {
@@ -39,10 +40,13 @@ function mount(app, path, router) {
 
 export function createApp({
   authService, healthService, statusTransitionService, requestQueryService,
-  requestSubmissionService, categoryService, requestListService, log = console,
+  requestSubmissionService, categoryService, requestListService,
+  assignmentService, recordRefusal, log = console,
 }) {
   const app = express();
   app.locals.mounts = [];
+  // AC-FR-1.3, TD-005: the guard reads this to record a refused operation.
+  app.locals.recordRefusal = recordRefusal;
 
   app.disable('x-powered-by');
   // DEC-003 v0.2: Nginx on the same host terminates TLS. Trust only it.
@@ -61,6 +65,7 @@ export function createApp({
   mount(app, REQUESTS_BASE, createRequestRouter({ statusTransitionService, requestQueryService }));
   mount(app, REQUESTS_BASE, createSubmissionRouter({ requestSubmissionService }));
   mount(app, CATEGORIES_BASE, createCategoryRouter({ categoryService }));
+  mount(app, REQUESTS_BASE, createAssignmentRouter({ assignmentService }));
 
   app.use((req, res, next) => next(new RouteNotFoundError()));
   app.use(createErrorHandler({ log }));

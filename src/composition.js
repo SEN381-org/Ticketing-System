@@ -26,6 +26,8 @@ import { auditRepository } from './repositories/auditRepository.js';
 import { categoryRepository } from './repositories/categoryRepository.js';
 import { counterRepository } from './repositories/counterRepository.js';
 import { createStatusTransitionService } from './services/statusTransitionService.js';
+import { createAssignmentService } from './services/assignmentService.js';
+import { createAccessAuditService } from './services/accessAuditService.js';
 import { createRequestQueryService } from './services/requestQueryService.js';
 import { createRequestListService } from './services/requestListService.js';
 import { requestListRepository } from './repositories/requestListRepository.js';
@@ -48,7 +50,8 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
     }),
   };
-  // M4 T1 — kept out of `services` so the key list asserted by tests/composition.test.js is unchanged.
+  // M4 tracks T1 and T3: kept out of `services` so the key list asserted by
+  // tests/composition.test.js is unchanged.
   const submission = {
     requestSubmissionService: createRequestSubmissionService({
       requests: requestRepository, history: historyRepository, categories: categoryRepository,
@@ -56,5 +59,10 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
     }),
     categoryService: createCategoryService({ categories: categoryRepository, users: userRepository }),
   };
-  return { app: createApp({ ...services, ...submission, log }), services };
+  const { recordRefusal } = createAccessAuditService({ audit: auditRepository, log });
+  const assignmentService = createAssignmentService({
+    requests: requestRepository, users: userRepository, history: historyRepository,
+    unitOfWork: createUnitOfWork(), recordRefusal,
+  });
+  return { app: createApp({ ...services, ...submission, assignmentService, recordRefusal, log }), services };
 }
