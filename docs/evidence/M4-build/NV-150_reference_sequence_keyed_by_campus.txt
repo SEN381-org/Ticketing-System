@@ -1,0 +1,41 @@
+Negative verification NV-150 - Reference counter keyed per campus again
+Integration decisions D12; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-17 13:46 UTC (sabotage) / 2026-10-17 13:46 UTC (restore check)
+Node   : v24.16.0
+
+CLAIM
+  The reference sequence is one per UTC year; two campuses in the same year never receive the same CC-yyyy-nnnnnn, which the unique reference index would refuse (FR-2.6, AC-FR-2.6).
+
+EXPECTED (written before the run; the tests that protect the claim must fail):
+  - AC-FR-2.6, FR-2.6: submissions from two campuses in the same year get different references
+
+1. The protected behaviour was broken in src/repositories/counterRepository.js, src/services/requestSubmissionService.js:
+     src/repositories/counterRepository.js
+     - next: async (year, { session } = {}) => {
+     + next: async (year, { session, campusId } = {}) => {
+     src/repositories/counterRepository.js
+     - `request-ref:${year}`
+     + `request-ref:${campusId}:${year}`
+     src/services/requestSubmissionService.js
+     - counters.next(year, { session })
+     + counters.next(year, { session, campusId })
+
+2. Result of the full suite (node --test) with the sabotage applied:
+     tests 403  pass 394  fail 1
+     not ok - AC-FR-2.6, FR-2.6: submissions from two campuses in the same year get different references
+   Outcome: CAUGHT - the suite failed with the protection broken
+
+3. Each file was restored by writing back its original bytes.
+   src/repositories/counterRepository.js
+     SHA-256 before : 6473694b27be01b31e95876e20aff717d57de15a7726ba78870fe2106903039d
+     SHA-256 after  : 6473694b27be01b31e95876e20aff717d57de15a7726ba78870fe2106903039d
+   src/services/requestSubmissionService.js
+     SHA-256 before : e3bb405129f29e10a0133bd6f9136bf7d030c188bed3bf066278b50a4d08aeac
+     SHA-256 after  : e3bb405129f29e10a0133bd6f9136bf7d030c188bed3bf066278b50a4d08aeac
+   Identical.
+   Suite re-run after restore: tests 403  pass 395  fail 0
+
+INTERPRETATION
+  The assertions listed under EXPECTED detect the condition they protect: with it broken the suite fails, with it restored it passes.
+  What this does NOT show: the unique index itself on a real cluster (the fake store enforces uniqueness of reference as the index would), or concurrent allocation.

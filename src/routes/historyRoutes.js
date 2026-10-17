@@ -59,9 +59,11 @@ export function createHistoryRouter({ requestHistoryService, workRecordService }
       try {
         const result = await workRecordService[method](
           req.params.id, req.actor, readAppendCommand(req, kind));
-        res.set('ETag', `"v${result.version}"`);
-        if (result.replayed) res.set('Idempotent-Replayed', 'true');
-        res.status(result.replayed ? 200 : 201).json(result);
+        // DEC-015 §3: a replay has the original's status code and body, plus the header.
+        const { replayed, ...body } = result;
+        res.set('ETag', `"v${body.version}"`);
+        if (replayed) res.set('Idempotent-Replayed', 'true');
+        res.status(201).json(body);
       } catch (error) {
         next(error);
       }

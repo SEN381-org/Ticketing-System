@@ -8,13 +8,11 @@
  * as a target time) leaves the service.
  */
 
-import { AuthorisationError } from '../errors.js';
+import { campusOf } from './campusOf.js';
 
-export function createCategoryService({ categories, users }) {
+export function createCategoryService({ categories }) {
   async function listActive(actor) {
-    const user = await users.findById(actor.id);
-    if (!user) throw new AuthorisationError('Actor may not list categories');
-    const found = await categories.listActive(user.campusId);
+    const found = await categories.listActive(campusOf(actor));      // the session actor's campus
     return found.map((c) => ({
       id: String(c._id), code: c.code, name: c.name, isSecurity: Boolean(c.isSecurity),
     }));

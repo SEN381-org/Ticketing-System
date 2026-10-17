@@ -13,6 +13,9 @@
  * Open point for the project lead: the "unassigned set" (FR-4.6) is requested as
  * `assigneeId=none`. DEC-015 §1 names the parameter but not this value.
  *
+ * Every query is scoped to the actor's campus first (SCP-019), then by who may see
+ * what; an actor who can view nothing is refused (403), not given an empty list.
+ *
  * Search text is never logged (CON-007). A persistence error is replaced by a
  * generic one before it can reach the error handler's log, because a driver
  * error may echo the query it was given.
@@ -21,6 +24,7 @@
 import { viewScopeFor, visibleStatusFor, STAFF_ROLES } from '../domain/accessRules.js';
 import { AuthorisationError, ValidationError } from '../errors.js';
 import { STATUS } from '../models/_shared.js';
+import { campusOf } from './campusOf.js';
 
 export const DEFAULT_LIMIT = 25;
 export const MAX_LIMIT = 100;
@@ -172,7 +176,8 @@ function parse(source, allowed, scope) {
 }
 
 function buildFilter(q, scope, actor, extra) {
-  const clauses = [filterForScope(scope)];
+  // SCP-019: campusId leads, as every declared Request index does.
+  const clauses = [{ campusId: campusOf(actor) }, filterForScope(scope)];
   if (q.status !== undefined) clauses.push(statusClause(q.status, scope, actor));
   if (q.categoryId !== undefined) clauses.push({ categoryId: q.categoryId });
   if (q.assigneeId !== undefined) clauses.push({ assigneeId: q.assigneeId === 'none' ? null : q.assigneeId });
@@ -191,7 +196,7 @@ function buildFilter(q, scope, actor, extra) {
     ] });
   }
   if (extra) clauses.push(extra);
-  return clauses.length === 1 ? clauses[0] : { $and: clauses };
+  return { $and: clauses };
 }
 
 export function createRequestListService({ lists }) {
@@ -214,9 +219,19 @@ export function createRequestListService({ lists }) {
     };
   }
 
+  /**
+   * An actor with no role that can view requests (Administrator only, or no role)
+   * is refused with no data, as GET /requests/:id refuses them. FR-3.1, FR-4.1.
+   */
+  function scopeFor(actor) {
+    const scope = viewScopeFor(actor);
+    if (scope.kind === 'none') throw new AuthorisationError('Actor may not view requests');
+    return scope;
+  }
+
   /** GET /api/v1/requests — FR-3.1, FR-4.1, FR-4.4, FR-4.5, FR-4.6. */
   async function list(query, actor) {
-    const scope = viewScopeFor(actor);
+    const scope = scopeFor(actor);
     return page(parse(query, LIST_KEYS, scope), scope, actor);
   }
 
@@ -229,13 +244,15 @@ export function createRequestListService({ lists }) {
     if (!roles.some((r) => STAFF_ROLES.includes(r))) {
       throw new AuthorisationError('Search is available to staff only');
     }
-    const scope = viewScopeFor(actor);
+    const scope = scopeFor(actor);
     const q = parse(body, SEARCH_KEYS, scope);
 
     const text = body.text;
     if (typeof text !== 'string' || text.trim() === '') throw bad('text', 'is required');
     if (text.length > MAX_TEXT) throw bad('text', `must be at most ${MAX_TEXT} characters`);
     const term = text.trim();
+
+    campusOf(actor);        // refused before the try below, which hides every error but the text
 
     // Reference: exact match. Description/location: the declared text index.
     const match = REFERENCE.test(term)

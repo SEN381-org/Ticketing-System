@@ -584,7 +584,7 @@ paths:
           `request:accept` (Technician, Security Officer). Refused with 422 if the
           request already has an owner; the owner is unchanged.
         - **assign** (FR-5.1): an actor who may perform `request:assign`
-          (Coordinator, Manager) names a staff user, for a request with no owner.
+          (Coordinator, Manager) names a Technician or Security Officer, for a request with no owner.
           The request moves Received to Assigned.
         - **reassign** (FR-5.5): the same, for a request that already has an owner.
           The status is unchanged and the previous owner stays in the history
@@ -592,8 +592,9 @@ paths:
 
         The request update and its `assignment` history entry, carrying the acting
         user, date and time (FR-5.4), are written in one unit of work (DEC-016).
-        The named user must be staff authorised for the request's category, and
-        a Security Officer for a security-category request (DEC-012).
+        The named user must be a Technician or Security Officer (a Coordinator or
+        Manager is never an owner) authorised for the request's category, and a
+        Security Officer for a security-category request (DEC-012).
 
         Every refused attempt (403 from the guard or the service, 422 from the
         domain rules) is recorded in the audit log with the actor, role(s),
@@ -617,7 +618,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: true
-          description: A key per logical user action, reused on every retry. Missing or blank is 400. A replay with the same body returns 200 and writes nothing.
+          description: A key per logical user action, reused on every retry. Missing or blank is 400. A replay with the same body returns the original status and body with the header Idempotent-Replayed (true) and writes nothing (DEC-015 §3).
           schema:
             type: string
             minLength: 1
@@ -630,24 +631,18 @@ paths:
               $ref: '#/components/schemas/AssignmentCommand'
       responses:
         '201':
-          description: Assignment committed; one history entry written.
+          description: Assignment committed; one history entry written. A replay returns this status and body with Idempotent-Replayed true.
           headers:
             ETag:
               description: The new version, e.g. "v2".
               schema: { type: string }
+            Idempotent-Replayed:
+              description: Present, with the value true, only on a replay.
+              schema: { type: string, enum: ['true'] }
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AssignmentResult'
-        '200':
-          description: Idempotent replay of a previously committed assignment. Nothing is written.
-          headers:
-            ETag:
-              schema: { type: string }
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AssignmentReplay'
         '400':
           description: Idempotency-Key missing or blank (IDEMPOTENCY_KEY_REQUIRED), or the id, the body or the assigneeId is malformed (INVALID_REQUEST).
           content:
@@ -770,7 +765,6 @@ paths:
             schema: { $ref: '#/components/schemas/EntryCommand' }
       responses:
         '201': { $ref: '#/components/responses/EntryCreated' }
-        '200': { $ref: '#/components/responses/EntryReplayed' }
         '400': { $ref: '#/components/responses/EntryInvalid' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/EntryForbidden' }
@@ -795,7 +789,6 @@ paths:
             schema: { $ref: '#/components/schemas/EntryCommand' }
       responses:
         '201': { $ref: '#/components/responses/EntryCreated' }
-        '200': { $ref: '#/components/responses/EntryReplayed' }
         '400': { $ref: '#/components/responses/EntryInvalid' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/EntryForbidden' }
@@ -822,7 +815,6 @@ paths:
             schema: { $ref: '#/components/schemas/EntryCommand' }
       responses:
         '201': { $ref: '#/components/responses/EntryCreated' }
-        '200': { $ref: '#/components/responses/EntryReplayed' }
         '400': { $ref: '#/components/responses/EntryInvalid' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/EntryForbidden' }
@@ -999,7 +991,8 @@ paths:
         status `revoked` and `revokedAt` and increments `sessionEpoch`, so the
         account can no longer authenticate and every existing session ends at
         the next request (AC-FR-1.4, DEC-018 §3). Idempotent: a repeat returns
-        200 with `replayed: true` and does not change the epoch again.
+        the original 201 and body with `Idempotent-Replayed: true` (DEC-015 §3) and
+        does not change the epoch again.
       parameters:
         - name: id
           in: path
@@ -1011,12 +1004,11 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '201':
-          description: Access was revoked by this request.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Revocation' }
-        '200':
-          description: The account was already revoked (replay).
+          description: Access was revoked by this request, or was already revoked (a repeat; then with Idempotent-Replayed true).
+          headers:
+            Idempotent-Replayed:
+              description: Present, with the value true, only on a repeat.
+              schema: { type: string, enum: ['true'] }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Revocation' }
@@ -1148,7 +1140,7 @@ paths:
         Sets `active` to false; the category is no longer offered for
         submission (AC-FR-9.1) and requests already recorded against it keep it
         and stay in the category counts (FR-9.2). Idempotent: a repeat returns
-        200 with `replayed: true`. FR-9.1 is Proposed (OI-03).
+        the original 201 and body with `Idempotent-Replayed: true` (DEC-015 §3). FR-9.1 is Proposed (OI-03).
       parameters:
         - name: id
           in: path
@@ -1160,12 +1152,11 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '201':
-          description: The category was deactivated by this request.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/CategoryDeactivation' }
-        '200':
-          description: The category was already inactive (replay).
+          description: The category was deactivated by this request, or was already inactive (a repeat; then with Idempotent-Replayed true).
+          headers:
+            Idempotent-Replayed:
+              description: Present, with the value true, only on a repeat.
+              schema: { type: string, enum: ['true'] }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CategoryDeactivation' }
@@ -1391,18 +1382,6 @@ components:
         occurredAt: { type: string, format: date-time }
         version: { type: integer, minimum: 1, description: The new version; also returned as the ETag. }
         historyId: { type: string, description: The requestHistory entry written (FR-5.4). }
-    AssignmentReplay:
-      type: object
-      required: [requestId, toAssigneeId, occurredAt, version, historyId, replayed]
-      properties:
-        requestId: { type: string }
-        fromAssigneeId: { type: string, nullable: true }
-        toAssigneeId: { type: string }
-        status: { type: string, nullable: true, description: The status the entry moved to; null if it did not change it. }
-        occurredAt: { type: string, format: date-time }
-        version: { type: integer }
-        historyId: { type: string }
-        replayed: { type: boolean, const: true }
     Problem:
       type: object
       description: RFC 9457 problem details.
@@ -1419,17 +1398,6 @@ components:
                  PRECONDITION_REQUIRED, INVALID_REQUEST, UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE,
                  INTERNAL_ERROR, ASSIGNMENT_REFUSED, WRITE_CONFLICT, CONFLICT]
         instance: { type: string }
-    TransitionReplay:
-      type: object
-      required: [requestId, fromStatus, toStatus, occurredAt, version, historyId, replayed]
-      properties:
-        requestId: { type: string }
-        fromStatus: { $ref: '#/components/schemas/Status' }
-        toStatus: { $ref: '#/components/schemas/Status' }
-        occurredAt: { type: string, format: date-time }
-        version: { type: integer }
-        historyId: { type: string }
-        replayed: { type: boolean, const: true }
     EntryCommand:
       type: object
       additionalProperties: false
@@ -1446,13 +1414,6 @@ components:
         requestVersion: { type: integer, minimum: 1, description: The request version this entry produced (DB-01). }
         occurredAt: { type: string, format: date-time }
         version: { type: integer, minimum: 1, description: The new request version; also returned as the ETag. }
-    EntryReplay:
-      allOf:
-        - $ref: '#/components/schemas/EntryResult'
-        - type: object
-          required: [replayed]
-          properties:
-            replayed: { type: boolean, const: true }
     HistoryEntry:
       type: object
       required: [id, requestVersion, changeType, occurredAt, actorRole, actorId]
@@ -1542,12 +1503,11 @@ components:
         roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
     Revocation:
       type: object
-      required: [id, status, revokedAt, replayed]
+      required: [id, status, revokedAt]
       properties:
         id: { type: string }
         status: { type: string, enum: [revoked] }
         revokedAt: { type: [string, 'null'], format: date-time }
-        replayed: { type: boolean }
     ReportSummary:
       type: object
       required: [byStatus, byCategory, overdue, total]
@@ -1598,11 +1558,10 @@ components:
         targetResolutionHours: { type: number, minimum: 1 }
     CategoryDeactivation:
       type: object
-      required: [id, active, replayed]
+      required: [id, active]
       properties:
         id: { type: string }
         active: { type: boolean, enum: [false] }
-        replayed: { type: boolean }
 
   parameters:
     RequestId:
@@ -1621,7 +1580,7 @@ components:
         A key generated per logical user action and reused unchanged on every
         retry (UUID v4 recommended, at most 64 characters). Missing or blank
         returns 400. Reused with a different body returns 422. Reused with the
-        same body returns the original result with 200, header
+        same body returns the original result with its original status code, header
         `Idempotent-Replayed: true`, and writes nothing (DEC-015 §3).
       schema:
         type: string
@@ -1634,24 +1593,17 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     EntryCreated:
-      description: The entry was appended; the request is at the new version.
+      description: The entry was appended; the request is at the new version. A replay returns this status and body with Idempotent-Replayed true.
       headers:
         ETag:
           description: The new version, e.g. "v4".
           schema: { type: string }
+        Idempotent-Replayed:
+          description: Present, with the value true, only on a replay.
+          schema: { type: string, enum: ['true'] }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/EntryResult' }
-    EntryReplayed:
-      description: Idempotent replay of an entry already appended. Nothing is written.
-      headers:
-        Idempotent-Replayed:
-          schema: { type: string, enum: ['true'] }
-        ETag:
-          schema: { type: string }
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/EntryReplay' }
     EntryInvalid:
       description: |
         Idempotency-Key missing (IDEMPOTENCY_KEY_REQUIRED); or the identifier,

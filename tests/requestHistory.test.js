@@ -335,16 +335,17 @@ test('DEC-015 §1: If-Match is not required on an append (201 with no If-Match)'
   });
 });
 
-test('DEC-015 §3: the same key and body replays the original and writes no second entry; a different body is 422', async () => {
+test('DEC-015 §3: the same key and body replays the original 201 and body with Idempotent-Replayed and writes no second entry; a different body is 422', async () => {
   const { app, store } = harness();
   await serve(app, async (base) => {
     const staff = await login(base, 'coord@example.test');
     const first = await post(base, staff, 'comments', { body: 'x' }, { key: 'k-1' });
     const replay = await post(base, staff, 'comments', { body: 'x' }, { key: 'k-1' });
     assert.equal(first.status, 201);
-    assert.equal(replay.status, 200);
+    assert.equal(replay.status, 201);
+    assert.equal(first.headers.get('idempotent-replayed'), null);
     assert.equal(replay.headers.get('idempotent-replayed'), 'true');
-    assert.equal((await replay.json()).historyId, (await first.json()).historyId);
+    assert.deepEqual(await replay.json(), await first.json());
     assert.equal(store.entries.length, 1);
     const different = await post(base, staff, 'comments', { body: 'y' }, { key: 'k-1' });
     assert.equal(different.status, 422);

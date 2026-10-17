@@ -33,7 +33,7 @@
  * rolls back with no write, and only then is the attempt recorded.
  */
 
-import { mayActOnRequest, mayPerformOperation, primaryRole } from '../domain/accessRules.js';
+import { mayActOnRequest, mayBeAssigned, mayPerformOperation, primaryRole } from '../domain/accessRules.js';
 import { EVENTS, publish } from '../events/requestEvents.js';
 import { STATUS, TERMINAL_STATUSES } from '../models/_shared.js';
 import {
@@ -62,7 +62,7 @@ export function createAssignmentService({
       const prior = await history.findByIdempotencyKey(actor.id, idempotencyKey);
       if (prior) {
         if (prior.idempotencyFingerprint !== fingerprint) throw new IdempotencyConflictError();
-        return replayOf(prior);
+        return replayOf(prior, actor);
       }
     }
 
@@ -108,11 +108,11 @@ export function createAssignmentService({
           throw new AssignmentRefusedError(`An unassigned request in status ${request.status} cannot be assigned`);
         }
 
-        // FR-5.1 / FR-5.2: the new owner must be staff the request may be given to.
+        // FR-5.1 / FR-5.5: the new owner is a Technician or Security Officer the request may be given to.
         const assignee = accepting ? actor : await users.findById(assigneeId);
         if (!assignee || assignee.status === 'revoked'
             || (assignee.campusId && String(assignee.campusId) !== String(request.campusId))
-            || !mayActOnRequest(request, assignee)) {
+            || !mayBeAssigned(request, assignee)) {
           throw new AssignmentRefusedError('The named user cannot be assigned this request');
         }
 
@@ -192,9 +192,14 @@ function isAccept(assigneeId, actor) {
   return String(assigneeId) === String(actor.id) && mayPerformOperation('request:accept', actor);
 }
 
-function replayOf(entry) {
+/** DEC-015 §3: the same members as the original result, `action` included. */
+function replayOf(entry, actor) {
+  const action = entry.fromStatus === null || entry.fromStatus === undefined
+    ? ASSIGNMENT_ACTIONS.REASSIGN
+    : isAccept(entry.toAssigneeId, actor) ? ASSIGNMENT_ACTIONS.ACCEPT : ASSIGNMENT_ACTIONS.ASSIGN;
   return {
     requestId:      entry.requestId,
+    action,
     fromAssigneeId: entry.fromAssigneeId ?? null,
     toAssigneeId:   entry.toAssigneeId,
     status:         entry.toStatus ?? null,

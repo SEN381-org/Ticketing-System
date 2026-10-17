@@ -89,9 +89,9 @@ function persistence({ failHistoryAppend = false } = {}) {
     },
   };
   const counters = {
-    next: async (campusId, year, { session } = {}) => {
+    next: async (year, { session } = {}) => {
       calls.sessions.counter.push(session);
-      const id = `request-ref:${campusId}:${year}`;
+      const id = `request-ref:${year}`;
       const seq = (store.counters.get(id) ?? 0) + 1;
       write(session, () => store.counters.set(id, seq));
       return seq;
@@ -141,9 +141,9 @@ function harness(options) {
   });
   const requestSubmissionService = createRequestSubmissionService({
     requests: p.requests, history: p.history, categories: p.categories, counters: p.counters,
-    users: usersRepo, unitOfWork: p.unitOfWork, clock: () => NOW,
+    unitOfWork: p.unitOfWork, clock: () => NOW,
   });
-  const categoryService = createCategoryService({ categories: p.categories, users: usersRepo });
+  const categoryService = createCategoryService({ categories: p.categories });
   const app = createApp({
     authService, healthService: createHealthService({ pingDatabase: async () => {} }),
     requestSubmissionService, categoryService, log: { error() {} },
@@ -397,7 +397,7 @@ test('DEC-015 §3: a replayed key with the same body returns the same status and
     assert.equal(second.headers.get('location'), first.headers.get('location'));
     assert.equal(h.store.requests.length, 1, 'no second request');
     assert.equal(h.store.history.length, 1, 'no second history entry');
-    assert.equal(h.store.counters.get('request-ref:campus-1:2026'), 1, 'no second number consumed');
+    assert.equal(h.store.counters.get('request-ref:2026'), 1, 'no second number consumed');
   });
 });
 

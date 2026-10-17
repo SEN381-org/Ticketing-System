@@ -72,6 +72,13 @@ test('the list for every actor equals the fixtures filtered by mayViewRequest �
   const sizes = new Set();
   for (const [name, actor] of Object.entries(ACTORS)) {
     const expected = REQUESTS.filter((r) => mayViewRequest(r, actor)).map((r) => r.reference).sort();
+    if (['administrator', 'noRole'].includes(name)) {
+      // DEC-015 §3 / D11: no role that can view requests is a 403, not an empty list.
+      assert.deepEqual(expected, [], `${name}: mayViewRequest permits nothing`);
+      await assert.rejects(service.list({}, actor), AuthorisationError, `${name}: list is refused`);
+      sizes.add(0);
+      continue;
+    }
     const actual = refsOf(await allPages(service, actor, { limit: '3' }));
     assert.equal(new Set(actual).size, actual.length, `${name}: a request was listed twice`);
     assert.deepEqual([...actual].sort(), expected, `${name}: list differs from mayViewRequest`);
@@ -290,6 +297,58 @@ test('search applies the same authorisation as the list: a request outside the a
   assert.deepEqual(secret.items, []);
   const officer = await service.search({ text: 'confidential' }, ACTORS.securityOfficer);
   assert.deepEqual(refsOf(officer.items), ['CC-2026-000006']);
+});
+
+// Basis: D11 (integration decision): GET /api/v1/requests and POST /api/v1/requests/search
+// refuse an actor with no role that can view requests with 403 FORBIDDEN and no data,
+// as GET /api/v1/requests/:id does; a Requester or any staff role keeps its scoped list.
+// Expected: 403 problem body naming no reference for Administrator-only and for a user with
+// no role; 200 with the scoped list for a Requester and a Technician; the repository untouched.
+test('an Administrator-only actor gets 403 FORBIDDEN and no data from the list and the search (and an actor with no role from the list service); a Requester and staff keep their scoped list — D11, FR-3.1, FR-4.1', async () => {
+  const baseUser = { campusId: 'c1', passwordHash: 'fake$right', groupIds: [], status: 'active', sessionEpoch: 0 };
+  const admin = { ...baseUser, _id: oid(0x2401), email: 'admin@example.test', displayName: 'Admin', roles: [ROLE.ADMINISTRATOR], categoryAuthorisations: [CAT1, CAT2, CATS] };
+  const { app, lists } = harness({ users: [admin] });
+  await serve(app, async (base) => {
+    for (const email of ['admin@example.test']) {      // a user with no role cannot log in; that case is the service-level test above
+      const cookie = await login(base, email);
+      for (const res of [await getList(base, cookie), await getList(base, cookie, '?assigneeId=none'),
+        await postSearch(base, cookie, { text: 'tap' })]) {
+        assert.equal(res.status, 403, email);
+        const text = await res.text();
+        assert.equal(JSON.parse(text).code, 'FORBIDDEN');
+        assert.doesNotMatch(text, /CC-2026-|items/);
+      }
+    }
+    assert.equal(lists.calls.length, 0, 'the repository must not be reached');
+    const none = { ...ACTORS.noRole, campusId: 'c1' };
+    await assert.rejects(createRequestListService({ lists }).list({}, none), AuthorisationError);
+    await assert.rejects(createRequestListService({ lists }).search({ text: 'tap' }, none), AuthorisationError);
+    assert.equal(lists.calls.length, 0);
+
+    const requester = await getList(base, await login(base, 'req1@example.test'));
+    assert.equal(requester.status, 200);
+    assert.ok((await requester.json()).items.length > 0);
+    const staff = await getList(base, await login(base, 'ta@example.test'));
+    assert.equal(staff.status, 200);
+    assert.ok((await staff.json()).items.length > 0);
+    assert.equal((await postSearch(base, await login(base, 'co@example.test'), { text: 'tap' })).status, 200);
+  });
+});
+
+// Basis: SCP-019 and the declared Request indexes, which all lead with campusId.
+// Expected: the filter every list/search query sends to the repository has a campusId
+// clause for the ACTOR'S campus first, and a request of another campus is never listed.
+test('every list and search query leads with the actor campusId, and requests of another campus are not listed — SCP-019, FR-4.1', async () => {
+  const other = { ...REQUESTS[0], _id: oid(0x3999), reference: 'CC-2026-000999', campusId: 'c2' };
+  const { service, lists } = serviceWith([...REQUESTS, other]);
+  const items = await allPages(service, ACTORS.managerAll);
+  assert.ok(!refsOf(items).includes('CC-2026-000999'));
+  await service.search({ text: 'tap' }, ACTORS.managerAll);
+  assert.ok(lists.calls.length >= 2);
+  for (const call of lists.calls) assert.deepEqual(call.filter.$and[0], { campusId: 'c1' });
+  const elsewhere = { ...ACTORS.managerAll, campusId: 'c2' };
+  assert.deepEqual(refsOf((await service.list({}, elsewhere)).items), ['CC-2026-000999']);
+  await assert.rejects(service.list({}, { ...ACTORS.managerAll, campusId: undefined }), AuthorisationError);
 });
 
 test('search is for staff: a Requester is refused, an Administrator-only actor is refused — FR-4.3', async () => {

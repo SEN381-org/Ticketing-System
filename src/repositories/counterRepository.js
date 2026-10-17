@@ -9,10 +9,14 @@
 import Counter from '../models/Counter.js';
 
 export const counterRepository = {
-  /** @returns {Promise<number>} the next number for this campus and year, starting at 1 */
-  next: async (campusId, year, { session } = {}) => {
+  /**
+   * One sequence per UTC year, not per campus: Request.reference is unique across
+   * all requests (FR-2.6) and the format carries no campus.
+   * @returns {Promise<number>} the next number for this year, starting at 1
+   */
+  next: async (year, { session } = {}) => {
     const counter = await Counter.findOneAndUpdate(
-      { _id: `request-ref:${campusId}:${year}` },
+      { _id: `request-ref:${year}` },
       { $inc: { seq: 1 } },
       { upsert: true, new: true, session, setDefaultsOnInsert: true },
     ).lean();

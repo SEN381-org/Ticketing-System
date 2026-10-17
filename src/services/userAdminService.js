@@ -6,8 +6,10 @@
  *            DEC-018.
  *
  * The initial password is supplied by the Administrator in the request body. It is
- * hashed by the password hasher before anything is stored, and it is never logged,
- * returned or kept: only the encoded hash reaches the repository (NFR-3.1).
+ * hashed by src/infrastructure/passwordHasher.js (DEC-018 §2 scrypt parameters)
+ * before anything is stored, and it is never logged, returned or kept: only the
+ * encoded hash reaches the repository (NFR-3.1). It is refused if empty, as the
+ * host script refuses it.
  *
  * Revocation sets status `revoked`, `revokedAt`, and increments `sessionEpoch`.
  * authService.resolve() then returns null for every session of the account
@@ -43,6 +45,18 @@ function requireString(body, field) {
   return v.trim();
 }
 
+/**
+ * The initial password follows scripts/admin/create-user.js and DEC-018 §2: a
+ * string, refused if empty, and used exactly as given (it is not trimmed, because
+ * the person will type it at login). There is no other policy in the records.
+ */
+function requirePassword(body) {
+  const v = body.password;
+  if (v === undefined || v === null || v === '') throw new ValidationError('password is required');
+  if (typeof v !== 'string') throw new ValidationError('password must be a string');
+  return v;
+}
+
 export function createUserAdminService({ users, passwords, validateRoles }) {
   const requireAdminister = (actor) => {
     if (!mayPerformOperation('user:administer', actor)) throw new AuthorisationError();
@@ -68,7 +82,7 @@ export function createUserAdminService({ users, passwords, validateRoles }) {
       throw new ValidationError('categoryId must be a 24-character hexadecimal identifier');
     }
 
-    const campusId = await campusOf(actor, users);
+    const campusId = campusOf(actor);
     const rows = await users.list({ campusId, role, categoryId });
     const showEmail = actor.roles.includes(ROLE.ADMINISTRATOR);
     return rows.map((u) => ({
@@ -85,7 +99,7 @@ export function createUserAdminService({ users, passwords, validateRoles }) {
 
     const email = requireString(body, 'email').toLowerCase();   // FR-1.1: stored lower-cased
     const displayName = requireString(body, 'displayName');
-    const password = requireString(body, 'password');
+    const password = requirePassword(body);
     if (!/^[^\s@]+@[^\s@]+$/.test(email)) throw new ValidationError('email must be an e-mail address');
     if (displayName.length > 100) throw new ValidationError('displayName must be at most 100 characters');
     checkRoles(body.roles);
@@ -96,7 +110,7 @@ export function createUserAdminService({ users, passwords, validateRoles }) {
       throw new ValidationError('categoryAuthorisations must be a list of identifiers');
     }
 
-    const campusId = await campusOf(actor, users);
+    const campusId = campusOf(actor);
     if (await users.findByEmail(email, campusId)) {
       throw new ConflictError('An account with that e-mail already exists');
     }
@@ -118,7 +132,7 @@ export function createUserAdminService({ users, passwords, validateRoles }) {
     rejectUnknown(body, ['roles']);
     checkRoles(body.roles);
 
-    const campusId = await campusOf(actor, users);
+    const campusId = campusOf(actor);
     if (!(await users.setRoles(userId, campusId, body.roles))) throw notFound(userId);
     return { id: String(userId), roles: [...body.roles] };
   }
@@ -126,7 +140,7 @@ export function createUserAdminService({ users, passwords, validateRoles }) {
   /** A5. @returns {{id, status: 'revoked', revokedAt, replayed: boolean}} */
   async function revoke(userId, actor, now = new Date()) {
     requireAdminister(actor);
-    const campusId = await campusOf(actor, users);
+    const campusId = campusOf(actor);
     const user = await users.findById(userId, campusId);
     if (!user) throw notFound(userId);
 

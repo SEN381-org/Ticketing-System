@@ -180,6 +180,8 @@ export function createAuthService({
       categoryAuthorisations: (user.categoryAuthorisations ?? []).map(String),
       // Carried, not evaluated: the FR-1.6 union is TD-002 (DB-01 §3.7).
       groupIds:               (user.groupIds ?? []).map(String),
+      // Additive (DEC-018 §4): the campus every M4 query is scoped by (SCP-019).
+      campusId:               user.campusId == null ? undefined : String(user.campusId),
     };
   }
 

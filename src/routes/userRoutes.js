@@ -6,7 +6,7 @@
  *   GET  /api/v1/users                    list (e-mail to an Administrator only)
  *   POST /api/v1/users                    create       201 + Location
  *   PUT  /api/v1/users/:id/roles          amend roles  200
- *   POST /api/v1/users/:id/revocation     revoke       201, a repeat 200
+ *   POST /api/v1/users/:id/revocation     revoke       201, a repeat 201 + Idempotent-Replayed
  *
  * Every state-changing route requires an Idempotency-Key (DEC-015 §3).
  */
@@ -70,7 +70,10 @@ export function createUserRouter({ userAdminService }) {
         requireIdempotencyKey(req);
         const id = parseObjectId(req.params.id);
         const result = await userAdminService.revoke(id, req.actor);
-        res.status(result.replayed ? 200 : 201).json(result);
+        // DEC-015 §3: a repeat has the original's status code and body, plus the header.
+        const { replayed, ...body } = result;
+        if (replayed) res.set('Idempotent-Replayed', 'true');
+        res.status(201).json(body);
       } catch (error) {
         next(error);
       }

@@ -78,7 +78,10 @@ export function makeRequest(spec, n) {
   };
 }
 
-export function harness({ requests = [], users = seedUsers(), categories = seedCategories() } = {}) {
+export function harness({
+  requests = [], users = seedUsers(), categories = seedCategories(),
+  adminPasswords, log = { error() {} },
+} = {}) {
   const store = { users, categories, requests };
   const sessions = new Map();
   const passwords = {
@@ -144,7 +147,6 @@ export function harness({ requests = [], users = seedUsers(), categories = seedC
 
   const campusScoped = (u) => u && u.campusId === CAMPUS;
   const usersRepo = {
-    findCampusId: async (id) => users.get(String(id))?.campusId ?? null,
     list: async ({ role, categoryId }) => [...users.values()].filter((u) =>
       u.status === 'active' && (!role || u.roles.includes(role))
       && (!categoryId || u.categoryAuthorisations.includes(categoryId))),
@@ -176,11 +178,11 @@ export function harness({ requests = [], users = seedUsers(), categories = seedC
     healthService: createHealthService({ pingDatabase: async () => {} }),
     statusTransitionService: {}, requestQueryService: {},
     reportService: createReportService({
-      reports, categories: categoriesRepo, users: usersRepo, clock: () => NOW,
+      reports, categories: categoriesRepo, clock: () => NOW,
     }),
-    userAdminService: createUserAdminService({ users: usersRepo, passwords, validateRoles }),
-    categoryAdminService: createCategoryAdminService({ categories: categoriesRepo, users: usersRepo }),
-    log: { error() {} },
+    userAdminService: createUserAdminService({ users: usersRepo, passwords: adminPasswords ?? passwords, validateRoles }),
+    categoryAdminService: createCategoryAdminService({ categories: categoriesRepo }),
+    log,
   });
   return { app, store, calls, sessions };
 }

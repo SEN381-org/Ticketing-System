@@ -44,8 +44,11 @@ export function createAssignmentRouter({ assignmentService }) {
         const command = readCommand(req);
         const assigneeId = readBody(req.body);
         const result = await assignmentService.assign(req.params.id, assigneeId, req.actor, command);
-        res.set('ETag', etagFor(result.version));
-        res.status(result.replayed ? 200 : 201).json(result);
+        // DEC-015 §3: a replay has the original's status code and body, plus the header.
+        const { replayed, ...body } = result;
+        res.set('ETag', etagFor(body.version));
+        if (replayed) res.set('Idempotent-Replayed', 'true');
+        res.status(201).json(body);
       } catch (error) {
         next(error);                                  // RFC 9457 handler, DEC-015
       }
