@@ -327,11 +327,21 @@ paths:
         Provisional: FR-4.2 is Proposed and not yet baselined (OI-01), so this
         operation may change when the requirement is confirmed.
 
-        Returns only `reference`, `status` and `version`; the `ETag` header
-        carries the same version in the form accepted by `If-Match` on the
+        Returns the request detail (FR-4.2, AC-FR-4.2, AC-FR-7.5; additive, DEC-015
+        §6). Comments, actions and history are not embedded: read
+        `GET /requests/{id}/history`. Who may read is unchanged. The `ETag`
+        header carries the version in the form accepted by `If-Match` on the
         transition resource. `status` is the status this caller may be shown:
         a Requester sees only Received, In Progress or Closed for a
         security-category request (FR-3.5, DEC-012 enforcement point 3).
+
+        Conditional members are absent, not null, when withheld. `description`,
+        `resolution` and `closureReason` are returned on a security-category
+        request only to a Security Officer (FR-1.5, read literally: a Requester
+        on their own security request does not receive them, OI-16 open), and to
+        every permitted viewer otherwise. `requesterId` and `submittedById`
+        are returned to staff only. `permittedTransitions` lists the moves this
+        caller may attempt now (TD-003); it is empty for a Requester.
 
         A Requester asking for a request that is not theirs receives the same 404
         as for an identifier that does not exist (FR-3.6, DEC-015 §4). A staff
@@ -1231,11 +1241,45 @@ components:
     RequestView:
       type: object
       additionalProperties: false
-      required: [reference, status, version]
+      required: [id, reference, status, version, categoryId, submittedAt, assigneeId, location, permittedTransitions]
       properties:
+        id: { type: string }
         reference: { type: string, pattern: '^CC-\d{4}-\d{6}$' }
         status: { $ref: '#/components/schemas/Status' }
         version: { type: integer, minimum: 0, description: The current version; also returned as the ETag. }
+        categoryId: { type: string, nullable: true }
+        submittedAt: { type: string, format: date-time, nullable: true }
+        assigneeId: { type: string, nullable: true, description: The current owner; null when unassigned. }
+        location: { type: string, nullable: true }
+        description:
+          type: string
+          nullable: true
+          description: Conditional (FR-1.5). On a security-category request, only for a Security Officer.
+        resolution:
+          type: object
+          additionalProperties: false
+          description: Conditional (FR-1.5, AC-FR-7.5), as description.
+          properties:
+            summary: { type: string, nullable: true }
+            recordedAt: { type: string, format: date-time, nullable: true }
+        closureReason:
+          type: string
+          nullable: true
+          description: Conditional (FR-1.5), as description. The reason recorded at close or reject (FR-6.6).
+        submittedById: { type: string, nullable: true, description: Conditional, staff only. }
+        requesterId: { type: string, nullable: true, description: Conditional, staff only. }
+        permittedTransitions:
+          type: array
+          description: The moves this caller may attempt on the transition resource now (TD-003).
+          items: { $ref: '#/components/schemas/PermittedTransition' }
+    PermittedTransition:
+      type: object
+      additionalProperties: false
+      required: [toStatus, requiresReason, requiresResolution]
+      properties:
+        toStatus: { $ref: '#/components/schemas/Status' }
+        requiresReason: { type: boolean, description: A recorded reason is required (FR-6.6). }
+        requiresResolution: { type: boolean, description: Resolution information is required first (FR-6.5). }
     SubmissionCommand:
       type: object
       additionalProperties: false

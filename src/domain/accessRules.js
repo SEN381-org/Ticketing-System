@@ -102,6 +102,22 @@ export function mayViewRequest(request, actor) {
 }
 
 /**
+ * Enforcement point 3 — FR-1.5: the description, resolution and closure reason of
+ * a security-category request are for the Security Officer only. Read literally,
+ * that excludes the requester who submitted it (OI-16 open, CFL-002). On any other
+ * request every viewer mayViewRequest permits may see them.
+ */
+export function mayViewRestrictedDetail(request, actor) {
+  if (!request.securityCategory) return true;
+  return has(actor, ROLE.SECURITY_OFFICER);
+}
+
+/** Who submitted and who owns the request is staff information, not the requester's. */
+export function mayViewPeople(actor) {
+  return isStaff(actor);
+}
+
+/**
  * Enforcement point 2, list path — the set of requests mayViewRequest permits,
  * stated as data so a query can select it instead of loading every request and
  * filtering. It restates mayViewRequest's three branches in the same order
