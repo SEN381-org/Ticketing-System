@@ -14,6 +14,7 @@
 
 import Request from '../models/Request.js';
 import { PreconditionFailedError } from '../errors.js';
+import { assertObjectId } from '../domain/objectId.js';
 import { primaryRole } from '../domain/accessRules.js';
 
 /**
@@ -31,8 +32,14 @@ export function buildChangeUpdate($set, actor) {
 }
 
 export const requestRepository = {
-  findById: (id, { session } = {}) =>
-    Request.findById(id).session(session ?? null).lean(),
+  // DEF-012: a malformed id used to reach Mongoose, whose cast failure became an
+  // unrecognised error and a generic 500. It is refused here, before any read, as
+  // a 400 (DEC-015 §4). The cast happens at this layer, so every route that reads
+  // a request by id is covered.
+  findById: async (id, { session } = {}) => {
+    assertObjectId(String(id ?? ''), 'id');
+    return Request.findById(id).session(session ?? null).lean();
+  },
 
   applyChange: async (id, expectedVersion, $set, actor, { session } = {}) => {
     const { matchedCount } = await Request.updateOne(

@@ -7,12 +7,17 @@
  */
 
 export class AppError extends Error {
-  constructor(message, { status, type, code }) {
+  /**
+   * `extensions` are extra problem-detail members (RFC 9457 §3.2), for example the
+   * current ETag on a 412 (DEC-015 §2). They never replace a standard member.
+   */
+  constructor(message, { status, type, code, extensions = null }) {
     super(message);
     this.name = new.target.name;
     this.status = status;
     this.type = type;
     this.code = code;
+    this.extensions = extensions;
   }
 }
 
@@ -52,11 +57,17 @@ export class PreconditionRequiredError extends AppError {
   }
 }
 
-/** DEC-015 / DEC-016 — the version presented is not the current one. */
+/**
+ * DEC-015 / DEC-016 — the version presented is not the current one.
+ * DEC-015 §2: the problem body carries the current ETag, so the client can re-read
+ * and retry deliberately (DEF-008). It is omitted only when the current version is
+ * not known, as when the conditional write itself finds the version moved.
+ */
 export class PreconditionFailedError extends AppError {
-  constructor(id, expectedVersion) {
+  constructor(id, expectedVersion, currentVersion = null) {
     super(`Request '${id}' is no longer at version ${expectedVersion}`,
-      { status: 412, type: 'https://civicconnect.example/problems/precondition-failed', code: 'PRECONDITION_FAILED' });
+      { status: 412, type: 'https://civicconnect.example/problems/precondition-failed', code: 'PRECONDITION_FAILED',
+        extensions: Number.isInteger(currentVersion) ? { currentEtag: `"v${currentVersion}"` } : null });
   }
 }
 
@@ -106,10 +117,13 @@ export class PayloadTooLargeError extends AppError {
   }
 }
 
-/** DEC-015 — same idempotency key, different request body. */
+/**
+ * DEC-015 §3 — same idempotency key, different request (method, path or body).
+ * The problem type is the one DEC-015 §3 names, idempotency-key-reused (DEF-010).
+ */
 export class IdempotencyConflictError extends AppError {
   constructor() {
     super('This Idempotency-Key was used with a different request',
-      { status: 422, type: 'https://civicconnect.example/problems/idempotency-conflict', code: 'IDEMPOTENCY_CONFLICT' });
+      { status: 422, type: 'https://civicconnect.example/problems/idempotency-key-reused', code: 'IDEMPOTENCY_CONFLICT' });
   }
 }

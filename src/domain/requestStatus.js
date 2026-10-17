@@ -107,7 +107,9 @@ export const REASON_REQUIRED = Object.freeze([STATUS.CLOSED, STATUS.REJECTED]);
  * @param {string} to    target status
  * @param {string[]} roles the acting user's roles (FR-1.2 allows more than one)
  * @param {{hasResolution?: boolean, hasReason?: boolean, securityCategory?: boolean}} [context]
- * @returns {{allowed: boolean, reason?: string}}
+ * @returns {{allowed: boolean, reason?: string, refusal?: 'role'}}
+ *   `refusal: 'role'` marks a refusal because no held role may make the move, so
+ *   the service can answer it as DEC-015 §4's 403 rather than a 422 (DEF-011).
  */
 export function checkTransition(from, to, roles, context = {}) {
   const held = Array.isArray(roles) ? roles : [roles];
@@ -124,7 +126,7 @@ export function checkTransition(from, to, roles, context = {}) {
     : move.roles;
 
   if (!permittedRoles.some((r) => held.includes(r))) {
-    return { allowed: false, reason: `No held role may move '${from}' to '${to}'` };
+    return { allowed: false, refusal: 'role', reason: `No held role may move '${from}' to '${to}'` };
   }
 
   // FR-6.5 — resolution information recorded before Resolved.
