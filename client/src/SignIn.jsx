@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import { ApiError, signIn } from './api.js';
 import { useAuth } from './auth.jsx';
+import { landingAfterSignIn } from './permissions.js';
+import { navigate, usePath } from './router.jsx';
 import { Field, Logo, Problem, asError } from './ui.jsx';
 
 export default function SignIn({ onSubmit, error = null }) {
@@ -43,13 +45,16 @@ export default function SignIn({ onSubmit, error = null }) {
  */
 export function SignInGate({ children }) {
   const auth = useAuth();
+  const path = usePath();
   const [error, setError] = useState(null);
   if (auth.authed) return children;
   const submit = async (email, password) => {
     setError(null);
     try {
       const r = await signIn(email, password);
+      const to = landingAfterSignIn(r.data, path, auth.lastUserId());
       auth.setUser(r.data);
+      if (to && to !== '/') navigate(to, { replace: true });
     } catch (e) { setError(e instanceof ApiError ? e : asError(e)); }
   };
   return <SignIn onSubmit={submit} error={error} />;

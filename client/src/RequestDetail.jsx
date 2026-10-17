@@ -23,6 +23,7 @@ import {
 } from './ui.jsx';
 
 const present = (v) => v !== undefined && v !== null && v !== '';
+const EMPTY_HISTORY = { entries: [], unavailable: false };
 const textOf = (v) => (v && typeof v === 'object' ? (v.summary ?? v.body ?? '') : v);
 
 function NoteForm({ id, label, button, send, onDone }) {
@@ -53,7 +54,7 @@ export default function RequestDetail({ id }) {
   const categories = useCategories();
   const [request, setRequest] = useState(null);
   const [etag, setEtag] = useState(null);
-  const [history, setHistory] = useState({ entries: [], unavailable: false });
+  const [history, setHistory] = useState(EMPTY_HISTORY);
   const [pool, setPool] = useState([]);
   const [assignee, setAssignee] = useState('');
   const [needSignIn, setNeedSignIn] = useState(false);
@@ -83,6 +84,16 @@ export default function RequestDetail({ id }) {
     } catch { setHistory({ entries: [], unavailable: true }); }
   }, [id]);
 
+  // Nothing loaded for another request or another person is kept: the read, the
+  // history, the staff list and every choice start again (declared before the
+  // load effect, so the reset runs first).
+  const userId = auth.user?.id ?? null;
+  useEffect(() => {
+    setRequest(null); setEtag(null); setHistory(EMPTY_HISTORY); setPool([]);
+    setAssignee(''); setChosen(''); setReason(''); setResolution('');
+    setError(null); setStale(false);
+  }, [id, userId]);
+
   const load = useCallback(async () => {
     try {
       const r = await getRequest(id);
@@ -95,7 +106,8 @@ export default function RequestDetail({ id }) {
   useEffect(() => { load(); }, [load]);
 
   // The people a request can be given to: Technicians and Security Officers (FR-5.1).
-  const canAssign = shows(auth.user, 'assign');
+  const canAssign = Boolean(request?.permittedAssignment?.assign);
+  const canAccept = Boolean(request?.permittedAssignment?.accept);
   const shown = request !== null;
   const categoryId = request?.categoryId;
   useEffect(() => {
@@ -123,15 +135,16 @@ export default function RequestDetail({ id }) {
   };
 
   const permitted = Array.isArray(request?.permittedTransitions) ? request.permittedTransitions : null;
-  const selected = permitted?.find((t) => t.toStatus === chosen) ?? permitted?.[0] ?? null;
+  const selected = permitted?.find((t) => t.toStatus === chosen) ?? null;
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (!selected) return;
     setError(null); setStale(false);
     const extra = selected?.requiresResolution || resolution ? { resolution } : {};
     try {
       await transition(id, etag, selected.toStatus, reason, extra, transitionKey.current());
-      transitionKey.renew(); setReason(''); setResolution('');
+      transitionKey.renew(); setReason(''); setResolution(''); setChosen('');
       await load();
     } catch (err) { await failed(err); }
   };
@@ -181,10 +194,10 @@ export default function RequestDetail({ id }) {
         ) : null}
       </section>
 
-      {shows(auth.user, 'assign') || (shows(auth.user, 'accept') && !present(request.assigneeId)) ? (
+      {canAssign || canAccept ? (
         <section className="panel" aria-label="Assignment">
           <h2 className="label">Assignment</h2>
-          {shows(auth.user, 'assign') ? (
+          {canAssign ? (
             <form onSubmit={(e) => { e.preventDefault(); if (assignee) onAssign(assignee); }}>
               <Field id="assignee" label="Assign to">
                 <select className="select" id="assignee" value={assignee} onChange={(e) => setAssignee(e.target.value)}>
@@ -195,36 +208,33 @@ export default function RequestDetail({ id }) {
               <button className="btn" type="submit" disabled={!assignee}>Assign request</button>
             </form>
           ) : null}
-          {shows(auth.user, 'accept') && auth.user?.id && !present(request.assigneeId) ? (
+          {canAccept && auth.user?.id ? (
             <button className="btn" type="button" onClick={() => onAssign(auth.user.id)}>Accept this request</button>
           ) : null}
         </section>
       ) : null}
 
-      {permitted ? (
+      {permitted?.length ? (
         <section className="panel status-panel" aria-label="Update status">
           <h2 className="label">Update status</h2>
-          {permitted.length ? (
-            <form onSubmit={onSubmit}>
-              <Field id="toStatus" label="New status">
-                <select className="select" id="toStatus" value={selected.toStatus} onChange={(e) => setChosen(e.target.value)}>
-                  {permitted.map((t) => <option key={t.toStatus} value={t.toStatus}>{t.toStatus}</option>)}
-                </select>
+          <form onSubmit={onSubmit}>
+            <Field id="toStatus" label="New status">
+              <select className="select" id="toStatus" value={selected ? selected.toStatus : ''} onChange={(e) => setChosen(e.target.value)}>
+                <option value="" disabled>Choose a new status…</option>
+                {permitted.map((t) => <option key={t.toStatus} value={t.toStatus}>{t.toStatus}</option>)}
+              </select>
+            </Field>
+            <Field id="reason" label="Reason" hint={selected?.requiresReason ? 'The server requires a reason for this change.' : 'Optional.'}>
+              <textarea className="textarea" id="reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+            </Field>
+            {selected?.requiresResolution ? (
+              <Field id="resolutionText" label="Resolution" hint="The server requires a resolution summary for this change.">
+                <textarea className="textarea" id="resolutionText" rows={3} value={resolution} onChange={(e) => setResolution(e.target.value)} />
               </Field>
-              <Field id="reason" label="Reason" hint={selected.requiresReason ? 'The server requires a reason for this change.' : 'Optional.'}>
-                <textarea className="textarea" id="reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
-              </Field>
-              {selected.requiresResolution ? (
-                <Field id="resolutionText" label="Resolution" hint="The server requires a resolution summary for this change.">
-                  <textarea className="textarea" id="resolutionText" rows={3} value={resolution} onChange={(e) => setResolution(e.target.value)} />
-                </Field>
-              ) : null}
-              <button className="btn btn--lg" type="submit">Submit transition</button>
-            </form>
-          ) : (
-            <p className="notice-line">No status changes are available to you for this request right now.</p>
-          )}
-          {permitted.length ? <p className="notice-line">Only the next steps the server allows for your role are shown.</p> : null}
+            ) : null}
+            <button className="btn btn--lg" type="submit" disabled={!selected}>Submit transition</button>
+          </form>
+          <p className="notice-line">Only the next steps the server allows for your role are shown.</p>
         </section>
       ) : null}
 

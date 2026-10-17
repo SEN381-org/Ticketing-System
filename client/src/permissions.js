@@ -49,3 +49,15 @@ export function destinations(user) {
 }
 
 export const homePath = (user) => destinations(user)[0]?.[0] ?? '/';
+
+/**
+ * Where a sign-in on a gated page should land. A different person from the last
+ * one in this tab, or a page that is not one of the new user's destinations,
+ * goes to the role's home page; the same person on a page of theirs stays.
+ * Returns null to stay where they are.
+ */
+export function landingAfterSignIn(user, path, lastUserId) {
+  if (lastUserId && user?.id && lastUserId !== user.id) return homePath(user);
+  const own = destinations(user).some(([to]) => to === path) || path === '/notifications' || path === '/privacy';
+  return own ? null : homePath(user);
+}
