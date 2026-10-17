@@ -19,11 +19,15 @@
 
 const now = () => Number(process.hrtime.bigint() / 1_000_000n);
 
-/** The route pattern Express matched, or a fixed label when nothing matched. */
-function operationOf(req) {
+/**
+ * The route pattern Express matched, or a fixed label when nothing matched. The mount path
+ * is the one app.js recorded on res.locals: req.baseUrl is reset once an error has left the
+ * router, which logged "POST /" for a 400, 401 or 403 (S5).
+ */
+function operationOf(req, res) {
   const pattern = req.route?.path;
   if (pattern === undefined) return `${req.method} (no route)`;
-  const base = req.baseUrl ?? '';
+  const base = res.locals?.mountPath ?? req.baseUrl ?? '';
   return `${req.method} ${pattern === '/' ? base || '/' : `${base}${pattern}`}`;
 }
 
@@ -38,7 +42,7 @@ export function createPerformanceLog({ log = console } = {}) {
     res.on('finish', () => {
       const entry = {
         kind:       'perf',
-        operation:  operationOf(req),
+        operation:  operationOf(req, res),
         durationMs: now() - started,
         outcome:    res.statusCode,
       };

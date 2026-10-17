@@ -7,6 +7,7 @@
  *
  * Order is load-bearing:
  *   0. perf log    one structured entry per operation (NFR-1.11), first so all are timed
+ *   0b. caching    Cache-Control: no-store on /api, conditional-GET headers dropped (S1)
  *   1. health        before the session middleware, so a database outage cannot
  *                    turn the health check into a 500 via a cookie lookup
  *   2. body          JSON-only on writes (415), strict parse, 32 kB, mapped errors
@@ -21,6 +22,7 @@
  */
 
 import express from 'express';
+import { apiCaching } from './middleware/apiCaching.js';
 import { createErrorHandler } from './middleware/errorHandler.js';
 import { createPerformanceLog } from './middleware/performanceLog.js';
 import { createSessionMiddleware } from './middleware/session.js';
@@ -40,6 +42,9 @@ import { RouteNotFoundError } from './errors.js';
 
 function mount(app, path, router) {
   app.locals.mounts.push({ path, router });
+  // NFR-1.11: Express resets req.baseUrl when an error leaves a router, so the perf log
+  // reads the mount path recorded here, which survives to the response's 'finish'.
+  app.use(path, (req, res, next) => { res.locals.mountPath = path; next(); });
   app.use(path, router);
 }
 
@@ -61,6 +66,10 @@ export function createApp({
 
   // NFR-1.11: one structured entry per operation, first so every response is timed.
   app.use(createPerformanceLog({ log }));
+
+  // S1: per-viewer bodies are never cached or revalidated. Before every router and the body
+  // parser, so health, body errors and problem responses carry it too.
+  app.use('/api', apiCaching);
 
   mount(app, HEALTH_PATH, createHealthRouter({ healthService }));
 

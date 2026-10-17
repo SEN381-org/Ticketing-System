@@ -1,0 +1,39 @@
+Negative verification NV-164 - assignment service stops applying the status and ownership rule
+Track fixA-server (Section A server fixes). Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T16:23:24Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/assignmentStatusRule.test.js, tests/permittedAssignment.test.js
+File broken : src/services/assignmentService.js (never a test)
+
+CLAIM
+  The assignment service refuses assign, reassign and accept in Resolved, Closed and Rejected, and an unassigned request outside Received (OI-15, 17/10/2026).
+
+BREAK
+  - const refusal = assignmentRefusal(request, accepting);
+  + const refusal = null;
+
+EXPECTED (written before the run)
+  'reassign is permitted in ... refused in Resolved, Closed and Rejected' and 'an unassigned request can be assigned or accepted in Received only' fail (no rejection in Resolved / a non-Received status), and the agreement test fails (the flag is false where the service now succeeds); the accept-on-owned test may still pass through the same-owner check.
+
+RESULT BEFORE THE BREAK (control)
+  tests 6, pass 6, fail 0, exit 0
+
+RESULT WITH THE BREAK
+  tests 6, pass 2, fail 4, exit 1
+  failing:
+    reassign is permitted in Assigned, In Progress and On Hold and refused in Resolved, Closed and Rejected - FR-5.5, OI-15, NV-164
+    an unassigned request can be assigned or accepted in Received only - FR-5.1, FR-5.2, OI-15, NV-164
+    an accept on an owned request is refused in every status; the owner stays - FR-5.3
+    permittedAssignmentFor agrees with the assignment service: true exactly when the service accepts - FR-5.1, FR-5.5, TD-003, NV-165
+  Outcome: CAUGHT, as expected. Note: the accept-on-owned test also failed, which the expectation above allowed for but did not predict (without the rule nothing refuses an accept on an owned request); no consequence for the claim.
+
+RESTORE
+  SHA-256 before : f8b5c7814176d3b1b2faba739e8a1b0e986d6150f17bedb9e936e9b4e842fcc3
+  SHA-256 after  : f8b5c7814176d3b1b2faba739e8a1b0e986d6150f17bedb9e936e9b4e842fcc3
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 6, pass 6, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the status rule is enforced by the service and asserted for all seven FR-6.1 statuses, and the agreement test also notices a service that drifts from the advertised flag.
+  Does NOT show: the HTTP status code (the 422 mapping is the existing ASSIGNMENT_REFUSED error, asserted by e.status and e.code in the service test) or database behaviour.

@@ -32,12 +32,15 @@ export function buildRevocationUpdate(revokedAt) {
 const isDuplicateKey = (error) => error?.code === DUPLICATE_KEY;
 
 export const userAdminRepository = {
-  /** FR-5.1, FR-1.4: active accounts only. `categoryId` filters on FR-4.6 authorisations. */
-  list: ({ campusId, role, categoryId }) => {
-    const query = { campusId, status: 'active' };
+  /**
+   * FR-5.1, FR-1.4: active accounts only, unless `includeRevoked` (the Administrator's list).
+   * `categoryId` filters on FR-4.6 authorisations.
+   */
+  list: ({ campusId, role, categoryId, includeRevoked = false }) => {
+    const query = includeRevoked ? { campusId } : { campusId, status: 'active' };
     if (role) query.roles = role;
     if (categoryId) query.categoryAuthorisations = categoryId;
-    return User.find(query).select('displayName email roles').sort({ displayName: 1 }).lean();
+    return User.find(query).select('displayName email roles status revokedAt').sort({ displayName: 1 }).lean();
   },
 
   findById: (id, campusId) =>

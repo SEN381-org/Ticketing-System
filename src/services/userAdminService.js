@@ -68,7 +68,11 @@ export function createUserAdminService({ users, passwords, validateRoles }) {
     validateRoles(roles ?? []);
   }
 
-  /** A2. E-mail goes to an Administrator only (CON-007). */
+  /**
+   * A2. E-mail goes to an Administrator only (CON-007). An Administrator also sees
+   * revoked accounts, with `status` and `revokedAt` (FR-1.4); the assignment pool
+   * (Coordinator, Manager) never includes them (FR-5.1).
+   */
   async function list(query = {}, actor) {
     if (!mayPerformOperation('user:list', actor)) throw new AuthorisationError();
     const unknown = Object.keys(query).filter((k) => !['role', 'categoryId'].includes(k));
@@ -83,11 +87,13 @@ export function createUserAdminService({ users, passwords, validateRoles }) {
     }
 
     const campusId = campusOf(actor);
-    const rows = await users.list({ campusId, role, categoryId });
-    const showEmail = actor.roles.includes(ROLE.ADMINISTRATOR);
+    const isAdministrator = actor.roles.includes(ROLE.ADMINISTRATOR);
+    const rows = await users.list({ campusId, role, categoryId, includeRevoked: isAdministrator });
     return rows.map((u) => ({
       id: String(u._id), displayName: u.displayName, roles: [...u.roles],
-      ...(showEmail ? { email: u.email } : {}),
+      ...(isAdministrator
+        ? { email: u.email, status: u.status ?? 'active', revokedAt: u.revokedAt ?? null }
+        : {}),
     }));
   }
 

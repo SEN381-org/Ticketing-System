@@ -19,6 +19,12 @@ info:
     records. Unauthenticated routes are exactly those listed in
     `src/routes/publicRoutes.js`, each with its reason.
 
+    Every response under `/api`, problem responses included, carries
+    `Cache-Control: no-store`. Bodies differ per viewer while the `ETag` depends on
+    the version alone, so the API ignores `If-None-Match` and `If-Modified-Since`
+    and never answers 304 (FR-1.5, DEC-015 §1). The `ETag` header is still sent;
+    it is the value for `If-Match` on writes.
+
     Traces to: FR-1.1, FR-1.3, FR-1.4, FR-6.2 to FR-6.6, NFR-1.4, NFR-1.6, NFR-3.3,
     NFR-3.4, CON-019, DEC-012, DEC-015, DEC-016, DEC-018.
 servers:
@@ -299,10 +305,15 @@ paths:
       description: |
         DEC-015 Addendum A1. The active categories of the caller's campus, for the
         submission form (FR-2.3). A deactivated category is not listed (FR-9.1).
-        Every FR-1.2 role may call it.
+        Every FR-1.2 role may call it. `targetResolutionHours` (null where none is
+        set) is returned only to an actor who may set it (Manager, `category:set-target`,
+        FR-8.4) or administer categories (Administrator, `category:administer`,
+        FR-9.1); it is absent for every other role.
       responses:
         '200':
           description: The active categories, ordered by name.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
           content:
             application/json:
               schema:
@@ -342,6 +353,12 @@ paths:
         every permitted viewer otherwise. `requesterId` and `submittedById`
         are returned to staff only. `permittedTransitions` lists the moves this
         caller may attempt now (TD-003); it is empty for a Requester.
+        `permittedAssignment` says whether this caller may assign (including
+        reassign) or accept the request now (OI-15, 17/10/2026): assignment is open
+        only in Received (unassigned) and in Assigned, In Progress and On Hold, and
+        is refused with 422 in Resolved, Closed and Rejected; a Security Officer may
+        take only security-category requests and a Technician only others. Both
+        flags are false for a Requester.
 
         A Requester asking for a request that is not theirs receives the same 404
         as for an identifier that does not exist (FR-3.6, DEC-015 §4). A staff
@@ -363,6 +380,7 @@ paths:
             ETag:
               description: The current version, e.g. "v4".
               schema: { type: string }
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RequestView' }
@@ -845,12 +863,15 @@ paths:
     get:
       tags: [users]
       operationId: listUsers
-      summary: List active users
+      summary: List users
       description: |
         DEC-015 Addendum A, A2. Roles: Coordinator, Manager, Administrator
         (`user:list`). Returns `id`, `displayName` and `roles`; the e-mail
-        address is returned to an Administrator only (CON-007). Only active
-        accounts are listed. Traces to: FR-5.1, FR-1.4.
+        address is returned to an Administrator only (CON-007). A Coordinator or
+        Manager (the assignment pool) receives active accounts only. An
+        Administrator also receives revoked accounts, each with `status`
+        (`active` or `revoked`) and `revokedAt` (null while active). Traces to:
+        FR-5.1, FR-1.4.
       parameters:
         - name: role
           in: query
@@ -865,6 +886,8 @@ paths:
       responses:
         '200':
           description: The matching users.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
           content:
             application/json:
               schema:
@@ -1181,6 +1204,10 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
 components:
+  headers:
+    NoStore:
+      description: Always `no-store`; every response under /api is per viewer and is never cached (FR-1.5).
+      schema: { type: string, enum: [no-store] }
   securitySchemes:
     session:
       type: apiKey
@@ -1232,7 +1259,7 @@ components:
     RequestView:
       type: object
       additionalProperties: false
-      required: [id, reference, status, version, categoryId, submittedAt, assigneeId, location, permittedTransitions]
+      required: [id, reference, status, version, categoryId, submittedAt, assigneeId, location, permittedTransitions, permittedAssignment]
       properties:
         id: { type: string }
         reference: { type: string, pattern: '^CC-\d{4}-\d{6}$' }
@@ -1263,6 +1290,15 @@ components:
           type: array
           description: The moves this caller may attempt on the transition resource now (TD-003).
           items: { $ref: '#/components/schemas/PermittedTransition' }
+        permittedAssignment: { $ref: '#/components/schemas/PermittedAssignment' }
+    PermittedAssignment:
+      type: object
+      additionalProperties: false
+      required: [assign, accept]
+      description: What this caller may do about assignment on this request now (OI-15, TD-003 style).
+      properties:
+        assign: { type: boolean, description: The caller may assign, or reassign, the request (FR-5.1, FR-5.5). }
+        accept: { type: boolean, description: The caller may accept the request for themselves (FR-5.2). }
     PermittedTransition:
       type: object
       additionalProperties: false
@@ -1301,6 +1337,10 @@ components:
         code: { type: string }
         name: { type: string }
         isSecurity: { type: boolean }
+        targetResolutionHours:
+          type: number
+          nullable: true
+          description: Only for the Manager and the Administrator (FR-8.4, FR-9.1); null where no target is set; absent otherwise.
     TransitionCommand:
       type: object
       required: [toStatus]
@@ -1471,6 +1511,8 @@ components:
         displayName: { type: string }
         roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
         email: { type: string, description: Returned to an Administrator only (CON-007). }
+        status: { type: string, enum: [active, revoked], description: Returned to an Administrator only; a Coordinator or Manager never receives a revoked account. }
+        revokedAt: { type: string, format: date-time, nullable: true, description: Returned to an Administrator only; null while active (FR-1.4). }
     CreateUserCommand:
       type: object
       additionalProperties: false
