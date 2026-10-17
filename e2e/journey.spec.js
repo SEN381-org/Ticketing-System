@@ -70,9 +70,11 @@ test('E2E-1: Coordinator rejects a Received request', async ({ page, playwright,
   // {reference, status, version} as NV-43 first pinned. A Coordinator on a non-security request is
   // staff, so every member below is allowed (AC-FR-4.2, FR-1.5, DEC-015 §6); a key outside this
   // list, such as a comment or action, must not appear. Same keys as tests/requestRead.test.js.
+  // `permittedAssignment` joined the read by the decision of 17/10/2026 (A10: the assignment the
+  // actor may make or accept, OI-15), so it is a member of the allow-list from that date.
   const COORDINATOR_ALLOW_LIST = [
-    'assigneeId', 'categoryId', 'closureReason', 'description', 'id', 'location', 'permittedTransitions',
-    'reference', 'requesterId', 'resolution', 'status', 'submittedAt', 'submittedById', 'version',
+    'assigneeId', 'categoryId', 'closureReason', 'description', 'id', 'location', 'permittedAssignment',
+    'permittedTransitions', 'reference', 'requesterId', 'resolution', 'status', 'submittedAt', 'submittedById', 'version',
   ];
   await test.step('2. sign in: the read returns the Coordinator allow-list and nothing outside it (NV-43, FR-4.2)', async () => {
     const { signIn, get } = await signInViaForm(page, requestId, fixture);
