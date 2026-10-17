@@ -1,0 +1,48 @@
+
+Running 4 tests using 1 worker
+
+  ✓  1 [chromium] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page (4.5s)
+  ✓  2 [chromium] › detail-search.spec.js:146:1 › E2E-12: a Technician finds a request by a description term, through the text index (1.5s)
+  ✓  3 [chromium] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.3s)
+  ✘  4 [chromium] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) (3.4s)
+
+
+  1) [chromium] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) 
+
+    Error: R2 Requester: My requests, status chip chosen: sideways scrolling box "Filter by status" (783 > 360) holds controls
+    T1 Technician: search applied: sideways scrolling box "Requests" (880 > 326) holds controls
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 4
+
+    - Array []
+    + Array [
+    +   "R2 Requester: My requests, status chip chosen: sideways scrolling box \"Filter by status\" (783 > 360) holds controls",
+    +   "T1 Technician: search applied: sideways scrolling box \"Requests\" (880 > 326) holds controls",
+    + ]
+
+      246 |   }
+      247 |
+    > 248 |   expect(problems, problems.join('\n')).toEqual([]);
+          |                                         ^
+      249 | });
+      250 |
+        at C:\Users\elind\m4-wt\final\e2e\mobile.spec.js:248:41
+
+    Error Context: test-results\artifacts\mobile-E2E-13-360-px-measu-2f5ef-ian-interaction-AC-NFR-1-2--chromium\error-context.md
+
+    Error Context: test-results\artifacts\mobile-E2E-13-360-px-measu-2f5ef-ian-interaction-AC-NFR-1-2--chromium\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\mobile-E2E-13-360-px-measu-2f5ef-ian-interaction-AC-NFR-1-2--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\mobile-E2E-13-360-px-measu-2f5ef-ian-interaction-AC-NFR-1-2--chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) 
+  3 passed (17.1s)

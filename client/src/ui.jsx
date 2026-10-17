@@ -258,7 +258,10 @@ export function ConfirmAction({ label, ariaLabel, prompt, onConfirm, confirmLabe
 
 /** Active categories, A to Z ignoring case (the server sorts; sorted here too), with a name lookup. Names are stored lowercase. */
 export function useCategories() {
-  const state = useLoad(listCategories, []);
+  // Loaded again when the signed-in user changes: a page opened signed out gets a 401
+  // here, and a sign-in in place must not leave it without category names.
+  const userId = useAuth().user?.id ?? null;
+  const state = useLoad(listCategories, [userId]);
   const list = byName(itemsOf(state.data?.data));
   const nameOf = (id) => list.find((c) => c.id === id)?.name ?? null;
   return { ...state, list, nameOf };
