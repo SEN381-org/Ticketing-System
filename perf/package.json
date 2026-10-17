@@ -2,13 +2,15 @@
   "name": "civicconnect-perf",
   "version": "1.0.0",
   "private": true,
-  "description": "NFR-2.4 load test for the CivicConnect staging environment: fixtures created on the VM, load run from South Africa",
+  "description": "NFR-2.4 and NFR-2.1 load tests for the CivicConnect staging environment: fixtures created on the VM, load run from South Africa",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
   },
   "scripts": {
     "fixtures": "node generate-fixtures.js",
-    "load": "node load-run.js"
+    "load": "node load-run.js",
+    "submit": "node submit-run.js",
+    "timings": "node server-timings.js"
   }
 }
