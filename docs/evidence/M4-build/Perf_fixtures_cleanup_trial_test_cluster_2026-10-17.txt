@@ -1,0 +1,92 @@
+Perf fixtures and cleanup trial on the TEST cluster, 17/10/2026 (before staging)
+Runner: perf-trial.cjs steps a, b, e-dry, e-confirm; build task/M4-final-product 1d9619b; Node v24.16.0.
+Environment: Atlas test cluster; the connection string is never recorded. Each step's output below is unedited.
+
+================ EXPECTED (written before step A)
+Perf fixtures and cleanup: trial on the TEST cluster before staging (expected results, written
+17/10/2026 before any step is run). Build: task/M4-final-product 1d9619b. Synthetic data only.
+Trial size: --users 3 (Coordinators), --requesters 2, --transitions 1.
+
+Step A  generate-fixtures --target test
+  Expected: exit 0; "Host check: passed (host contains "civicconnecttest")"; the year's reference
+  counter is found (request-ref:2026, created by earlier runs); inserted: 7 categories (1 security),
+  3 Coordinator users, 2 Requester users, 8 requests (3 x (1 read + 1 to reject) + 2 x 1 read),
+  all in the CC-2097- block, status Received, version 0; fixtures file written (on Windows the
+  mode-600 setting is best effort). The run id is printed.
+
+Step B  reject one fixture request through the real transition service
+  Expected: exit 0; the first Coordinator's transition request moves Received -> Rejected,
+  version 1, one requestHistory entry (actor: that Coordinator).
+
+Step E-dry  cleanup-fixtures --target test (dry run)
+  Expected: exit 0; Found: 5 users (all 5 named by a request: each is the requester of its own
+  fixture requests), 8 requests (1 with history entries), 0 sessions (no one signed in); 7
+  categories; 0 requests submitted through the API. "Nothing deleted."
+
+Step E-confirm  cleanup-fixtures --target test --confirm
+  Expected: exit 0;
+    Deleted: 4 users, 7 requests, 0 sessions, 0 categories (categories kept: 1 request of the
+             campus remains);
+    Revoked: 1 user (the first Coordinator: requester of the kept request and actor of its
+             history entry);
+    Known residual: 1 request remains in the run's campus;
+    Remaining: 1 user (revoked), 1 request, 0 sessions; 7 categories; 1 request in the campus.
+  What this shows: the inserts, the reference-counter check, the cleanup counts and the revoke
+  path against a real database (the test cluster). What it does not show: staging, or the load
+  and submit runs themselves.
+Any step that does not match is recorded as it happened; no step is repeated until it matches.
+
+================ STEP a (output as produced)
+NFR-2.4 / NFR-2.1 fixtures (test)
+Started (UTC)   : 2026-10-17T16:00:40.412Z
+Host check      : passed (host contains "civicconnecttest"; host not printed)
+Database user   : civicconnect-app
+Node            : v24.16.0
+Users           : 3 Coordinators (1 to read + 1 to reject each); 2 Requesters (1 to read each)
+Batches         : 25 documents, 500 ms apart
+Run id          : f6350412
+Inserted        : 7 categories
+Inserted        : 3 users
+Inserted        : 2 requesters
+Inserted        : 8 requests
+Created         : 3 Coordinators, 2 Requesters, 7 categories, 8 requests (campus id new)
+Fixture file    : C:/Users/elind/m4-wt/perf-trial-fixtures.json (mode 600; holds the synthetic password; never commit)
+Ended (UTC)     : 2026-10-17T16:00:40.826Z
+
+exit 0
+
+================ STEP b (output as produced)
+Started (UTC)   : 2026-10-17T16:01:02.356Z
+Rejected        : one fixture request of the first Coordinator, version 1, history entry written
+
+exit 0
+
+================ STEP e-dry (output as produced)
+NFR-2.4 fixture cleanup (test), run f6350412 (dry run)
+Started (UTC)   : 2026-10-17T16:01:15.022Z
+Host check      : passed (host contains "civicconnecttest"; host not printed)
+Database user   : civicconnect-app
+Found           : 5 users (5 named by a request or history entry), 8 requests (1 with history entries), 0 sessions; 7 categories; 0 requests submitted through the API (left in place)
+Nothing deleted. Re-run with --confirm to delete the above.
+Ended (UTC)     : 2026-10-17T16:01:15.257Z
+
+exit 0
+
+================ STEP e-confirm (output as produced)
+NFR-2.4 fixture cleanup (test), run f6350412
+Started (UTC)   : 2026-10-17T16:01:28.503Z
+Host check      : passed (host contains "civicconnecttest"; host not printed)
+Database user   : civicconnect-app
+Found           : 5 users (5 named by a request or history entry), 8 requests (1 with history entries), 0 sessions; 7 categories; 0 requests submitted through the API (left in place)
+Deleted         : 4 users, 7 requests, 0 sessions, 0 categories (categories kept: 1 requests of the campus remain)
+Revoked         : 1 users still named by a request or history entry (kept so names resolve; cannot sign in)
+Known residual  : 1 requests remain in the run's campus (API-submitted or with history; append-only history cannot be deleted)
+Remaining       : 1 users, 1 requests, 0 sessions; 7 categories; 1 requests in the run's campus
+Ended (UTC)     : 2026-10-17T16:01:28.894Z
+
+exit 0
+
+================ RESULT
+Every step matched its expected result: A inserted 7 categories, 3 Coordinators, 2 Requesters, 8 requests;
+B rejected one fixture request (version 1, one history entry); E-dry found 5 users (5 named), 8 requests (1 with
+history); E-confirm deleted 4 users and 7 requests, revoked 1 user, kept 7 categories and 1 request (known residual).
