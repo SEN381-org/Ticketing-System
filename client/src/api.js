@@ -14,9 +14,14 @@ export class ApiError extends Error {
 
 export async function call(method, path, { body, headers = {} } = {}) {
   const init = { method, headers: { ...headers } };
-  if (body !== undefined) {
+  // The server refuses a POST, PUT or PATCH that is not application/json, and a
+  // request with no body is not (415). So every write sends a JSON body, `{}`
+  // when the caller has none (revocation, deactivation).
+  const isWrite = method === 'POST' || method === 'PUT' || method === 'PATCH';
+  const payload = body !== undefined ? body : (isWrite ? {} : undefined);
+  if (payload !== undefined) {
     init.headers['Content-Type'] = 'application/json';
-    init.body = JSON.stringify(body);
+    init.body = JSON.stringify(payload);
   }
   const response = await fetch(path, init);
   const type = response.headers.get('content-type') || '';

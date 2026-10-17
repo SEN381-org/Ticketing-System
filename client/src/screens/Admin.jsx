@@ -3,14 +3,14 @@
 // it), FR-8.4 (a Manager sets a category target time), FR-9.1 (an Administrator
 // deactivates a category). Presentation only: the server decides.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ROLE } from '../../../shared/domainValues.js';
 import {
   createUser, deactivateCategory, itemsOf, listCategories, listUsers, revokeUser, setCategoryTarget, setUserRoles,
 } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { homePath, shows } from '../permissions.js';
-import { BackLink, Empty, Field, Loading, NoAccess, PageHead, Problem, asError, useActionKey, useLoad } from '../ui.jsx';
+import { BackLink, Empty, Field, Loading, NoAccess, PageHead, Problem, asError, formatDay, useActionKey, useLoad } from '../ui.jsx';
 import { fieldErrorsOf } from './NewRequest.jsx';
 
 const ROLES = Object.values(ROLE);
@@ -65,6 +65,16 @@ function UserRow({ user, onChanged }) {
   const rolesKey = useActionKey();
   const revokeKey = useActionKey();
   const run = async (fn) => { setError(null); try { await fn(); await onChanged(); } catch (e) { setError(asError(e)); } };
+  // A revoked user is listed for the record: no roles to edit, nothing to revoke.
+  if (user.status === 'revoked') {
+    return (
+      <li className="panel">
+        <h3>{user.displayName}</h3>
+        {user.email ? <p className="muted small">{user.email}</p> : null}
+        <p className="small"><strong>Revoked</strong>{user.revokedAt ? ` on ${formatDay(user.revokedAt)}` : ''}</p>
+      </li>
+    );
+  }
   return (
     <li className="panel">
       <h3>{user.displayName}</h3>
@@ -103,6 +113,7 @@ export function AdminUsers() {
 
 function CategoryRow({ category, canTarget, canDeactivate, onChanged }) {
   const [hours, setHours] = useState(category.targetResolutionHours ?? '');
+  useEffect(() => { setHours(category.targetResolutionHours ?? ''); }, [category.targetResolutionHours]);
   const [error, setError] = useState(null);
   const targetKey = useActionKey();
   const deactKey = useActionKey();

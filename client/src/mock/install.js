@@ -93,12 +93,22 @@ const permittedFor = (r) => (MOCK_TRANSITIONS[r.status] ?? [])
   .filter((t) => can(t.roles))
   .map((t) => ({ toStatus: t.to, requiresReason: Boolean(t.reason), requiresResolution: Boolean(t.resolution) }));
 
+const OPEN_FOR_ASSIGNMENT = [STATUS.RECEIVED, STATUS.ASSIGNED, STATUS.IN_PROGRESS, STATUS.ON_HOLD];
+const permittedAssignmentFor = (r) => {
+  const open = OPEN_FOR_ASSIGNMENT.includes(r.status);
+  return {
+    assign: open && can([ROLE.COORDINATOR, ROLE.MANAGER]),
+    accept: open && !r.assigneeId && can([ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER]),
+  };
+};
+
 function view(r) {
   const base = { reference: r.reference, status: r.status, version: r.version };
   if (!RICH) return base;
   const out = {
     ...base, categoryId: r.categoryId, location: r.location, submittedAt: r.submittedAt,
     permittedTransitions: can(STAFF) ? permittedFor(r) : [],
+    permittedAssignment: permittedAssignmentFor(r),
   };
   if (r.assigneeId) out.assigneeId = r.assigneeId;
   if (r.description) out.description = r.description;
@@ -168,7 +178,9 @@ function route(method, url, headers, body) {
   if (!me()) return problem(401, 'UNAUTHENTICATED', 'AuthenticationError', 'Authentication required');
 
   if (path === '/categories' && method === 'GET') {
-    return json(200, db.categories.filter((c) => c.active).map(({ id, code, name, isSecurity }) => ({ id, code, name, isSecurity })));
+    const withTarget = can([ROLE.MANAGER, ROLE.ADMINISTRATOR]);
+    return json(200, db.categories.filter((c) => c.active)
+      .map(({ id, code, name, isSecurity, targetResolutionHours }) => ({ id, code, name, isSecurity, ...(withTarget ? { targetResolutionHours } : {}) })));
   }
   if (path === '/me/notifications') return json(200, { notifications: db.notifications });
 
@@ -177,8 +189,11 @@ function route(method, url, headers, body) {
     const role = q.get('role');
     if (role && !Object.values(ROLE).includes(role)) return problem(400, 'INVALID_REQUEST', 'ValidationError', 'role must be one of the defined roles');
     const admin = can([ROLE.ADMINISTRATOR]);
-    return json(200, db.users.filter((u) => !u.revoked && (!role || u.roles.includes(role)))
-      .map((u) => ({ id: u.id, displayName: u.displayName, roles: u.roles, ...(admin ? { email: u.email } : {}) })));
+    return json(200, db.users.filter((u) => (admin || !u.revoked) && (!role || u.roles.includes(role)))
+      .map((u) => ({
+        id: u.id, displayName: u.displayName, roles: u.roles,
+        ...(admin ? { email: u.email, status: u.revoked ? 'revoked' : 'active', ...(u.revoked ? { revokedAt: u.revokedAt } : {}) } : {}),
+      })));
   }
   if (path === '/users' && method === 'POST') {
     if (!can([ROLE.ADMINISTRATOR])) return problem(403, 'FORBIDDEN', 'AuthorisationError', 'Forbidden');
@@ -201,7 +216,7 @@ function route(method, url, headers, body) {
       u.roles = body.roles; return json(200, { id: u.id, roles: u.roles });
     }
     const replayed = u.revoked;
-    u.revoked = true;
+    u.revoked = true; u.revokedAt = u.revokedAt ?? new Date().toISOString();
     return json(replayed ? 200 : 201, { id: u.id, status: 'revoked', revokedAt: new Date().toISOString(), replayed });
   }
 
