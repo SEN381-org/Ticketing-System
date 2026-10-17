@@ -1,0 +1,32 @@
+Negative verification NV-116 - Accept check for an owned request removed from the assignment service
+Track T3 (assignment and refused-attempt recording); method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-17 12:30 UTC (sabotage) / 2026-10-17 12:30 UTC (restore check)
+Node   : v24.16.0
+
+CLAIM
+  An accept on a request that already has an owner is refused; the recorded owner is unchanged (FR-5.3, AC-FR-5.3).
+
+EXPECTED (written before the run; the tests that protect the claim must fail):
+  - AC-FR-5.3 service test (Technician 2 accepting a request owned by Technician 1)
+  - AC-FR-5.3 HTTP test (422 ASSIGNMENT_REFUSED, owner unchanged)
+
+1. The protected behaviour was broken in src/services/assignmentService.js:
+     - if (accepting && owner !== null) {
+     + if (false && accepting && owner !== null) {
+
+2. Result of the full suite (node --test) with the sabotage applied:
+     tests 244  pass 234  fail 2
+     not ok - AC-FR-5.3: Technician 2 accepting Technician 1's request is refused
+     not ok - AC-FR-5.3: Technician 2 accepting a request owned by Technician 1 is refused, T1 stays owner, and the attempt is recorded
+   Outcome: CAUGHT - the suite failed with the protection broken
+
+3. src/services/assignmentService.js was restored by writing back its original bytes.
+   SHA-256 before : 66a0679bb83385f3c9c4f35a792aeae7fe6feba0ec7bda199ccd83c599ae3628
+   SHA-256 after  : 66a0679bb83385f3c9c4f35a792aeae7fe6feba0ec7bda199ccd83c599ae3628
+   Identical.
+   Suite re-run after restore: tests 244  pass 236  fail 0
+
+INTERPRETATION
+  The assertions listed under EXPECTED detect the condition they protect: with it broken the suite fails, with it restored it passes.
+  What this does NOT show: that the protection holds against a real cluster, or that no other path reaches the same state; the fakes are the repository's own contract, not Atlas.

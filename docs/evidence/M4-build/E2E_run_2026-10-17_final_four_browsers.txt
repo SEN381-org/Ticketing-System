@@ -1,0 +1,181 @@
+M4 E2E run on the integrated build (before the release candidate)
+
+Run (UTC)    : 2026-10-17T18:26:55.191Z to 2026-10-17T18:30:53.083Z
+Node         : v24.16.0
+Commit       : 1691e0faebcd940a78180278f6e84b7e7e7a5d09 (task/M4-final-product), working tree clean
+Environment  : Atlas test cluster; the connection string is never recorded
+DNS override : NODE_OPTIONS --import data: URL setting resolvers 8.8.8.8 and 1.1.1.1 (SRV lookups fail on this laptop otherwise)
+Command      : E2E_ENV_FILE=<test-cluster env file, outside the repository> NODE_OPTIONS=<DNS override> npm run test:e2e
+
+EXPECTED (written before the run)
+  Basis: NFR-1.1 / AC-NFR-1.1 (the browsers the requirement names; the Requester, Technician,
+  Coordinator and Manager journeys complete with no functional failure); DEC-019 (Playwright
+  1.64.0, retries 0); and, per journey, the ACs and expected results in each spec header in e2e/
+  (written before their first run). Expected results written 17/10/2026 18:25 UTC, before this run.
+  Build: 1691e0f (task/M4-final-product, pushed). Previous four-browser run: 09e6e6a, 44 of 44.
+  Since then: section B polish (b16d339, 24b12a4), E2E-11 and E2E-12 with the DEF-031 fix (83c3b3f),
+  the 360 px phone layout and E2E-13 (1691e0f). The new cases and the updated E2E-1 and E2E-8 have
+  passed only in Chromium development runs (committed in docs/evidence/M4-build/E2E_dev_*), never
+  in Chrome, Edge or Firefox.
+  Browsers (launched and versions read 17/10/2026 18:25 UTC):
+    chromium  Chromium 156.0.8078.4 (Playwright's bundled build; continuity with M3)
+    chrome    Google Chrome 155.0.8059.85, installed on Windows
+    msedge    Microsoft Edge 155.0.4283.45, installed on Windows
+    firefox   Firefox 157.0 (Playwright's build, not Mozilla's release binary)
+  Expected: 56 tests (14 cases x 4 projects), 56 passed, 0 failed, 0 flaky, exit code 0.
+    E2E-1, E2E-2a, E2E-2b, E2E-3, E2E-4, E2E-5, E2E-6, E2E-7, E2E-8, E2E-9, E2E-10 (as at 09e6e6a,
+    with the section B selector changes and the E2E-1 / E2E-8 read shapes), and new:
+    E2E-11 (AC-FR-4.2): a fresh Coordinator session shows category, location, description, status,
+      submission details, assignment, comment history and action history.
+    E2E-12 (AC-FR-4.3): the term search lists the request containing it, not the one without it,
+      not the one in another campus; Clear search lists the other again.
+    E2E-13 (AC-NFR-1.2): after each of the ten listed interactions at 360 x 740: no page scroll,
+      every control at least 44 x 44, no sideways-scrolling box holding a control.
+  What this can show: the current release of Chrome and Edge, and Playwright's Firefox, on this
+  Windows machine. What it cannot show: any prior release, or Mozilla's own Firefox binary, so
+  AC-NFR-1.1 stays at most Partially Met whatever the result.
+  Risks named in advance (not predictions): E2E-13's card layout uses CSS :has() and changed table
+  display, measured so far only in Chromium; row sizes may differ in Firefox. E2E-12 depends on the
+  text index being present on the test cluster (it was in the Chromium runs).
+  Each project creates its own synthetic fixtures on the test cluster. Any failure is recorded as it
+  happened, with test and project names; the run is not repeated until green.
+
+RESULT: exit code 1
+
+OUTPUT (unedited except that the local worktree path is written as <worktree>, at generation)
+
+> civicconnect@0.1.0 test:e2e
+> npm --prefix e2e test
+
+
+> civicconnect-e2e@0.0.0 test
+> playwright test
+
+
+Running 56 tests using 1 worker
+
+  ✓   1 [chromium] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (4.3s)
+  ✓   2 [chromium] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (1.9s)
+  ✓   3 [chromium] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page (4.2s)
+  ✓   4 [chromium] › detail-search.spec.js:146:1 › E2E-12: a Technician finds a request by a description term, through the text index (1.4s)
+  ✓   5 [chromium] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (1.4s)
+  ✘   6 [chromium] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (3.9s)
+  ✓   7 [chromium] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (1.2s)
+  ✓   8 [chromium] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.5s)
+  ✓   9 [chromium] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) (3.6s)
+  ✓  10 [chromium] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (4.6s)
+  ✓  11 [chromium] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (1.3s)
+  ✓  12 [chromium] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (4.9s)
+  ✓  13 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (776ms)
+  ✓  14 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (659ms)
+  ✓  15 [chrome] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (4.6s)
+  ✓  16 [chrome] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (1.8s)
+  ✓  17 [chrome] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page (4.3s)
+  ✓  18 [chrome] › detail-search.spec.js:146:1 › E2E-12: a Technician finds a request by a description term, through the text index (1.7s)
+  ✓  19 [chrome] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (1.4s)
+  ✓  20 [chrome] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (4.4s)
+  ✓  21 [chrome] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (1.3s)
+  ✓  22 [chrome] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.9s)
+  ✓  23 [chrome] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) (4.2s)
+  ✓  24 [chrome] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (5.3s)
+  ✓  25 [chrome] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (1.4s)
+  ✓  26 [chrome] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (5.0s)
+  ✓  27 [chrome] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (867ms)
+  ✓  28 [chrome] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (773ms)
+  ✓  29 [msedge] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (4.6s)
+  ✓  30 [msedge] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (1.7s)
+  ✓  31 [msedge] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page (4.3s)
+  ✓  32 [msedge] › detail-search.spec.js:146:1 › E2E-12: a Technician finds a request by a description term, through the text index (1.6s)
+  ✓  33 [msedge] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (1.4s)
+  ✓  34 [msedge] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (4.3s)
+  ✓  35 [msedge] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (1.2s)
+  ✓  36 [msedge] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.6s)
+  ✓  37 [msedge] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) (3.7s)
+  ✓  38 [msedge] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (5.0s)
+  ✓  39 [msedge] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (1.5s)
+  ✓  40 [msedge] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (5.1s)
+  ✓  41 [msedge] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (918ms)
+  ✓  42 [msedge] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (785ms)
+  ✓  43 [firefox] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (11.0s)
+  ✓  44 [firefox] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (2.8s)
+  ✘  45 [firefox] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page (30.0s)
+  ✓  46 [firefox] › detail-search.spec.js:146:1 › E2E-12: a Technician finds a request by a description term, through the text index (3.5s)
+  ✓  47 [firefox] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (3.3s)
+  ✓  48 [firefox] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (8.2s)
+  ✓  49 [firefox] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (2.5s)
+  ✓  50 [firefox] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (5.5s)
+  ✓  51 [firefox] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) (7.3s)
+  ✓  52 [firefox] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (10.9s)
+  ✓  53 [firefox] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (2.8s)
+  ✓  54 [firefox] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (6.5s)
+  ✓  55 [firefox] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (2.1s)
+  ✓  56 [firefox] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (1.9s)
+
+
+  1) [chromium] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) › 6. Requester sees each status change with its date and the reason (AC-FR-3.3, AC-FR-6.6) 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 5
+    + Received  + 1
+
+    - Array [
+    -   "In Progress",
+    -   "Resolved",
+    -   "Closed",
+    - ]
+    + Array []
+
+      230 |       await expect(closed).toContainText(reason);                          // AC-FR-6.6 "displays it in the history"
+      231 |       const order = titles.filter((t) => [STATUS.IN_PROGRESS, STATUS.RESOLVED, STATUS.CLOSED].includes(t));
+    > 232 |       expect(order).toEqual([STATUS.IN_PROGRESS, STATUS.RESOLVED, STATUS.CLOSED]);
+          |                     ^
+      233 |     });
+      234 |   } finally {
+      235 |     await Promise.all([coord.context.close(), tech.context.close(), req.context.close()]);
+        at <worktree>\e2e\lifecycle.spec.js:232:21
+        at <worktree>\e2e\lifecycle.spec.js:207:5
+
+    Error Context: test-results\artifacts\lifecycle-E2E-4-lifecycle--a0e9d-AC-FR-6-6-AC-FR-3-3-TD-003--chromium\error-context.md
+
+    Error Context: test-results\artifacts\lifecycle-E2E-4-lifecycle--a0e9d-AC-FR-6-6-AC-FR-3-3-TD-003--chromium\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\lifecycle-E2E-4-lifecycle--a0e9d-AC-FR-6-6-AC-FR-3-3-TD-003--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\lifecycle-E2E-4-lifecycle--a0e9d-AC-FR-6-6-AC-FR-3-3-TD-003--chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [firefox] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page › the Technician posts a comment and records an action 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: browserContext.close: Target page, context or browser has been closed
+
+      140 |     });
+      141 |   } finally {
+    > 142 |     await Promise.all([req, coord, tech, viewer].map((s) => s.context.close()));
+          |     ^
+      143 |   }
+      144 | });
+      145 |
+        at <worktree>\e2e\detail-search.spec.js:142:5
+
+    Error Context: test-results\artifacts\detail-search-E2E-11-a-Coo-3f0ae--2-item-on-the-request-page-firefox\error-context.md
+
+    Error Context: test-results\artifacts\detail-search-E2E-11-a-Coo-3f0ae--2-item-on-the-request-page-firefox\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\detail-search-E2E-11-a-Coo-3f0ae--2-item-on-the-request-page-firefox\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\detail-search-E2E-11-a-Coo-3f0ae--2-item-on-the-request-page-firefox\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) 
+    [firefox] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page 
+  54 passed (3.9m)

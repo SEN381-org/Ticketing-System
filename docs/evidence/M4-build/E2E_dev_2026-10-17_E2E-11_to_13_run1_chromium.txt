@@ -1,0 +1,87 @@
+
+Running 4 tests using 1 worker
+
+  ✘  1 [chromium] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page (10.3s)
+  ✓  2 [chromium] › detail-search.spec.js:146:1 › E2E-12: a Technician finds a request by a description term, through the text index (1.5s)
+  ✓  3 [chromium] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.5s)
+  ✘  4 [chromium] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) (6.5s)
+
+
+  1) [chromium] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page › a fresh Coordinator session opens it: all eight items are displayed 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  getByRole('region', { name: 'Request' }).getByRole('heading', { level: 1 })
+    Expected: "facility faults"
+    Received: "Request"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveText" getByRole('region', { name: 'Request' }).getByRole('heading', { level: 1 }) with timeout 5000ms
+      - waiting for getByRole('region', { name: 'Request' }).getByRole('heading', { level: 1 })
+        14 × locator resolved to <h1 class="cap">Request</h1>
+           - unexpected value "Request"
+
+
+      121 |       await goAs(page, `/requests/${requestId}`, coordinator);
+      122 |       const card = page.getByRole('region', { name: 'Request' });
+    > 123 |       await expect(card.getByRole('heading', { level: 1 })).toHaveText(BRIEF_CATEGORY_NAME);   // category
+          |                                                             ^
+      124 |       await expect(fact(card, 'Location')).toHaveText(location);                              // location
+      125 |       await expect(card.getByText(description, { exact: true })).toBeVisible();              // description
+      126 |       await expect(page.getByTestId('status')).toHaveText(STATUS.ASSIGNED);                   // status
+        at C:\Users\elind\m4-wt\final\e2e\detail-search.spec.js:123:61
+        at C:\Users\elind\m4-wt\final\e2e\detail-search.spec.js:119:5
+
+    Error Context: test-results\artifacts\detail-search-E2E-11-a-Coo-3f0ae--2-item-on-the-request-page-chromium\error-context.md
+
+    Error Context: test-results\artifacts\detail-search-E2E-11-a-Coo-3f0ae--2-item-on-the-request-page-chromium\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\detail-search-E2E-11-a-Coo-3f0ae--2-item-on-the-request-page-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\detail-search-E2E-11-a-Coo-3f0ae--2-item-on-the-request-page-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) › Requester interactions 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('[aria-invalid="true"]').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('[aria-invalid="true"]').first() with timeout 5000ms
+      - waiting for locator('[aria-invalid="true"]').first()
+
+
+      176 |       ]);
+      177 |       expect(empty.status()).toBe(400);
+    > 178 |       await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible();
+          |                                                                   ^
+      179 |       await checkAfter(page, 'R1 Requester: New request with field errors', problems);
+      180 |
+      181 |       await goAs(page, '/requests/mine', requester);
+        at C:\Users\elind\m4-wt\final\e2e\mobile.spec.js:178:67
+        at C:\Users\elind\m4-wt\final\e2e\mobile.spec.js:170:5
+
+    Error Context: test-results\artifacts\mobile-E2E-13-360-px-measu-2f5ef-ian-interaction-AC-NFR-1-2--chromium\error-context.md
+
+    Error Context: test-results\artifacts\mobile-E2E-13-360-px-measu-2f5ef-ian-interaction-AC-NFR-1-2--chromium\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\mobile-E2E-13-360-px-measu-2f5ef-ian-interaction-AC-NFR-1-2--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\mobile-E2E-13-360-px-measu-2f5ef-ian-interaction-AC-NFR-1-2--chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page 
+    [chromium] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) 
+  2 passed (28.6s)

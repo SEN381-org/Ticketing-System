@@ -1,0 +1,112 @@
+M4 API/integration run on the integrated build (before the release candidate)
+
+Run (UTC)    : 2026-10-17T14:01:21.075Z to 2026-10-17T14:01:24.693Z
+Node         : v24.16.0
+Commit       : af46be09b6f568f07ff5712d9e7d5bf59e92ce07 (task/M4-final-product), working tree clean
+Environment  : Atlas test cluster; the connection string is never recorded
+DNS override : NODE_OPTIONS --import data: URL setting resolvers 8.8.8.8 and 1.1.1.1 (SRV lookups fail on this laptop otherwise)
+Command      : NODE_OPTIONS=<DNS override> node --env-file=<test-cluster env file> --test tests/integration/*.integration.test.js
+
+EXPECTED (written before the run)
+  Basis: tests/integration/ (8 cases, 40 checks), DEC-015 §2-4, DEC-016, AC-NFR-1.10 v0.3 (CR-001,
+  proposed). At M3 (docs/evidence/M3_API_Test_Run.txt) and in PR #122's CI job, 25 of 40 checks
+  passed and the 15 failures were DEF-007 to DEF-011. Those defects are fixed in this build.
+  Expected now: all 8 cases pass, 40 of 40 checks, 0 fail, 0 skipped, exit code 0:
+    2a missing key 400; 2b replay same status, same body, Idempotent-Replayed: true (DEF-007);
+    2c reused key 422 idempotency-key-reused (DEF-010); 2d key on another request refused (DEF-009);
+    2e reordered body is a replay (DEF-009); stale If-Match 412 carrying the current ETag (DEF-008);
+    failure before commit persists neither (DEC-016); wrong role 403 (DEF-011).
+  If any check fails it is recorded as it happened, with its name; the run is not repeated.
+
+RESULT: exit code 1
+
+OUTPUT (unedited)
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.7739ms)
+  ✔ nothing is written (1.1518ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (855.5524ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.2211ms)
+  ✔ the replay writes nothing (0.249ms)
+  ✔ the replay has the same status code (0.1191ms)
+  ✖ the replay has the same body (1.3073ms)
+  ✔ the replay is marked Idempotent-Replayed: true (0.1164ms)
+✖ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (585.6299ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.1828ms)
+  ✔ the problem type is idempotency-key-reused (0.1274ms)
+  ✔ no second history entry is written (0.099ms)
+✔ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (463.4952ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✔ the request is refused with 422 (0.1492ms)
+  ✔ the response is not the first request's result (0.116ms)
+  ✔ neither request gains a history entry (6.9398ms)
+✔ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (482.8942ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✔ it is not refused as a different payload (0.1542ms)
+  ✔ no second history entry is written (0.0705ms)
+✔ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (453.3752ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.6155ms)
+  ✔ the stale request is refused with 412 (0.2414ms)
+  ✔ the request is unchanged (0.6395ms)
+  ✔ no history entry is written (0.1473ms)
+  ✔ the problem body carries the current ETag (0.1376ms)
+  ✔ nothing internal is returned (0.1503ms)
+✔ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (1100.4163ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.49ms)
+  ✔ the failure is a generic 500 (0.1288ms)
+  ✔ the status change is rolled back (0.6654ms)
+  ✔ the history entry is rolled back (0.1131ms)
+  ✔ no event is published (0.101ms)
+  ✔ the same key then succeeds (0.1484ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1134.7559ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✔ the request is refused with 403 (0.6299ms)
+  ✔ the refusal is problem details (0.3479ms)
+  ✔ the request is unchanged (0.7972ms)
+  ✔ no history entry is written (0.1325ms)
+  ✔ nothing internal is returned (0.1695ms)
+✔ a role not permitted for the transition is refused with 403 — DEC-015 §4 (912.2968ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 38
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3567.8293
+
+✖ failing tests:
+
+test at tests\integration\idempotencyKey.integration.test.js:88:11
+✖ the replay has the same body (1.3073ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      fromStatus: 'Received',
+  +   historyId: '6ad37fb352382a2d0f1649f9',
+      occurredAt: '2026-10-17T14:01:23.146Z',
+      requestId: '6ad37fb252382a2d0f1649ee',
+      toStatus: 'Rejected',
+      version: 1
+    }
+  
+      at TestContext.<anonymous> (file:///C:/Users/elind/m4-wt/final/tests/integration/idempotencyKey.integration.test.js:89:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.start (node:internal/test_runner/test:1177:17)
+      at TestContext.test (node:internal/test_runner/test:380:20)
+      at TestContext.<anonymous> (file:///C:/Users/elind/m4-wt/final/tests/integration/idempotencyKey.integration.test.js:88:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { requestId: '6ad37fb252382a2d0f1649ee', historyId: '6ad37fb352382a2d0f1649f9', fromStatus: 'Received', toStatus: 'Rejected', occurredAt: '2026-10-17T14:01:23.146Z', version: 1 },
+    expected: { requestId: '6ad37fb252382a2d0f1649ee', fromStatus: 'Received', toStatus: 'Rejected', occurredAt: '2026-10-17T14:01:23.146Z', version: 1 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

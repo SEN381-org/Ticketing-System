@@ -1,0 +1,32 @@
+Negative verification NV-105 — Integration (fold T1 onto T5): submission fingerprints the body instead of the request
+Track fold T1 (integration). Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T13:31:41Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/requestSubmission.test.js
+File broken : src/routes/submissionRoutes.js (never a test)
+
+CLAIM
+  After T5 changed the fingerprint helper to take the request (method, path, canonical body; DEF-009), a call that still passes only the body gives every submission the same fingerprint, so a reused key with a different body would replay. The submission tests detect that.
+
+BREAK
+  - fingerprint: fingerprint(req)
+  + fingerprint: fingerprint(req.body)
+
+EXPECTED (written before the run)
+  The test that a reused key with a different body is refused (422) fails; the plain replay test still passes.
+
+RESULT WITH THE BREAK
+  tests 28, pass 27, fail 1, exit 1
+  failing: DEC-015 §3: the same key with a different body is 422 and writes nothing more
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 83706ecda70bdd58403e32b139806db4c7321da408c252d36325c59214f402a9
+  SHA-256 after  : 83706ecda70bdd58403e32b139806db4c7321da408c252d36325c59214f402a9
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 28, pass 28, fail 0, exit 0
+
+INTERPRETATION
+  Shows: whether the submission suite catches the integration mismatch found at the T1 fold.
+  Does NOT show: behaviour against a real cluster.

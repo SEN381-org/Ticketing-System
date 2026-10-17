@@ -11,9 +11,9 @@
  *
  * E2E-2a (passes today): refused, nothing disclosed, nothing written. It carries the
  * refusal assertions as an ordinary test because test.fail() is satisfied by ANY failure.
- * E2E-2b: DEC-015 §4 requires 403 FORBIDDEN. The code returns 422 (DEF-011), so it is
- * marked test.fail. The 403 assertion is never weakened. When DEF-011 is fixed Playwright
- * reports "expected to fail, but passed" and the run goes red until the mark is removed.
+ * E2E-2b: DEC-015 §4 requires 403 FORBIDDEN. Until M4 the code returned 422 (DEF-011) and
+ * the test carried a test.fail mark. DEF-011 is fixed at M4 and the mark is removed; the
+ * 403 assertion itself was never changed.
  *
  * Does NOT show: that a Coordinator is allowed, the recording of the refused attempt
  * (AC-FR-1.3), or any role other than Technician.
@@ -66,7 +66,6 @@ test('E2E-2a: a Technician cannot reject a request, and nothing is written', asy
 });
 
 test('E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4)', async ({ page }) => {
-  test.fail(true, 'DEF-011: DEC-015 §4 requires 403; code returns 422');
   const { response } = await technicianPostsRejected(page, 'e2e-2b');
 
   expect(response.status()).toBe(403);

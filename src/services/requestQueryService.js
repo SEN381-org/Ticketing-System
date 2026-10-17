@@ -1,21 +1,36 @@
 /**
  * RequestQueryService — read side for a single request.
  *
- * Traces to: FR-4.2 (provisional, OI-01), FR-3.5, FR-3.6, DEC-012 (enforcement
- * points 2 and 3), DEC-014, DEC-015 §1 and §4.
+ * Traces to: FR-4.2, AC-FR-4.2, AC-FR-7.5, FR-1.5, FR-3.5, FR-3.6, TD-003, DEC-012
+ * (enforcement points 2 and 3), DEC-014, DEC-015 §1, §4 and §6.
  *
  * Provisional: FR-4.2 is Proposed, not baselined (OI-01).
  *
- * The result is exactly { reference, status, version }. The status is passed
- * through visibleStatusFor, so a requester never learns the internal status of a
- * security-category request (FR-3.5).
+ * Who may read at all is unchanged (mayViewRequest). What a permitted viewer
+ * receives is additive (DEC-015 §6):
+ *   always        id, reference, status, version, categoryId, submittedAt,
+ *                 assigneeId, location, permittedTransitions, permittedAssignment
+ *                 (assign/accept for this actor, OI-15)
+ *   FR-1.5        description, resolution, closureReason: on a security-category
+ *                 request only a Security Officer (a requester on their own
+ *                 security request does not, OI-16 open); otherwise every viewer
+ *   staff only    submittedById, requesterId
+ *   request:assign  assigneeName (the Coordinator and the Manager only)
+ * The status is passed through visibleStatusFor, so a requester never learns the
+ * internal status of a security-category request (FR-3.5). Comments, actions and
+ * history are not embedded: GET /requests/{id}/history serves them.
  */
 
-import { mayViewRequest, visibleStatusFor, STAFF_ROLES } from '../domain/accessRules.js';
+import {
+  mayViewRequest, mayViewRestrictedDetail, mayViewPeople, visibleStatusFor, STAFF_ROLES,
+} from '../domain/accessRules.js';
+import { permittedTransitionsFor } from '../domain/permittedTransitions.js';
+import { permittedAssignmentFor } from '../domain/permittedAssignment.js';
 import { AuthorisationError, NotFoundError } from '../errors.js';
 import { ROLE } from '../models/_shared.js';
+import { assigneeNamesFor } from './assigneeNames.js';
 
-export function createRequestQueryService({ requests }) {
+export function createRequestQueryService({ requests, users = null }) {
   async function getRequest(requestId, actor) {
     const request = await requests.findById(requestId);
     if (!request) throw new NotFoundError(requestId);
@@ -33,11 +48,36 @@ export function createRequestQueryService({ requests }) {
       throw new AuthorisationError('Actor may not view this request');
     }
 
-    return {
-      reference: request.reference,
-      status:    visibleStatusFor(request.status, Boolean(request.securityCategory), actor),
-      version:   request.version,
+    const view = {
+      id:          String(request._id ?? requestId),
+      reference:   request.reference,
+      status:      visibleStatusFor(request.status, Boolean(request.securityCategory), actor),
+      version:     request.version,
+      categoryId:  request.categoryId == null ? null : String(request.categoryId),
+      submittedAt: request.submittedAt ?? null,
+      assigneeId:  request.assigneeId == null ? null : String(request.assigneeId),
+      location:    request.location ?? null,
+      permittedTransitions: permittedTransitionsFor(request, actor),
+      permittedAssignment:  permittedAssignmentFor(request, actor),
     };
+
+    // FR-1.5: withheld, not blanked, so the key is absent for a viewer who may not see it.
+    if (mayViewRestrictedDetail(request, actor)) {
+      view.description = request.description ?? null;
+      view.resolution = {
+        summary:    request.resolution?.summary ?? null,
+        recordedAt: request.resolution?.recordedAt ?? null,
+      };
+      view.closureReason = request.closure?.reason ?? null;
+    }
+    // Only a holder of request:assign receives the assignee's name; null when unassigned.
+    const names = await assigneeNamesFor(users, actor, [request.assigneeId]);
+    if (names) view.assigneeName = request.assigneeId == null ? null : (names.get(String(request.assigneeId)) ?? null);
+    if (mayViewPeople(actor)) {
+      view.submittedById = request.submittedById == null ? null : String(request.submittedById);
+      view.requesterId = request.requesterId == null ? null : String(request.requesterId);
+    }
+    return view;
   }
 
   return { getRequest };

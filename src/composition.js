@@ -6,12 +6,11 @@
  * database and assert what it contains. `src/server.js` adds the connection, the
  * listener and the lifecycle.
  *
- * DEC-011 subscribers are deliberately NOT registered. See Technical Debt
- * Register TD-001: the notification and reportingCounts repositories do not
- * exist yet, and the projection has no reconciliation path (OI-14). A transition
- * still publishes `request.status.changed`; with no listener, that is a no-op.
- * tests/composition.test.js asserts the registry is empty, so registering a
- * subscriber fails that test and forces TD-001 to be updated in the same change.
+ * DEC-011: only the NotificationSubscriber is registered (TD-001 repaid in part,
+ * FR-3.4). The reporting projection is deliberately NOT registered: it has no
+ * reconciliation path (OI-14), and the management view aggregates `requests`
+ * instead. tests/composition.test.js asserts the registry holds exactly the
+ * notification registration, so a further subscriber fails it.
  */
 
 import './infrastructure/database.js';   // first: sets bufferCommands before any model compiles
@@ -23,23 +22,76 @@ import { historyRepository } from './repositories/historyRepository.js';
 import { sessionRepository } from './repositories/sessionRepository.js';
 import { userRepository } from './repositories/userRepository.js';
 import { auditRepository } from './repositories/auditRepository.js';
+import { categoryRepository } from './repositories/categoryRepository.js';
+import { counterRepository } from './repositories/counterRepository.js';
+import { notificationRepository } from './repositories/notificationRepository.js';
+import { registerSubscribers } from './events/subscribers/index.js';
+import { createRequestHistoryService } from './services/requestHistoryService.js';
+import { createWorkRecordService } from './services/workRecordService.js';
+import { createNotificationService } from './services/notificationService.js';
+import { reportRepository } from './repositories/reportRepository.js';
+import { userAdminRepository, validateRoles } from './repositories/userAdminRepository.js';
+import { createReportService } from './services/reportService.js';
+import { createUserAdminService } from './services/userAdminService.js';
+import { createCategoryAdminService } from './services/categoryAdminService.js';
 import { createStatusTransitionService } from './services/statusTransitionService.js';
+import { createAssignmentService } from './services/assignmentService.js';
+import { createAccessAuditService } from './services/accessAuditService.js';
 import { createRequestQueryService } from './services/requestQueryService.js';
+import { createRequestListService } from './services/requestListService.js';
+import { requestListRepository } from './repositories/requestListRepository.js';
 import { createAuthService } from './services/authService.js';
 import { createHealthService } from './services/healthService.js';
+import { createRequestSubmissionService } from './services/requestSubmissionService.js';
+import { createCategoryService } from './services/categoryService.js';
 import { createApp } from './app.js';
 
 export function composeApplication({ log = console, release = 'unknown' } = {}) {
+  registerSubscribers({ notifications: notificationRepository });   // DEC-011, TD-001
+
   const services = {
     authService: createAuthService({
       users: userRepository, sessions: sessionRepository,
       audit: auditRepository, passwords: passwordHasher,
     }),
+    categoryAdminService: createCategoryAdminService({ categories: categoryRepository }),
     healthService: createHealthService({ pingDatabase, release }),
-    requestQueryService: createRequestQueryService({ requests: requestRepository }),
+    requestListService: createRequestListService({ lists: requestListRepository, users: userRepository }),
+    requestQueryService: createRequestQueryService({ requests: requestRepository, users: userRepository }),
+    reportService: createReportService({
+      reports: reportRepository, categories: categoryRepository,
+    }),
     statusTransitionService: createStatusTransitionService({
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
     }),
+    userAdminService: createUserAdminService({
+      users: userAdminRepository, passwords: passwordHasher, validateRoles,
+    }),
   };
-  return { app: createApp({ ...services, log }), services };
+  // M4 tracks T1 and T3: kept out of `services` so the key list asserted by
+  // tests/composition.test.js is unchanged.
+  const submission = {
+    requestSubmissionService: createRequestSubmissionService({
+      requests: requestRepository, history: historyRepository, categories: categoryRepository,
+      counters: counterRepository, unitOfWork: createUnitOfWork(),
+    }),
+    categoryService: createCategoryService({ categories: categoryRepository }),
+  };
+  const { recordRefusal } = createAccessAuditService({ audit: auditRepository, log });
+  const assignmentService = createAssignmentService({
+    requests: requestRepository, users: userRepository, history: historyRepository,
+    unitOfWork: createUnitOfWork(), recordRefusal,
+  });
+  // M4 track T4: history, work record and notifications (DEC-015 §1).
+  const historyServices = {
+    requestHistoryService: createRequestHistoryService({ requests: requestRepository, history: historyRepository }),
+    workRecordService: createWorkRecordService({
+      requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
+    }),
+    notificationService: createNotificationService({ notifications: notificationRepository }),
+  };
+  return {
+    app: createApp({ ...services, ...submission, assignmentService, recordRefusal, ...historyServices, log }),
+    services,
+  };
 }

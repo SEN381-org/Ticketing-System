@@ -7,12 +7,17 @@
  */
 
 export class AppError extends Error {
-  constructor(message, { status, type, code }) {
+  /**
+   * `extensions` are extra problem-detail members (RFC 9457 §3.2), for example the
+   * current ETag on a 412 (DEC-015 §2). They never replace a standard member.
+   */
+  constructor(message, { status, type, code, extensions = null }) {
     super(message);
     this.name = new.target.name;
     this.status = status;
     this.type = type;
     this.code = code;
+    this.extensions = extensions;
   }
 }
 
@@ -52,11 +57,17 @@ export class PreconditionRequiredError extends AppError {
   }
 }
 
-/** DEC-015 / DEC-016 — the version presented is not the current one. */
+/**
+ * DEC-015 / DEC-016 — the version presented is not the current one.
+ * DEC-015 §2: the problem body carries the current ETag, so the client can re-read
+ * and retry deliberately (DEF-008). It is omitted only when the current version is
+ * not known, as when the conditional write itself finds the version moved.
+ */
 export class PreconditionFailedError extends AppError {
-  constructor(id, expectedVersion) {
+  constructor(id, expectedVersion, currentVersion = null) {
     super(`Request '${id}' is no longer at version ${expectedVersion}`,
-      { status: 412, type: 'https://civicconnect.example/problems/precondition-failed', code: 'PRECONDITION_FAILED' });
+      { status: 412, type: 'https://civicconnect.example/problems/precondition-failed', code: 'PRECONDITION_FAILED',
+        extensions: Number.isInteger(currentVersion) ? { currentEtag: `"v${currentVersion}"` } : null });
   }
 }
 
@@ -106,10 +117,44 @@ export class PayloadTooLargeError extends AppError {
   }
 }
 
-/** DEC-015 — same idempotency key, different request body. */
+/** DEC-015 §4 / DEC-016 — transaction write-conflict retries exhausted. */
+export class WriteConflictError extends AppError {
+  constructor() {
+    super('The request changed while the entry was being written; retry the action',
+      { status: 409, type: 'https://civicconnect.example/problems/write-conflict', code: 'WRITE_CONFLICT' });
+  }
+}
+
+/**
+ * DEC-015 Addendum A, A3 — the request conflicts with existing state (an account
+ * with that e-mail exists). RFC 9110 section 15.5.10.
+ */
+export class ConflictError extends AppError {
+  constructor(message = 'The request conflicts with existing state') {
+    super(message,
+      { status: 409, type: 'https://civicconnect.example/problems/conflict', code: 'CONFLICT' });
+  }
+}
+
+/**
+ * DEC-015 §3 — same idempotency key, different request (method, path or body).
+ * The problem type is the one DEC-015 §3 names, idempotency-key-reused (DEF-010).
+ */
 export class IdempotencyConflictError extends AppError {
   constructor() {
     super('This Idempotency-Key was used with a different request',
-      { status: 422, type: 'https://civicconnect.example/problems/idempotency-conflict', code: 'IDEMPOTENCY_CONFLICT' });
+      { status: 422, type: 'https://civicconnect.example/problems/idempotency-key-reused', code: 'IDEMPOTENCY_CONFLICT' });
+  }
+}
+
+/**
+ * DEC-015 §4 row 422 — a domain rule refused an assignment: the request already
+ * has an owner (FR-5.3), the named user may not hold it (FR-5.1, FR-5.2), or the
+ * request is not in a state that can be assigned.
+ */
+export class AssignmentRefusedError extends AppError {
+  constructor(message) {
+    super(message,
+      { status: 422, type: 'https://civicconnect.example/problems/assignment-refused', code: 'ASSIGNMENT_REFUSED' });
   }
 }

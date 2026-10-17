@@ -1,0 +1,36 @@
+Negative verification NV-119 - Refusal recording removed from the route guard
+Track T3 (assignment and refused-attempt recording); method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-17 12:31 UTC (sabotage) / 2026-10-17 12:31 UTC (restore check)
+Node   : v24.16.0
+
+CLAIM
+  A role refused by the route guard (403) is recorded before the refusal is passed on (AC-FR-1.3, TD-005).
+
+EXPECTED (written before the run; the tests that protect the claim must fail):
+  - AC-FR-1.3, TD-005 guard test
+  - AC-FR-1.3 recorded-before-next test
+  - AC-FR-1.3 Requester HTTP test
+  - Administrator HTTP test
+
+1. The protected behaviour was broken in src/middleware/authorise.js:
+     - typeof record !== 'function') {
+     + typeof record !== 'function' || true) {
+
+2. Result of the full suite (node --test) with the sabotage applied:
+     tests 244  pass 232  fail 4
+     not ok - AC-FR-1.3, TD-005: a role the guard refuses (Requester) is 403 and recorded from the guard path
+     not ok - AC-FR-1.3: an Administrator, who holds neither operation, is refused and recorded
+     not ok - AC-FR-1.3, TD-005: a role refused by the guard is recorded with actor, operation and target, and stays a 403
+     not ok - AC-FR-1.3: the attempt is recorded before the refusal is passed on
+   Outcome: CAUGHT - the suite failed with the protection broken
+
+3. src/middleware/authorise.js was restored by writing back its original bytes.
+   SHA-256 before : 5579417d285bc7dd35eea41eefda214fa476db53dd518f76fad4b9f7304e689f
+   SHA-256 after  : 5579417d285bc7dd35eea41eefda214fa476db53dd518f76fad4b9f7304e689f
+   Identical.
+   Suite re-run after restore: tests 244  pass 236  fail 0
+
+INTERPRETATION
+  The assertions listed under EXPECTED detect the condition they protect: with it broken the suite fails, with it restored it passes.
+  What this does NOT show: that the protection holds against a real cluster, or that no other path reaches the same state; the fakes are the repository's own contract, not Atlas.

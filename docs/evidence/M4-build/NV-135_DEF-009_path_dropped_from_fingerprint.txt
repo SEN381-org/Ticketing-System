@@ -1,0 +1,32 @@
+Negative verification NV-135 — DEF-009: the path dropped from the fingerprint
+Track T5. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T13:10:27Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/dec015Conformance.test.js
+File broken : src/routes/requestRoutes.js (never a test)
+
+CLAIM
+  A fingerprint that ignores the path is detected, so a key reused on another request cannot replay the first request's result.
+
+BREAK
+  - .update(`${method} ${path}\n${canonicalJson(req.body ?? {})}`)
+  + .update(`${method}\n${canonicalJson(req.body ?? {})}`)
+
+EXPECTED (written before the run)
+  'the same key and body on a different request give a different fingerprint' fails; the others pass.
+
+RESULT WITH THE BREAK
+  tests 14, pass 13, fail 1, exit 1
+  failing: the same key and body on a different request give a different fingerprint — DEF-009, DEC-015 §3
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 7c9697341fc90acb31c7f2f9d6b93a30d612d146ec9cfeea838a4559d4a5e1e2
+  SHA-256 after  : 7c9697341fc90acb31c7f2f9d6b93a30d612d146ec9cfeea838a4559d4a5e1e2
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 14, pass 14, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the path is part of the fingerprint.
+  Does NOT show: integration case 2d against a cluster.

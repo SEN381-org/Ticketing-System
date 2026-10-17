@@ -1,0 +1,38 @@
+Negative verification NV-163 - Security Officer / Technician fit-to-request rule reverted to the role-only rule
+Track fixA-server (Section A server fixes). Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T16:23:22Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/assignmentSecurityRule.test.js
+File broken : src/domain/accessRules.js (never a test)
+
+CLAIM
+  mayBeAssigned lets a Security Officer take only security requests and a Technician only non-security ones, for assign, reassign and accept (decision 17/10/2026, OI-15).
+
+BREAK
+  - return fitsRequest && mayActOnRequest(request, user);
+  + return ASSIGNABLE_ROLES.some((r) => has(user, r)) && mayActOnRequest(request, user);
+
+EXPECTED (written before the run)
+  All three assignmentSecurityRule tests fail: the matrix reports 'Security Officer / security=false / authorised=true' is true, and the accept and assign tests find no rejection for a Security Officer on a non-security request.
+
+RESULT BEFORE THE BREAK (control)
+  tests 3, pass 3, fail 0, exit 0
+
+RESULT WITH THE BREAK
+  tests 3, pass 0, fail 3, exit 1
+  failing:
+    mayBeAssigned: Technician only for non-security, Security Officer only for security, nobody else - FR-5.1, FR-5.5, FR-1.5, NV-163
+    accept: a Security Officer cannot accept a non-security request, a Technician cannot accept a security one - A6, FR-5.2, NV-163
+    assign and reassign: the named user must fit the request - Security Officer for security only, Technician for non-security only - A6, FR-5.1, FR-5.5, NV-163
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 78cc8019b3e83eee935bd9ade8f061d0ac45abe4a2a04c9ef0231194fbf73b28
+  SHA-256 after  : 78cc8019b3e83eee935bd9ade8f061d0ac45abe4a2a04c9ef0231194fbf73b28
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 3, pass 3, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the fit rule is asserted on the domain function and through the real assignment service for accept, assign and reassign.
+  Does NOT show: a user holding both roles, or the assignment-pool list (which does not filter by security).

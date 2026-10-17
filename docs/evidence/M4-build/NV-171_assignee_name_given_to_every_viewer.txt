@@ -1,0 +1,33 @@
+Negative verification NV-171 — assigneeName given to every viewer, not only request:assign holders
+Track polish-server. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T17:46:59Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/polishAssigneeAndCategories.test.js
+File broken : src/services/assigneeNames.js (never a test)
+
+CLAIM
+  GET /requests/:id and GET /requests include assigneeName only for an actor holding request:assign (Coordinator, Manager); a Requester, a Technician and a Security Officer never receive it.
+
+BREAK
+  -   if (!mayPerformOperation('request:assign', actor)) return null;
+  +   if (false && !mayPerformOperation('request:assign', actor)) return null;
+
+EXPECTED (written before the run)
+  'GET /requests/:id: a Requester and a Technician never receive assigneeName, and cause no lookup' fails (the key is present and a lookup is made) and 'GET /requests: a Requester, a Technician and a Security Officer never receive assigneeName' fails on the first item. The positive Coordinator/Manager tests still pass.
+
+RESULT WITH THE BREAK
+  tests 8, pass 6, fail 2, exit 1
+  failing: GET /requests/:id: a Requester and a Technician never receive assigneeName, and cause no lookup - FR-5.1, DEC-012, NV-171
+  failing: GET /requests: a Requester, a Technician and a Security Officer never receive assigneeName - FR-4.1, FR-5.1, DEC-012, NV-171
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 82d58765702012bc57a2b986adf8b968ceb1e31770d947785309cbfd81a029eb
+  SHA-256 after  : 82d58765702012bc57a2b986adf8b968ceb1e31770d947785309cbfd81a029eb
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 8, pass 8, fail 0, exit 0
+
+INTERPRETATION
+  Shows: The name is withheld from non-assigning roles at the service (enforcement point 2) and no lookup is made for them, for both the single read and the list.
+  Does NOT show: The HTTP route guard (any authenticated reader reaches the read), the response serialiser (DEC-012 point 3, not built), or the real User query.

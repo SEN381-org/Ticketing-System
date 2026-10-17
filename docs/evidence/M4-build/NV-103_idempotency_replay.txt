@@ -1,0 +1,40 @@
+Negative verification NV-103
+Track: T1 (request submission)
+Protects: DEC-015 §3: a retry must not write a second, permanent history entry
+Test(s): DEC-015 §3: a replayed key with the same body returns the same status and body, flags the replay and writes nothing (and the different-body test)
+File broken: src/services/requestSubmissionService.js
+Test file: tests/requestSubmission.test.js
+
+EXPECTED RESULT (written before the run, from the requirement and the intended break)
+  The replay check is switched off. A repeated key with the same body would then store a second request and a second immutable history entry, so the replay test must FAIL (a second request, no Idempotent-Replayed header). The different-body 422 test must FAIL too.
+
+THE BREAK
+--- src/services/requestSubmissionService.js
+- if (prior) {
+-       if (prior.changeType
++ if (false && prior) {
++       if (prior.changeType
+
+RUN WITH THE BREAK (2026-10-17 12:27:58 UTC -> 2026-10-17 12:27:58 UTC)
+Node: v24.16.0
+# tests 28
+# pass 26
+# fail 2
+Failing tests:
+  not ok - DEC-015 §3: a replayed key with the same body returns the same status and body, flags the replay and writes nothing
+  not ok - DEC-015 §3: the same key with a different body is 422 and writes nothing more
+
+RESTORED, THEN RUN AGAIN (2026-10-17 12:28:00 UTC)
+SHA-256 before the break : e49ae9562cef9bf3b30f56ad70b453d4f6743766d2b0bc0e65bf5036d2acfab2
+SHA-256 after restoring  : e49ae9562cef9bf3b30f56ad70b453d4f6743766d2b0bc0e65bf5036d2acfab2
+Byte-identical           : true
+# tests 28
+# pass 28
+# fail 0
+
+WHAT THIS DOES SHOW
+  The named assertion fails when the protected code is broken, and passes when it is restored,
+  so it detects the condition it is written for.
+WHAT THIS DOES NOT SHOW
+  Behaviour against a real database: the persistence is fake. It shows that the test would catch this
+  one break, not every way the protection could fail.

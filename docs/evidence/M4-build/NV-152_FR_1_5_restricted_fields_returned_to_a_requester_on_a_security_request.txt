@@ -1,0 +1,34 @@
+NV-152  Track int-detail (request detail expansion, TD-003)
+
+Test:       service and HTTP: a requester on their own security request never receives description, resolution, closure reason, comments or actions (FR-1.5, NV-152); and the requester-own-security allow-list tests
+File:       src/services/requestQueryService.js
+Run command: node --test tests/requestRead.test.js
+Node:       v24.16.0 (project target is Node 22; run on the installed version)
+Started:    2026-10-17T13:44:54.255Z (UTC)
+Finished:   2026-10-17T13:44:55.834Z (UTC)
+
+Expected result (written before the run):
+  The two NV-152 tests fail (description, resolution and closureReason, with their sentinel values, reach the requester) and the requester-own-security allow-list tests fail; the non-security allow-list tests still pass.
+
+The break (replacement in the file above):
+  - if (mayViewRestrictedDetail(request, actor)) {
+  + if (true) {
+
+Run with the break:
+  tests 33, pass 29, fail 4, skipped 0
+  failing: service: a requester on their own security request receives exactly their allow-list of keys — AC-FR-4.2, FR-1.5, DEC-015 §6
+  failing: service: a requester on their own security request never receives description, resolution, closure reason, comments or actions — FR-1.5, NV-152
+  failing: GET 200 for a requester on their own security request has exactly their allow-list — AC-FR-4.2, FR-1.5, DEC-015 §6
+  failing: over HTTP, a requester on their own security request receives no description, resolution, closure reason, comment or action, and no transitions — FR-1.5, TD-003, NV-152
+  the named test failed: YES
+
+Restored:
+  SHA-256 before the break: f52aede88f1b730ec62a12abab73e92d99551efca79ec5664e73e6154ae7ede7
+  SHA-256 after restoring:  f52aede88f1b730ec62a12abab73e92d99551efca79ec5664e73e6154ae7ede7
+  byte-identical: YES
+  run after restoring: tests 33, pass 33, fail 0, skipped 0
+
+What this does show: the named assertion detects the removal of the protection it is written for.
+What this does not show: that the protection is complete, behaviour against a real database or
+cluster, or that the rule being protected is baselined where the record is silent (FR-1.5 read
+literally for the requester is OI-16, open).

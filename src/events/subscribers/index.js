@@ -23,8 +23,12 @@ export function registerSubscribers({ notifications, reportingCounts }) {
   subscribe(EVENTS.REQUEST_STATUS_CHANGED, 'NotificationSubscriber', 'FR-3.4 / FR-3.5 / SCP-004',
     (payload) => notify(payload, { notifications }));
 
-  subscribe(EVENTS.REQUEST_STATUS_CHANGED, 'ReportingProjectionSubscriber', 'FR-8.1 / FR-8.2',
-    (payload) => project(payload, { reportingCounts }));
+  // The projection is registered only when a repository is supplied. OI-14: it has no
+  // reconciliation path, so the composed application does not supply one.
+  if (reportingCounts) {
+    subscribe(EVENTS.REQUEST_STATUS_CHANGED, 'ReportingProjectionSubscriber', 'FR-8.1 / FR-8.2',
+      (payload) => project(payload, { reportingCounts }));
+  }
 
   // SCP-014 — NotificationDeliverySubscriber attaches here when admitted.
 

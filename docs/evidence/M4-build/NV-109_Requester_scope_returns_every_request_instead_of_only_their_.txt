@@ -1,0 +1,44 @@
+Negative verification NV-109 - Requester scope returns every request instead of only their own
+Track T2 (request lists and search); method as docs/evidence/R-01_negative_verification.txt
+
+Run start (UTC) : 2026-10-17T12:28:21.772Z
+Run end   (UTC) : 2026-10-17T12:28:28.437Z
+Node            : v24.16.0
+Code under test : the T2 track working tree (src/services/requestListService.js, src/repositories/requestListRepository.js, src/routes/requestListRoutes.js, tests/requestList.test.js)
+
+CLAIM
+  A requester's list holds only their own requests (FR-3.1, FR-3.6, AC-FR-3.1, AC-FR-3.6).
+Test protecting it: a requester's list holds only their own requests; AC-FR-3.1 HTTP; AC-FR-3.6 HTTP; the main equivalence test
+File broken       : src/services/requestListService.js
+
+1. EXPECTED (written before the run, from the claim): the full suite fails, and at least these tests fail:
+     - the list for every actor equals the fixtures filtered by mayViewRequest
+     - a requester's list holds only their own requests
+     - a requester who has submitted three requests sees those three
+     - a requester's list never contains another user's request
+
+2. The break:
+     --- src/services/requestListService.js (original)
+     +++ src/services/requestListService.js (broken)
+     - if (scope.kind === 'own') return { requesterId: scope.requesterId };
+     + if (scope.kind === 'own') return {};
+
+3. Result of npm test with the break applied: tests 231, pass 219, fail 4, skipped 8
+   Failing tests:
+     not ok - the list for every actor equals the fixtures filtered by mayViewRequest — AC-FR-4.1, FR-3.6, FR-1.5, DEC-012
+     not ok - a requester's list holds only their own requests — AC-FR-3.1, FR-3.6
+     not ok - a requester who has submitted three requests sees those three and not the other user's — AC-FR-3.1, AC-FR-3.2
+     not ok - a requester's list never contains another user's request or its data — AC-FR-3.6
+   Expected tests that did NOT fail: none
+   Outcome: CAUGHT
+
+4. Restored by writing back the original content. SHA-256 of src/services/requestListService.js:
+     before the break: 72957335eb0a3bcb0cb8a2818a097f5041341494eb160913145deb123b2c56a5
+     after restore   : 72957335eb0a3bcb0cb8a2818a097f5041341494eb160913145deb123b2c56a5
+     Identical.
+   Full suite after restore: tests 231, pass 223, fail 0, skipped 8
+
+WHAT THIS SHOWS
+  With the protected behaviour broken, the named test(s) fail; with it restored they pass. The assertion detects the condition it claims to.
+WHAT THIS DOES NOT SHOW
+  That MongoDB evaluates the real filter, text index or projection as the in-memory fake does (no database in this suite); that the break is the only way the behaviour could regress; or anything about the other tracks' code.

@@ -1,0 +1,34 @@
+Negative verification NV-121 - Update and history append moved outside the unit of work
+Track T3 (assignment and refused-attempt recording); method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-17 12:31 UTC (sabotage) / 2026-10-17 12:31 UTC (restore check)
+Node   : v24.16.0
+
+CLAIM
+  The owner update and the assignment history entry are written inside unitOfWork.run() with its session (FR-5.4, DEC-016).
+
+EXPECTED (written before the run; the tests that protect the claim must fail):
+  - DEC-016, FR-5.4: the owner update and the history entry both happen inside the unit of work
+
+1. The protected behaviour was broken in src/services/assignmentService.js:
+     - await unitOfWork.run(async (session) => {
+     + await (async (session) => {
+     -       }); /     } catch (error) {
+     +       })(undefined); /     } catch (error) {
+
+2. Result of the full suite (node --test) with the sabotage applied:
+     tests 244  pass 233  fail 3
+     not ok - DEC-016, FR-5.4: the owner update and the history entry both happen inside the unit of work, with its session
+     not ok - DEC-016: a failed history append rolls the assignment back and publishes nothing
+     not ok - DEC-011, DEC-016: the first assignment publishes request.status.changed after the transaction resolves; a reassign publishes nothing
+   Outcome: CAUGHT - the suite failed with the protection broken
+
+3. src/services/assignmentService.js was restored by writing back its original bytes.
+   SHA-256 before : 66a0679bb83385f3c9c4f35a792aeae7fe6feba0ec7bda199ccd83c599ae3628
+   SHA-256 after  : 66a0679bb83385f3c9c4f35a792aeae7fe6feba0ec7bda199ccd83c599ae3628
+   Identical.
+   Suite re-run after restore: tests 244  pass 236  fail 0
+
+INTERPRETATION
+  The assertions listed under EXPECTED detect the condition they protect: with it broken the suite fails, with it restored it passes.
+  What this does NOT show: that the protection holds against a real cluster, or that no other path reaches the same state; the fakes are the repository's own contract, not Atlas.
