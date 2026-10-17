@@ -9,38 +9,42 @@
  * implemented, is drift with nothing to notice it.
  * Technique: contract / structural, no network. The registered side is the existing
  * routeTable(app) over composeApplication().app (app.locals.mounts), so public routes
- * (health, sessions) are included. The documented side is a line scan of the `paths:`
- * section, in the same regex style as tests/openapiContract.test.js; there is no YAML
- * parser in the declared dependencies. Express `:id` is normalised to OpenAPI `{id}`,
+ * (health, sessions) are included. The documented side is read from the parsed
+ * document's `paths` object (TD-007: this used to be a line scan that never parsed the
+ * YAML, so a broken file could pass). Express `:id` is normalised to OpenAPI `{id}`,
  * and the `servers[0].url` prefix (/api/v1) is read from the contract, not typed here.
  * Expected: the two sets are equal. Derived from DEC-015, not from running the code.
  * Shows: every METHOD + path pair is documented and implemented. Does NOT show: that
- * parameters, responses or schemas match the code, or that the YAML is valid OpenAPI.
+ * parameters, responses or schemas match the code, or that the document is valid
+ * against the OpenAPI schema (tests/openapiContract.test.js checks that it parses).
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { parseDocument } from 'yaml';
 
 import { composeApplication } from '../src/composition.js';
 import { routeTable } from '../src/app.js';
 
-const yaml = readFileSync(new URL('../docs/api/openapi.yaml', import.meta.url), 'utf8');
+const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
 
 function documented() {
-  const server = /^servers:\s*\n\s*-\s*url:\s*(\S+)/m.exec(yaml);
-  assert.ok(server, 'servers[0].url not found in openapi.yaml');
-  const prefix = server[1].replace(/\/$/, '');
-  const section = yaml.slice(yaml.indexOf('\npaths:'), yaml.indexOf('\ncomponents:'));
-  assert.ok(section.length > 0, 'paths section not found in openapi.yaml');
+  const doc = parseDocument(readFileSync(new URL('../docs/api/openapi.yaml', import.meta.url), 'utf8'),
+    { uniqueKeys: true });
+  assert.deepEqual(doc.errors.map((e) => e.message), [], 'openapi.yaml is not valid YAML');
+  const contract = doc.toJS();
+
+  const server = contract.servers?.[0]?.url;
+  assert.equal(typeof server, 'string', 'servers[0].url not found in openapi.yaml');
+  const prefix = server.replace(/\/$/, '');
+  assert.ok(contract.paths && typeof contract.paths === 'object', 'paths not found in openapi.yaml');
 
   const ops = new Set();
-  let path = null;
-  for (const line of section.split('\n')) {
-    const p = /^ {2}(\/\S*):\s*$/.exec(line);
-    if (p) { path = p[1]; continue; }
-    const m = /^ {4}(get|put|post|delete|options|head|patch|trace):\s*$/.exec(line);
-    if (m && path) ops.add(`${m[1].toUpperCase()} ${prefix}${path}`);
+  for (const [path, item] of Object.entries(contract.paths)) {
+    for (const method of Object.keys(item ?? {})) {
+      if (HTTP_METHODS.has(method)) ops.add(`${method.toUpperCase()} ${prefix}${path}`);
+    }
   }
   return ops;
 }

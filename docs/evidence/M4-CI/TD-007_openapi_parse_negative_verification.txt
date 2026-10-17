@@ -1,0 +1,53 @@
+TD-007 negative verification (M4): the OpenAPI contract tests now parse docs/api/openapi.yaml
+Performed by: C. Burger. Run in a scratch copy of the repository (Linux), not in the team's checkout; output below is unedited.
+
+TD-007 negative verification: tests/openapiContract.test.js and tests/openapiRoutes.test.js, OLD (regex, dev) vs NEW (parsed, this PR)
+Run (UTC): 2026-10-17T07:40:42Z
+Node: v22.22.2
+Code: dev at e6728d8 plus this PR's test and package changes; docs/api/openapi.yaml as on dev
+Method: each case edits docs/api/openapi.yaml only (never a test), runs both versions of the two test files, then writes the original back and checks its SHA-256.
+openapi.yaml SHA-256 before: 6a8c2c2216fabbf004627c11ee6ea585ed0cec008763b09fea9f01d12837fea4
+
+Control, unmodified file:
+  OLD: tests 3, pass 3, fail 0
+  NEW: tests 4, pass 4, fail 0
+
+Case A: Duplicate key: a second `get:` added under /health
+  Expected (written before the run): OLD: pass (a line scan cannot see a duplicate key). NEW: all 4 fail (the document does not parse).
+  OLD: tests 3, pass 3, fail 0
+  NEW: tests 4, pass 0, fail 4
+      not ok: openapi.yaml parses as YAML and is an OpenAPI 3 document whose local references resolve — TD-007, DEC-015
+      not ok: every problem code the code can send is in the contract, and no other — DEF-002, DEC-015
+      not ok: every route the composed application registers is documented in openapi.yaml — DEC-015
+      not ok: every operation documented in openapi.yaml is registered in the composed application — DEC-015
+  restored, SHA-256 matches
+
+Case B: Syntax error: the closing ] removed from the Problem.code enum list
+  Expected (written before the run): OLD: the DEF-002 test fails (its regex needs the ]); the route tests pass. NEW: all 4 fail.
+  OLD: tests 3, pass 2, fail 1
+      not ok: every problem code the code can send is in the contract, and no other — DEF-002, DEC-015
+  NEW: tests 4, pass 0, fail 4
+      not ok: openapi.yaml parses as YAML and is an OpenAPI 3 document whose local references resolve — TD-007, DEC-015
+      not ok: every problem code the code can send is in the contract, and no other — DEF-002, DEC-015
+      not ok: every route the composed application registers is documented in openapi.yaml — DEC-015
+      not ok: every operation documented in openapi.yaml is registered in the composed application — DEC-015
+  restored, SHA-256 matches
+
+Case C: Dangling reference: one $ref to #/components/schemas/Problem renamed to ProblemX
+  Expected (written before the run): OLD: pass. NEW: only the parse/reference test fails, naming the dangling reference.
+  OLD: tests 3, pass 3, fail 0
+  NEW: tests 4, pass 3, fail 1
+      not ok: openapi.yaml parses as YAML and is an OpenAPI 3 document whose local references resolve — TD-007, DEC-015
+  restored, SHA-256 matches
+
+Case D: Version: `openapi: 3.1.0` changed to `openapi: 2.0`
+  Expected (written before the run): OLD: pass. NEW: only the parse/reference test fails.
+  OLD: tests 3, pass 3, fail 0
+  NEW: tests 4, pass 3, fail 1
+      not ok: openapi.yaml parses as YAML and is an OpenAPI 3 document whose local references resolve — TD-007, DEC-015
+  restored, SHA-256 matches
+
+openapi.yaml SHA-256 after: 6a8c2c2216fabbf004627c11ee6ea585ed0cec008763b09fea9f01d12837fea4
+
+Outcome: all four expected results held. Cases A, C and D were invisible to the old regex tests (all passed); case B was caught by the old DEF-002 test only by accident of its regex. The new tests fail on all four, and pass on the unmodified file.
+What this does NOT show: validation against the OpenAPI 3.1 JSON schema; only parseability, duplicate keys, the version, local references and the existing Problem.code and route checks are covered.
