@@ -1,0 +1,29 @@
+NV-151  Track T6 (client screens)
+Test: "no client/src file holds a STATUS or ROLE value as a string literal or JSX text - FR-6.1, FR-1.2"
+      in tests/clientBoundary.test.js (DEC-014, DEC-019, TD-003 context)
+
+Purpose: show the boundary test still catches a typed status value in a component
+added after the test was written (the T6 build adds many new client files).
+
+File broken: a NEW file client/src/NvProbe.jsx (not a file the test had seen before).
+The break (whole file):
+  const probe = 'Closed';
+  export default probe;
+
+Expected result (written before the run): the test above fails and names
+client/src/NvProbe.jsx and the value; the other 8 tests in the file pass.
+
+Run with the break (2026-10-17T12:30:22Z, Node v24.16.0, node --test tests/clientBoundary.test.js):
+  tests 9, pass 8, fail 1
+  AssertionError: client/src/NvProbe.jsx contains a domain value as string literal "Closed";
+  import it from shared/domainValues.js
+
+Restored: NvProbe.jsx deleted. Re-run (2026-10-17T12:30:23Z): tests 9, pass 9, fail 0.
+Hash check: client/src/App.jsx SHA-256 before and after identical
+  (33f38212bca310269316410aa8fe5c0d0148d30f6498276f24c1071133520bc8); the probe file
+  no longer exists.
+
+What this does show: the scan applies to every file under client/src, including one
+created later, and flags a status literal in a quoted string.
+What this does not show: TD-003 (the client doing no rule checking); values built at
+run time; multi-line template literals; case variants; files outside client/src.

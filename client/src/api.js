@@ -1,5 +1,8 @@
 // The one fetch wrapper. Same-origin, relative URLs. The session cookie is
 // HttpOnly and travels by itself; nothing is stored here.
+//
+// Traces to: DEC-015 §1-4 and Addendum A (A1-A8). Every route in those two
+// documents has a function below.
 
 export class ApiError extends Error {
   constructor(status, problem) {
@@ -26,15 +29,85 @@ export async function call(method, path, { body, headers = {} } = {}) {
     throw new ApiError(response.status, isProblem ? data : null);
   }
   // The ETag is kept exactly as sent. It is never built from body.version.
-  return { status: response.status, data, etag: response.headers.get('etag') };
+  return {
+    status: response.status,
+    data,
+    etag: response.headers.get('etag'),
+    location: response.headers.get('location'),
+    // DEC-015 §3: a replay carries the original status and this header.
+    replayed: response.headers.get('idempotent-replayed') === 'true',
+  };
 }
 
-const base = (id) => `/api/v1/requests/${encodeURIComponent(id)}`;
+const enc = encodeURIComponent;
+const base = (id) => `/api/v1/requests/${enc(id)}`;
 
-export const getRequest = (id) => call('GET', base(id));
+/** A query string from the defined, non-empty values only. */
+export function query(params = {}) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+  }
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
+/** DEC-015 §3: one UUID v4 per logical user action, reused unchanged on a retry. */
+export const newKey = () => crypto.randomUUID();
+
+const idem = (key) => ({ 'Idempotency-Key': key ?? newKey() });
+const guarded = (etag, key) => ({ 'If-Match': etag, ...idem(key) });
+
+// --- sessions (DEC-018 §5) ---
 export const signIn = (email, password) => call('POST', '/api/v1/sessions', { body: { email, password } });
 export const signOut = () => call('DELETE', '/api/v1/sessions/current');
-export const transition = (id, etag, toStatus, reason) => call('POST', `${base(id)}/transitions`, {
-  body: reason ? { toStatus, reason } : { toStatus },
-  headers: { 'If-Match': etag, 'Idempotency-Key': crypto.randomUUID() },
+
+// --- requests (DEC-015 §1) ---
+export const getRequest = (id) => call('GET', base(id));
+export const getHistory = (id) => call('GET', `${base(id)}/history`);
+export const listRequests = (params) => call('GET', `/api/v1/requests${query(params)}`); // { items, nextCursor }
+export const searchRequests = (body) => call('POST', '/api/v1/requests/search', { body });
+export const submitRequest = (body, key) => call('POST', '/api/v1/requests', { body, headers: idem(key) });
+
+export const transition = (id, etag, toStatus, reason, extra = {}, key) => call('POST', `${base(id)}/transitions`, {
+  body: { toStatus, ...(reason ? { reason } : {}), ...extra },
+  headers: guarded(etag, key),
 });
+export const assign = (id, etag, assigneeId, key) => call('POST', `${base(id)}/assignments`, {
+  body: { assigneeId },
+  headers: guarded(etag, key),
+});
+export const addComment = (id, body, key) => call('POST', `${base(id)}/comments`, { body: { body }, headers: idem(key) });
+export const addAction = (id, body, key) => call('POST', `${base(id)}/actions`, { body: { body }, headers: idem(key) });
+export const addDetail = (id, body, key) => call('POST', `${base(id)}/details`, { body: { body }, headers: idem(key) });
+
+export const getNotifications = () => call('GET', '/api/v1/me/notifications');
+export const getHealth = () => call('GET', '/api/v1/health');
+
+// --- Addendum A ---
+export const listCategories = () => call('GET', '/api/v1/categories'); // A1
+export const listUsers = (params) => call('GET', `/api/v1/users${query(params)}`); // A2
+export const createUser = (body, key) => call('POST', '/api/v1/users', { body, headers: idem(key) }); // A3
+export const setUserRoles = (id, roles, key) => call('PUT', `/api/v1/users/${enc(id)}/roles`, { // A4
+  body: { roles },
+  headers: idem(key),
+});
+export const revokeUser = (id, key) => call('POST', `/api/v1/users/${enc(id)}/revocation`, { headers: idem(key) }); // A5
+export const getSummary = (params) => call('GET', `/api/v1/reports/summary${query(params)}`); // A6
+export const setCategoryTarget = (id, targetResolutionHours, key) => call('PUT', `/api/v1/categories/${enc(id)}/target`, { // A7
+  body: { targetResolutionHours },
+  headers: idem(key),
+});
+export const deactivateCategory = (id, key) => call('POST', `/api/v1/categories/${enc(id)}/deactivation`, { headers: idem(key) }); // A8
+
+/**
+ * The rows of a list response: a bare array, or the object a route returns
+ * ({ items } for request lists, { entries } for history, { notifications }).
+ */
+export const itemsOf = (data) => {
+  if (Array.isArray(data)) return data;
+  return data?.items ?? data?.entries ?? data?.notifications ?? [];
+};
+
+/** The cursor of the next page, or null on the last one ({ items, nextCursor }). */
+export const nextCursorOf = (data) => data?.nextCursor ?? null;
