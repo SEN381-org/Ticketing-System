@@ -41,6 +41,7 @@
  *   sudo node --env-file=/etc/civicconnect/staging.env generate-fixtures.js \
  *     --app-dir /opt/civicconnect --out /tmp/perf-fixtures.json \
  *     [--users 100] [--requesters 100] [--transitions 12] [--batch 25] [--pause 500]
+ * Trial on the test cluster, from a checkout: add --target test (staging is the default).
  *
  * Exit code: 0 fixtures written; 2 refused or failed before writing the output file.
  */
@@ -64,6 +65,7 @@ try {
   args = parseArgs({
     options: {
       'app-dir': { type: 'string', default: '/opt/civicconnect' },
+      target: { type: 'string', default: 'staging' },
       out: { type: 'string' },
       users: { type: 'string', default: '100' },
       requesters: { type: 'string', default: '100' },
@@ -94,8 +96,10 @@ const pauseMs = intArg('pause', 0, 10_000);
 const appDir = path.resolve(args['app-dir']);
 const load = (rel) => import(pathToFileURL(path.join(appDir, rel)).href);
 
-const { STAGING_CLUSTER_MARKER } = await load('scripts/lib/clusterMarkers.js');
-if (!STAGING_CLUSTER_MARKER) refuse('the deployed checkout records no staging host marker');
+const { CLUSTER_MARKERS } = await load('scripts/lib/clusterMarkers.js');
+if (!['staging', 'test'].includes(args.target)) refuse('--target must be staging or test');
+const MARKER = CLUSTER_MARKERS?.[args.target];
+if (!MARKER) refuse(`the checkout records no ${args.target} host marker`);
 
 // Host guard: the host of MONGODB_URI must carry the staging marker. The URI is never printed.
 const uri = process.env.MONGODB_URI;
@@ -106,7 +110,7 @@ try {
 } catch {
   refuse('MONGODB_URI could not be parsed');
 }
-if (!host.includes(STAGING_CLUSTER_MARKER)) refuse('the host in MONGODB_URI is not the staging cluster; refusing');
+if (!host.includes(MARKER)) refuse(`the host in MONGODB_URI is not the ${args.target} cluster; refusing`);
 // Database guard: the URI must name the civicconnect database. Without a name the driver uses its
 // default database, "test", on which the application credential has no grants (found on staging,
 // 15/10/2026). The URI is never printed.
@@ -128,9 +132,9 @@ const { ROLE, STATUS } = await load('src/models/_shared.js');
 const { BRIEF_CATEGORY_NAMES, SECURITY_CATEGORY_NAME, codeFor } = await import('./seed-demo.js');
 
 const startedAt = new Date();
-console.log('NFR-2.4 / NFR-2.1 fixtures (staging)');
+console.log(`NFR-2.4 / NFR-2.1 fixtures (${args.target})`);
 console.log(`Started (UTC)   : ${startedAt.toISOString()}`);
-console.log(`Host check      : passed (host contains "${STAGING_CLUSTER_MARKER}"; host not printed)`);
+console.log(`Host check      : passed (host contains "${MARKER}"; host not printed)`);
 console.log(`Database user   : ${databaseUserOf(uri)}`);
 console.log(`Node            : ${process.version}`);
 console.log(`Users           : ${users} Coordinators (1 to read + ${transitions} to reject each); ${requesters} Requesters (1 to read each)`);
