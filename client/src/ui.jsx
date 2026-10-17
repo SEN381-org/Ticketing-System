@@ -74,10 +74,24 @@ export function Loading({ lines = 3, label = 'Loading' }) {
   );
 }
 
-export function Empty({ title, children, mark = '∅', action }) {
+/** Line icons for the empty states, drawn from plain shapes. */
+export function Icon({ name, size = 28 }) {
+  const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', focusable: 'false' };
+  if (name === 'bell') {
+    return <svg {...common}><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16zM10 20a2 2 0 0 0 4 0" /></svg>;
+  }
+  return (
+    <svg {...common}>
+      <path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8z" />
+      <path d="M14 6v2.5M14 11v2M14 15.5V18" />
+    </svg>
+  );
+}
+
+export function Empty({ title, children, mark = '∅', icon, action }) {
   return (
     <div className="empty">
-      <div className="empty__mark" aria-hidden="true">{mark}</div>
+      <div className="empty__mark" aria-hidden="true">{icon ? <Icon name={icon} /> : mark}</div>
       <div className="empty__title">{title}</div>
       {children ? <p>{children}</p> : null}
       {action}
@@ -106,19 +120,31 @@ export function PageHead({ title, children }) {
   );
 }
 
-/** Local date and time for a stored timestamp; the raw value if it does not parse. */
-export function formatWhen(value) {
-  if (!value) return '';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const two = (n) => String(n).padStart(2, '0');
 
-/** Date only, for tickets. */
+/**
+ * The one date format, South African day-month-year: "17 Oct 2026". Built from
+ * the parts of the date (viewer's local time), so it does not depend on the
+ * browser's locale data. The raw value if it does not parse.
+ */
 export function formatDay(value) {
   if (!value) return '';
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  if (Number.isNaN(d.getTime())) return String(value);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
+/** The one date and time format, 24-hour: "17 Oct 2026, 17:28". */
+export function formatWhen(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return `${formatDay(d)}, ${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+
+/** A copy of a list of named things in A to Z order, ignoring case. */
+export const byName = (list) => [...list].sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? ''), 'en', { sensitivity: 'base' }));
 
 /**
  * One Idempotency-Key per logical action (DEC-015 §3): the same key is reused
@@ -165,10 +191,29 @@ export function BackLink({ to, children = 'Back' }) {
   );
 }
 
-/** A row of filter chips; one is pressed. options: [{ value, label }]. */
+/**
+ * A row of filter chips; one is pressed. options: [{ value, label }]. When the
+ * row scrolls sideways (a phone), an edge fade shows which side has more; the
+ * chips stay buttons, so the keyboard reaches every one.
+ */
 export function Chips({ label, options, value, onChange, wrap = false }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || wrap) return undefined;
+    const update = () => {
+      const more = el.scrollWidth - el.clientWidth > 1;
+      const start = more && el.scrollLeft > 1;
+      const end = more && el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      el.dataset.fade = start && end ? 'both' : start ? 'start' : end ? 'end' : 'none';
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => { el.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
+  }, [wrap, options.length]);
   return (
-    <div className={wrap ? 'chips chips--wrap' : 'chips'} role="group" aria-label={label}>
+    <div ref={ref} className={wrap ? 'chips chips--wrap' : 'chips'} role="group" aria-label={label}>
       {options.map((o) => (
         <button key={o.value} type="button" className="chip" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
@@ -178,10 +223,43 @@ export function Chips({ label, options, value, onChange, wrap = false }) {
   );
 }
 
-/** Active categories as the server returns them, with a name lookup. Names are stored lowercase. */
+/**
+ * A destructive action behind an inline confirmation (not window.confirm, which
+ * a viewer may block). The trigger keeps its name; choosing it swaps in the
+ * question with "Confirm" and "Cancel". Focus moves to Cancel on opening and
+ * back to the trigger on cancelling.
+ */
+export function ConfirmAction({ label, ariaLabel, prompt, onConfirm, confirmLabel = 'Confirm' }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const trigger = useRef(null);
+  const cancel = useRef(null);
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (open) cancel.current?.focus();
+    else if (refocus.current) { refocus.current = false; trigger.current?.focus(); }
+  }, [open]);
+  const close = () => { refocus.current = true; setOpen(false); };
+  const confirm = async () => {
+    setBusy(true);
+    try { await onConfirm(); } finally { setBusy(false); setOpen(false); }
+  };
+  if (!open) {
+    return <button ref={trigger} className="btn btn--danger" type="button" aria-label={ariaLabel} onClick={() => setOpen(true)}>{label}</button>;
+  }
+  return (
+    <div className="confirm" role="group" aria-label={prompt} onKeyDown={(e) => { if (e.key === 'Escape' && !busy) close(); }}>
+      <span className="confirm__prompt">{prompt}</span>
+      <button className="btn btn--danger" type="button" disabled={busy} onClick={confirm}>{confirmLabel}</button>
+      <button ref={cancel} className="btn btn--quiet" type="button" disabled={busy} onClick={close}>Cancel</button>
+    </div>
+  );
+}
+
+/** Active categories, A to Z ignoring case (the server sorts; sorted here too), with a name lookup. Names are stored lowercase. */
 export function useCategories() {
   const state = useLoad(listCategories, []);
-  const list = itemsOf(state.data?.data);
+  const list = byName(itemsOf(state.data?.data));
   const nameOf = (id) => list.find((c) => c.id === id)?.name ?? null;
   return { ...state, list, nameOf };
 }
@@ -190,7 +268,7 @@ export function useCategories() {
  * One request as a ticket: the category and status on the left, a perforation,
  * and a stub holding the reference. Used by every list of requests.
  */
-export function Ticket({ to, title, status, meta, reference }) {
+export function Ticket({ to, title, status, meta, reference, refTestId }) {
   return (
     <li>
       <Link className="ticket" to={to}>
@@ -202,7 +280,7 @@ export function Ticket({ to, title, status, meta, reference }) {
         <div className="ticket__perf" />
         <div className="ticket__stub">
           <span className="label">Ref</span>
-          <span className="ticket__ref">{reference}</span>
+          <span className="ticket__ref" data-testid={refTestId}>{reference}</span>
         </div>
       </Link>
     </li>

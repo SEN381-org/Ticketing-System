@@ -133,9 +133,10 @@ test('E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, A
     });
 
     await test.step('5. Revoke access: listed as Revoked, no controls, status revoked (AC-FR-1.4)', async () => {
+      await row.getByRole('button', { name: 'Revoke access' }).click();      // asks first
       const [response] = await Promise.all([
         page.waitForResponse(isPost(`/api/v1/users/${userId}/revocation`)),
-        row.getByRole('button', { name: 'Revoke access' }).click(),
+        row.getByRole('button', { name: 'Confirm' }).click(),
       ]);
       expect(response.status()).toBe(201);
       await expect(row.locator('strong')).toHaveText('Revoked');
@@ -178,15 +179,18 @@ test('E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, A
       await expect(req.page.getByRole('radio', { name: other.name })).toBeVisible();   // offered before
 
       await goAs(page, '/admin/categories', admin);
+      await page.getByRole('button', { name: `Deactivate ${other.name}` }).click();   // asks first
       const [response] = await Promise.all([
         page.waitForResponse(isPost(`/api/v1/categories/${other._id}/deactivation`)),
-        page.getByRole('button', { name: `Deactivate ${other.name}` }).click(),
+        page.getByRole('button', { name: 'Confirm' }).click(),
       ]);
       expect(response.status()).toBe(201);
       expect((await response.json()).active).toBe(false);
       expect((await Category.findById(other._id).lean()).active).toBe(false);
       expect((await Category.findById(campus.categoryId).lean()).active).toBe(true);
-      await expect(page.getByRole('heading', { name: other.name })).toHaveCount(0);
+      // Still listed for the Administrator (FR-9.2), marked Deactivated, with no Deactivate button
+      await expect(page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: other.name }) })).toContainText('Deactivated');
+      await expect(page.getByRole('button', { name: `Deactivate ${other.name}` })).toHaveCount(0);
       await expect(page.getByRole('heading', { name: BRIEF_CATEGORY_NAME })).toBeVisible();
 
       await req.page.reload();

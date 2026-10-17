@@ -11,7 +11,10 @@ import { useAuth } from '../auth.jsx';
 import { homePath } from '../permissions.js';
 import PrivacyNotice from '../PrivacyNotice.jsx';
 import { Link } from '../router.jsx';
-import { BackLink, Empty, Field, Loading, NoAccess, Problem, asError, useActionKey, useCategories } from '../ui.jsx';
+import { useToast } from '../toast.jsx';
+import {
+  BackLink, Empty, Field, Loading, NoAccess, Problem, Ticket, asError, formatDay, useActionKey, useCategories,
+} from '../ui.jsx';
 
 /**
  * Field-level messages from a 400 problem. The server names the field inside
@@ -28,7 +31,22 @@ export function fieldErrorsOf(problem, names) {
   return found ? { [found.name]: problem.detail } : {};
 }
 
-const SUBMIT_FIELDS = ['categoryId', 'location', 'description'];
+const SUBMIT_FIELDS = ['categoryId', 'category', 'location', 'description'];
+
+// Plain wording for the three mandatory fields (FR-2.2), used only when the
+// server's 400 says the field is required. Any other message (too long, not a
+// string) is the server's own, shown as it came.
+const REQUIRED_TEXT = { categoryId: 'Choose a category.', location: 'Add a location.', description: 'Add a description.' };
+
+/** The 400's field messages for the submit form, keyed by form field. */
+export function submitFieldErrors(problem) {
+  const out = {};
+  for (const [name, detail] of Object.entries(fieldErrorsOf(problem, SUBMIT_FIELDS))) {
+    const field = name === 'category' ? 'categoryId' : name;
+    out[field] = /\bis required\b/.test(detail) ? REQUIRED_TEXT[field] : detail;
+  }
+  return out;
+}
 
 export default function NewRequest() {
   const auth = useAuth();
@@ -38,8 +56,9 @@ export default function NewRequest() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
   const key = useActionKey();
+  const toast = useToast();
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
-  const fields = error?.status === 400 ? fieldErrorsOf(error.problem, SUBMIT_FIELDS) : {};
+  const fields = error?.status === 400 ? submitFieldErrors(error.problem) : {};
   // 422: the chosen category is not one that can be used (AC-FR-2.3).
   if (error?.status === 422 && error.problem?.code === 'CATEGORY_NOT_SELECTABLE') fields.categoryId = error.problem.detail;
 
@@ -49,7 +68,11 @@ export default function NewRequest() {
     try {
       const r = await submitRequest(form, key.current());
       key.renew();
-      setDone({ reference: r.data?.reference, id: r.data?.id });
+      setDone({
+        reference: r.data?.reference, id: r.data?.id, status: r.data?.status, submittedAt: r.data?.submittedAt,
+        category: categories.nameOf(form.categoryId), location: form.location.trim(),
+      });
+      toast('Request submitted.');
       setForm({ categoryId: '', location: '', description: '' });
     } catch (err) { setError(err instanceof ApiError ? err : asError(err)); }
     setBusy(false);
@@ -64,9 +87,18 @@ export default function NewRequest() {
         <h1>Request received</h1>
         <div className="success" role="status">
           <p>Your request has been received.</p>
-          <p>Reference: <strong className="mono" data-testid="submitted-reference">{done.reference}</strong></p>
           <p className="small">Keep this reference to ask about your request.</p>
         </div>
+        <ul className="tickets">
+          <Ticket
+            to={done.id ? `/requests/${encodeURIComponent(done.id)}` : '/'}
+            title={done.category ?? 'Request'}
+            status={done.status}
+            meta={[done.location, formatDay(done.submittedAt)].filter(Boolean).join(' · ')}
+            reference={done.reference}
+            refTestId="submitted-reference"
+          />
+        </ul>
         <div className="row">
           {done.id ? <Link className="btn" to={`/requests/${encodeURIComponent(done.id)}`}>View this request</Link> : null}
           <button className="btn btn--quiet" type="button" onClick={() => setDone(null)}>Submit another</button>

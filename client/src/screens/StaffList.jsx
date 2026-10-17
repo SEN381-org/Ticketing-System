@@ -14,6 +14,7 @@ import { assign, getRequest, getSummary, itemsOf, listRequests, listUsers, searc
 import { useAuth } from '../auth.jsx';
 import { shows } from '../permissions.js';
 import { Link } from '../router.jsx';
+import { useToast } from '../toast.jsx';
 import {
   Empty, Loading, NoAccess, PageHead, Problem, StatusBadge, asError, formatWhen, useActionKey, useCategories, useLoad, usePages,
 } from '../ui.jsx';
@@ -22,23 +23,30 @@ const SORTS = [
   { value: '-submittedAt', label: 'Newest first' },
   { value: 'submittedAt', label: 'Oldest first' },
 ];
-const TILE_STATUSES = [STATUS.RECEIVED, STATUS.IN_PROGRESS, STATUS.ON_HOLD];
+const TILE_STATUSES = [STATUS.RECEIVED, STATUS.ASSIGNED, STATUS.IN_PROGRESS, STATUS.ON_HOLD];
 
 /** Search takes the same filters as the list, and rejects empty strings. */
 const stripEmpty = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined && v !== ''));
 
-/** Counts from the management summary, for roles that may read it (FR-8.1). Absent if it cannot be read. */
-function Tiles() {
-  const { data } = useLoad(() => getSummary(), []);
+/**
+ * Counts from the management summary, for roles that may read it (FR-8.1).
+ * Absent if it cannot be read. `refresh` changes after every action, so the
+ * counts are read again; the figures on screen stay until the new ones arrive.
+ */
+function Tiles({ refresh }) {
+  const { data } = useLoad(() => getSummary(), [refresh]);
   const summary = data?.data;
   if (!summary) return null;
   return (
-    <div className="tiles" role="group" aria-label="Summary">
-      <div className="tile tile--dark"><span className="label">Total</span><span className="tile__n" data-testid="tile-total">{summary.total}</span></div>
-      {TILE_STATUSES.map((s) => (
-        <div className="tile" key={s}><span className="label">{s}</span><span className="tile__n">{summary.byStatus?.[s] ?? 0}</span></div>
-      ))}
-      <div className="tile"><span className="label">Overdue</span><span className="tile__n">{summary.overdue?.count ?? 0}</span></div>
+    <div className="stack-tight">
+      <div className="tiles" role="group" aria-label="Summary">
+        <div className="tile tile--dark"><span className="label">Total</span><span className="tile__n" data-testid="tile-total">{summary.total}</span></div>
+        {TILE_STATUSES.map((s) => (
+          <div className="tile" key={s}><span className="label">{s}</span><span className="tile__n">{summary.byStatus?.[s] ?? 0}</span></div>
+        ))}
+        <div className="tile"><span className="label">Overdue</span><span className="tile__n">{summary.overdue?.count ?? 0}</span></div>
+      </div>
+      <p className="notice-line">{"Counts include requests you can't open"}</p>
     </div>
   );
 }
@@ -52,6 +60,7 @@ function RowAction({ item, onDone }) {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const key = useActionKey();
+  const toast = useToast();
   const unassigned = !item.assigneeId;
   const view = <Link className="btn btn--quiet btn--small" to={`/requests/${encodeURIComponent(item.id)}`}>Open</Link>;
 
@@ -60,7 +69,7 @@ function RowAction({ item, onDone }) {
     try {
       const current = await getRequest(item.id);          // the ETag to present
       await assign(item.id, current.etag, assigneeId, key.current());
-      key.renew(); setOpen(false); await onDone();
+      key.renew(); setOpen(false); toast(assigneeId === auth.user?.id ? 'Request accepted.' : 'Request assigned.'); await onDone();
     } catch (e) { setError(asError(e)); }
     setBusy(false);
   };
@@ -118,6 +127,7 @@ export default function StaffList() {
   const [unassigned, setUnassigned] = useState(false);
   const [text, setText] = useState('');
   const [applied, setApplied] = useState('');
+  const [tick, setTick] = useState(0);        // changes after every action, so the tiles are read again
   const categories = useCategories();
 
   const filters = { status, categoryId, sort, assigneeId: unassigned ? 'none' : undefined };
@@ -128,11 +138,20 @@ export default function StaffList() {
 
   if (pages.error?.status === 403) return <NoAccess what="the request queue" />;
 
+  const refreshAll = async () => { setTick((t) => t + 1); await pages.reload(); };
+  const youId = auth.user?.id;
+  const assigneeText = (i) => {
+    if (!i.assigneeId) return 'Unassigned';
+    if (i.assigneeName) return i.assigneeName;
+    return i.assigneeId === youId ? 'You' : 'Staff member';
+  };
   const filtered = Boolean(applied || status || categoryId || unassigned);
 
   return (
     <div className="view">
-      <PageHead title="Request queue" />
+      <PageHead title="Request queue">
+        {shows(auth.user, 'submit') ? <Link className="btn btn--head" to="/requests/new">New request</Link> : null}
+      </PageHead>
       <form role="search" className="row" onSubmit={(e) => { e.preventDefault(); setApplied(text.trim()); }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="sr-only" htmlFor="q">Search requests</label>
@@ -145,7 +164,7 @@ export default function StaffList() {
         ) : null}
       </form>
 
-      {shows(auth.user, 'report') ? <Tiles /> : null}
+      {shows(auth.user, 'report') ? <Tiles refresh={tick} /> : null}
 
       <div className="chips chips--wrap" role="group" aria-label="Filters">
         <button type="button" className="chip" aria-pressed={unassigned} onClick={() => setUnassigned((v) => !v)}>Unassigned</button>
@@ -167,7 +186,7 @@ export default function StaffList() {
 
       <Problem error={pages.error} />
       {pages.loading && !pages.items.length ? <Loading lines={4} label="Loading requests" /> : !pages.items.length && !pages.error ? (
-        <Empty title={filtered ? 'Nothing matches' : 'No requests'} mark="☐">
+        <Empty title={filtered ? 'Nothing matches' : 'No requests'} icon="ticket">
           {filtered ? 'Try removing a filter or changing the search.' : 'Requests in your categories will be listed here.'}
         </Empty>
       ) : (
@@ -176,7 +195,7 @@ export default function StaffList() {
             <thead>
               <tr>
                 <th scope="col">Ref</th><th scope="col">Category</th><th scope="col">Location</th>
-                <th scope="col">Status</th><th scope="col">Submitted</th><th scope="col">Action</th>
+                <th scope="col">Status</th><th scope="col">{`${STATUS.ASSIGNED} to`}</th><th scope="col">Submitted</th><th scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -186,8 +205,9 @@ export default function StaffList() {
                   <td className="table__title">{categories.nameOf(i.categoryId) ? <span className="cap">{categories.nameOf(i.categoryId)}</span> : null}</td>
                   <td>{i.location}</td>
                   <td><StatusBadge status={i.status} /></td>
+                  <td className={i.assigneeId ? undefined : 'muted'}>{assigneeText(i)}</td>
                   <td className="mono muted">{formatWhen(i.submittedAt)}</td>
-                  <td><RowAction item={i} onDone={pages.reload} /></td>
+                  <td><RowAction item={i} onDone={refreshAll} /></td>
                 </tr>
               ))}
             </tbody>

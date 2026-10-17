@@ -70,7 +70,7 @@ test('E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-F
 
       const field = page.getByLabel('Description');
       await expect(field).toHaveAttribute('aria-invalid', 'true');
-      await expect(field).toHaveAccessibleDescription(/'description' is required/);
+      await expect(field).toHaveAccessibleDescription(/Add a description\./);
       await expect(page.getByTestId('submitted-reference')).toHaveCount(0);
       expect(await requestsOf(requester.user)).toHaveLength(0);
     });

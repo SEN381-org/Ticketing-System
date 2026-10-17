@@ -49,7 +49,7 @@ export default function Notifications() {
       <PageHead title="Notifications" />
       <Problem error={error} />
       {loading ? <Loading lines={3} label="Loading notifications" /> : !items.length ? (
-        <Empty title="Nothing new" mark="·">You will be told here when the status of one of your requests changes.</Empty>
+        <Empty title="Nothing new" icon="bell">You will be told here when the status of one of your requests changes.</Empty>
       ) : (
         <ul className="tickets">
           {items.map((n) => (

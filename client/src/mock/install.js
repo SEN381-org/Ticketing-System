@@ -36,6 +36,7 @@ const db = {
     { id: 'c3', code: 'LIGHT', name: 'street lighting', isSecurity: false, targetResolutionHours: 96, active: true },
     { id: 'c4', code: 'WASTE', name: 'waste collection', isSecurity: false, targetResolutionHours: 72, active: true },
     { id: 'c5', code: 'PARKS', name: 'parks and open spaces', isSecurity: false, targetResolutionHours: 120, active: true },
+    { id: 'c6', code: 'ARCH', name: 'Archived services', isSecurity: false, targetResolutionHours: 24, active: false },
   ],
   requests: [],
   history: {},
@@ -105,6 +106,11 @@ const permittedAssignmentFor = (r) => {
   };
 };
 
+// The assignee's name goes only to the roles that may assign (Coordinator, Manager).
+const nameOfAssignee = (r) => (r.assigneeId && can([ROLE.COORDINATOR, ROLE.MANAGER])
+  ? { assigneeName: db.users.find((u) => u.id === r.assigneeId)?.displayName }
+  : {});
+
 function view(r) {
   const base = { reference: r.reference, status: r.status, version: r.version };
   if (!RICH) return base;
@@ -113,14 +119,14 @@ function view(r) {
     permittedTransitions: can(STAFF) ? permittedFor(r) : [],
     permittedAssignment: permittedAssignmentFor(r),
   };
-  if (r.assigneeId) out.assigneeId = r.assigneeId;
+  if (r.assigneeId) Object.assign(out, { assigneeId: r.assigneeId }, nameOfAssignee(r));
   if (r.description) out.description = r.description;
   if (r.resolution) out.resolution = r.resolution;
   return out;
 }
 const listItem = (r) => ({
   id: r.id, reference: r.reference, status: r.status, categoryId: r.categoryId,
-  location: r.location, submittedAt: r.submittedAt, assigneeId: r.assigneeId ?? null,
+  location: r.location, submittedAt: r.submittedAt, assigneeId: r.assigneeId ?? null, ...nameOfAssignee(r),
 });
 const etag = (r) => ({ ETag: `"v${r.version}"` });
 
@@ -182,8 +188,13 @@ function route(method, url, headers, body) {
 
   if (path === '/categories' && method === 'GET') {
     const withTarget = can([ROLE.MANAGER, ROLE.ADMINISTRATOR]);
-    return json(200, db.categories.filter((c) => c.active)
-      .map(({ id, code, name, isSecurity, targetResolutionHours }) => ({ id, code, name, isSecurity, ...(withTarget ? { targetResolutionHours } : {}) })));
+    const admin = can([ROLE.ADMINISTRATOR]);
+    // Inactive categories go to the Administrator only (with active: false); names sort A to Z ignoring case.
+    return json(200, [...db.categories].filter((c) => c.active || admin)
+      .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
+      .map(({ id, code, name, isSecurity, targetResolutionHours, active }) => ({
+        id, code, name, isSecurity, ...(admin ? { active } : {}), ...(withTarget ? { targetResolutionHours } : {}),
+      })));
   }
   if (path === '/me/notifications') return json(200, { notifications: db.notifications });
 

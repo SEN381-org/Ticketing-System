@@ -12,12 +12,12 @@ import { getSummary } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { homePath } from '../permissions.js';
 import {
-  BackLink, Empty, Field, Loading, NoAccess, PageHead, Problem, StatusBadge, Ticket, useCategories, useLoad,
+  BackLink, Empty, Field, Loading, NoAccess, PageHead, Problem, StatusBadge, Ticket, byName, useCategories, useLoad,
 } from '../ui.jsx';
 
 function Meters({ rows, total }) {
   return (
-    <div>
+    <div className="meters">
       {rows.map(([key, label, n]) => (
         <div className="meter" key={key}>
           <div className="meter__top"><span>{label}</span><span className="meter__n">{n}</span></div>
@@ -41,7 +41,7 @@ export default function Management() {
   const summary = data?.data;
   const total = summary?.total ?? 0;
   const statusRows = Object.values(STATUS).map((s) => [s, <StatusBadge status={s} />, summary?.byStatus?.[s] ?? 0]);
-  const categoryRows = (summary?.byCategory ?? []).map((c) => [
+  const categoryRows = byName(summary?.byCategory ?? []).map((c) => [
     c.categoryId,
     <span className="cap">{c.name ?? c.code ?? 'Unnamed category'}{c.active === false ? ' (deactivated)' : ''}</span>,
     c.count,
@@ -72,10 +72,10 @@ export default function Management() {
             <div className="tile"><span className="label">Overdue</span><span className="tile__n" data-testid="overdue">{summary.overdue?.count ?? 0}</span></div>
           </div>
           {total === 0 ? <Empty title="No requests in this range" mark="0">Widen the dates or clear the category filter.</Empty> : (
-            <>
+            <div className="split">
               <section className="panel"><h2 className="label">By status</h2><Meters rows={statusRows} total={total} /></section>
               <section className="panel"><h2 className="label">By category</h2><Meters rows={categoryRows} total={total} /></section>
-            </>
+            </div>
           )}
           {late.length ? (
             <section aria-label="Overdue requests">

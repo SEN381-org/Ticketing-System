@@ -17,6 +17,7 @@ import { useAuth } from './auth.jsx';
 import { homePath, shows } from './permissions.js';
 import SignIn from './SignIn.jsx';
 import Timeline from './Timeline.jsx';
+import { useToast } from './toast.jsx';
 import {
   BackLink, Empty, Field, Loading, Problem, StatusBadge, asError, formatWhen, useActionKey, useCategories,
 } from './ui.jsx';
@@ -25,7 +26,8 @@ const present = (v) => v !== undefined && v !== null && v !== '';
 const EMPTY_HISTORY = { entries: [], unavailable: false };
 const textOf = (v) => (v && typeof v === 'object' ? (v.summary ?? v.body ?? '') : v);
 
-function NoteForm({ id, label, button, send, onDone }) {
+function NoteForm({ id, label, button, done, send, onDone }) {
+  const toast = useToast();
   const [text, setText] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -34,7 +36,7 @@ function NoteForm({ id, label, button, send, onDone }) {
   const submit = async (e) => {
     e.preventDefault();
     setError(null); setBusy(true);
-    try { await send(id, text, key.current()); key.renew(); setText(''); await onDone(); } catch (err) { setError(asError(err)); }
+    try { await send(id, text, key.current()); key.renew(); setText(''); toast(done); await onDone(); } catch (err) { setError(asError(err)); }
     setBusy(false);
   };
   return (
@@ -50,6 +52,7 @@ function NoteForm({ id, label, button, send, onDone }) {
 
 export default function RequestDetail({ id }) {
   const auth = useAuth();
+  const toast = useToast();
   const categories = useCategories();
   const [request, setRequest] = useState(null);
   const [etag, setEtag] = useState(null);
@@ -148,18 +151,24 @@ export default function RequestDetail({ id }) {
     try {
       await transition(id, etag, selected.toStatus, reason, extra, transitionKey.current());
       transitionKey.renew(); setReason(''); setResolution(''); setChosen('');
+      toast('Status updated.');
       await load();
     } catch (err) { await failed(err); }
   };
 
-  const onAssign = async (assigneeId) => {
+  const onAssign = async (assigneeId, done) => {
     setError(null); setStale(false);
-    try { await assign(id, etag, assigneeId, assignKey.current()); assignKey.renew(); setAssignee(''); await load(); } catch (err) { await failed(err); }
+    try {
+      await assign(id, etag, assigneeId, assignKey.current());
+      assignKey.renew(); setAssignee(''); toast(done);
+      await load();
+    } catch (err) { await failed(err); }
   };
 
   const nameFor = (userId) => {
     if (!userId) return null;
     if (auth.user?.id === userId) return 'You';
+    if (userId === request?.assigneeId && request?.assigneeName) return request.assigneeName;
     return pool.find((u) => u.id === userId)?.displayName ?? null;
   };
 
@@ -172,11 +181,11 @@ export default function RequestDetail({ id }) {
   const facts = [
     present(request.location) ? ['Location', request.location, false] : null,
     present(request.submittedAt) ? ['Submitted', formatWhen(request.submittedAt), true] : null,
-    present(request.assigneeId) ? ['Assignee', nameFor(request.assigneeId) ?? 'Staff member', false] : null,
+    present(request.assigneeId) ? ['Assignee', request.assigneeName || nameFor(request.assigneeId) || 'Staff member', false] : null,
   ].filter(Boolean);
 
   return (
-    <div className="view">
+    <div className="view view--detail">
       <BackLink to={homePath(auth.user)} />
 
       <section className="ticket-card" aria-label="Request">
@@ -201,7 +210,7 @@ export default function RequestDetail({ id }) {
         <section className="panel" aria-label="Assignment">
           <h2 className="label">Assignment</h2>
           {canAssign ? (
-            <form onSubmit={(e) => { e.preventDefault(); if (assignee) onAssign(assignee); }}>
+            <form onSubmit={(e) => { e.preventDefault(); if (assignee) onAssign(assignee, 'Request assigned.'); }}>
               <Field id="assignee" label="Assign to">
                 <select className="select" id="assignee" value={assignee} onChange={(e) => setAssignee(e.target.value)}>
                   <option value="">Choose a staff member</option>
@@ -212,7 +221,7 @@ export default function RequestDetail({ id }) {
             </form>
           ) : null}
           {canAccept && auth.user?.id ? (
-            <button className="btn" type="button" onClick={() => onAssign(auth.user.id)}>Accept this request</button>
+            <button className="btn" type="button" onClick={() => onAssign(auth.user.id, 'Request accepted.')}>Accept this request</button>
           ) : null}
         </section>
       ) : null}
@@ -235,7 +244,7 @@ export default function RequestDetail({ id }) {
                 <textarea className="textarea" id="resolutionText" rows={3} value={resolution} onChange={(e) => setResolution(e.target.value)} />
               </Field>
             ) : null}
-            <button className="btn btn--lg" type="submit" disabled={!selected}>Submit transition</button>
+            <button className="btn" type="submit" disabled={!selected}>Submit transition</button>
           </form>
           <p className="notice-line">Only the next steps the server allows for your role are shown.</p>
         </section>
@@ -256,12 +265,12 @@ export default function RequestDetail({ id }) {
           <h2 className="label">Notes</h2>
           {shows(auth.user, 'comment') ? (
             <>
-              <NoteForm id={id} label="Add a comment" button="Post comment" send={addComment} onDone={load} />
-              <NoteForm id={id} label="Record an action" button="Record action" send={addAction} onDone={load} />
+              <NoteForm id={id} label="Add a comment" button="Post comment" done="Comment posted." send={addComment} onDone={load} />
+              <NoteForm id={id} label="Record an action" button="Record action" done="Action recorded." send={addAction} onDone={load} />
             </>
           ) : null}
           {shows(auth.user, 'detail') ? (
-            <NoteForm id={id} label="Add more detail" button="Add detail" send={addDetail} onDone={load} />
+            <NoteForm id={id} label="Add more detail" button="Add detail" done="Detail added." send={addDetail} onDone={load} />
           ) : null}
         </section>
       ) : null}

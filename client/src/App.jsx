@@ -11,6 +11,7 @@ import NewRequest from './screens/NewRequest.jsx';
 import Notifications, { NotificationBell } from './screens/Notifications.jsx';
 import MyRequests from './screens/RequestList.jsx';
 import StaffList from './screens/StaffList.jsx';
+import { ToastProvider } from './toast.jsx';
 import { Empty, Logo, NoAccess } from './ui.jsx';
 
 /** Sends a signed-in user to where their role starts; a user with nowhere to go is told so. */
@@ -109,5 +110,5 @@ function Routes() {
 }
 
 export default function App() {
-  return <AuthProvider><Routes /></AuthProvider>;
+  return <AuthProvider><ToastProvider><Routes /></ToastProvider></AuthProvider>;
 }
