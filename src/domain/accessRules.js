@@ -26,6 +26,7 @@ import { ROLE, STATUS } from '../models/_shared.js';
 export const OPERATION_RULES = Object.freeze({
   'request:submit':     [ROLE.REQUESTER, ROLE.COORDINATOR],
   'request:read':       Object.values(ROLE),
+  'category:list':      Object.values(ROLE),   // DEC-015 Addendum A1
   'request:transition': [ROLE.TECHNICIAN, ROLE.COORDINATOR, ROLE.MANAGER, ROLE.SECURITY_OFFICER],
   'request:assign':     [ROLE.COORDINATOR, ROLE.MANAGER],
   'request:accept':     [ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER],   // FR-5.2

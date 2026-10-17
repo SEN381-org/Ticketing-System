@@ -115,6 +115,126 @@ paths:
       responses:
         '204':
           description: No session remains for this cookie.
+  /requests:
+    post:
+      tags: [requests]
+      operationId: submitRequest
+      summary: Submit a request
+      description: |
+        FR-2.1. Exactly three fields are mandatory and nothing else is accepted
+        (FR-2.2): `categoryId`, `location` and `description`. A missing or empty
+        field returns 400 naming it (AC-FR-2.2b); an unknown field returns 400
+        naming it (DEC-015 §5). `categoryId` must be a well-formed identifier of an
+        active category of the caller's campus. A well-formed identifier that is
+        unknown, deactivated or of another campus returns 422 and nothing is stored
+        (AC-FR-2.3, FR-9.1).
+
+        The request, its reference and its `created` history entry are written in one
+        unit of work (DEC-016). The reference is unique and never changes
+        (AC-FR-2.6). The submitting user, date and time are stored with it (AC-FR-2.5).
+
+        A replayed Idempotency-Key with the same body returns the original status
+        and body with `Idempotent-Replayed: true` and writes nothing (DEC-015 §3).
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: |
+            A key created per logical user action and reused unchanged on every
+            retry of that action (UUID v4 recommended). At most 64 characters.
+            Missing or blank returns 400. Reused with a different body returns 422.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: 3f0c9a1e-2b7d-4c55-9a51-0d8e7c1b2f64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionCommand'
+      responses:
+        '201':
+          description: Request stored, or an idempotent replay of the original (then with Idempotent-Replayed true).
+          headers:
+            Location:
+              description: The new request, /api/v1/requests/{id}.
+              schema: { type: string }
+            ETag:
+              description: The version, "v1".
+              schema: { type: string }
+            Idempotent-Replayed:
+              description: Present, with the value true, only on a replay.
+              schema: { type: string, enum: ['true'] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubmissionResult' }
+        '400':
+          description: Idempotency-Key missing, blank or over 64 characters; a mandatory field missing or empty; an unknown field; a malformed categoryId; or the body is not valid JSON (IDEMPOTENCY_KEY_REQUIRED, INVALID_REQUEST).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not submit requests (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '413':
+          description: Body over 32 kB (PAYLOAD_TOO_LARGE).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '415':
+          description: Not sent as application/json (UNSUPPORTED_MEDIA_TYPE).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: |
+            The category is not in the active list of the caller's campus
+            (CATEGORY_NOT_SELECTABLE), or the Idempotency-Key was used with a
+            different body (IDEMPOTENCY_CONFLICT).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '500':
+          description: Unexpected error. The body is generic; the detail is logged, never sent (R-05, CON-019).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /categories:
+    get:
+      tags: [requests]
+      operationId: listCategories
+      summary: List the active categories
+      description: |
+        DEC-015 Addendum A1. The active categories of the caller's campus, for the
+        submission form (FR-2.3). A deactivated category is not listed (FR-9.1).
+        Every FR-1.2 role may call it.
+      responses:
+        '200':
+          description: The active categories, ordered by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Category' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '500':
+          description: Unexpected error. The body is generic; the detail is logged, never sent (R-05, CON-019).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /requests/{id}:
     get:
       tags: [requests]
@@ -377,6 +497,36 @@ components:
         reference: { type: string, pattern: '^CC-\d{4}-\d{6}$' }
         status: { $ref: '#/components/schemas/Status' }
         version: { type: integer, minimum: 0, description: The current version; also returned as the ETag. }
+    SubmissionCommand:
+      type: object
+      additionalProperties: false
+      required: [categoryId, location, description]
+      properties:
+        categoryId:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+          description: An active category of the caller's campus (FR-2.3).
+        location: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 5000 }
+    SubmissionResult:
+      type: object
+      additionalProperties: false
+      required: [id, reference, status, version, submittedAt]
+      properties:
+        id: { type: string }
+        reference: { type: string, pattern: '^CC-\d{4}-\d{6}$', description: Unique and unchanging for the life of the request (FR-2.6). }
+        status: { $ref: '#/components/schemas/Status' }
+        version: { type: integer, minimum: 1 }
+        submittedAt: { type: string, format: date-time }
+    Category:
+      type: object
+      additionalProperties: false
+      required: [id, code, name, isSecurity]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        isSecurity: { type: boolean }
     TransitionCommand:
       type: object
       required: [toStatus]

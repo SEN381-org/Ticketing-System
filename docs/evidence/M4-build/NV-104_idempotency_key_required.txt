@@ -1,0 +1,37 @@
+Negative verification NV-104
+Track: T1 (request submission)
+Protects: DEC-015 §3: the key is required on a state-changing POST
+Test(s): DEC-015 §3: a missing Idempotency-Key is 400 and nothing is stored
+File broken: src/routes/submissionRoutes.js
+Test file: tests/requestSubmission.test.js
+
+EXPECTED RESULT (written before the run, from the requirement and the intended break)
+  A missing key is accepted instead of refused. The missing-key test must FAIL (status 201, not 400, and a request stored).
+
+THE BREAK
+--- src/routes/submissionRoutes.js
+- if (!key || !String(key).trim()) throw new IdempotencyKeyRequiredError();
++ if (!key || !String(key).trim()) return 'no-key';
+
+RUN WITH THE BREAK (2026-10-17 12:28:00 UTC -> 2026-10-17 12:28:01 UTC)
+Node: v24.16.0
+# tests 28
+# pass 27
+# fail 1
+Failing tests:
+  not ok - DEC-015 §3: a missing Idempotency-Key is 400 and nothing is stored
+
+RESTORED, THEN RUN AGAIN (2026-10-17 12:28:02 UTC)
+SHA-256 before the break : 9498305f7511f6315ea999b946024e1fa21f03cf9ef7962df4e4c0432aa799d6
+SHA-256 after restoring  : 9498305f7511f6315ea999b946024e1fa21f03cf9ef7962df4e4c0432aa799d6
+Byte-identical           : true
+# tests 28
+# pass 28
+# fail 0
+
+WHAT THIS DOES SHOW
+  The named assertion fails when the protected code is broken, and passes when it is restored,
+  so it detects the condition it is written for.
+WHAT THIS DOES NOT SHOW
+  Behaviour against a real database: the persistence is fake. It shows that the test would catch this
+  one break, not every way the protection could fail.

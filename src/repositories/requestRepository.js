@@ -32,6 +32,11 @@ export function buildChangeUpdate($set, actor) {
 }
 
 export const requestRepository = {
+  /** FR-2.1 — the only insert path. The caller supplies version 1 and joins the transaction. */
+  create: async (doc, { session } = {}) => {
+    const [created] = await Request.create([doc], { session });
+    return created.toObject();
+  },
   // DEF-012: a malformed id used to reach Mongoose, whose cast failure became an
   // unrecognised error and a generic 500. It is refused here, before any read, as
   // a 400 (DEC-015 §4). The cast happens at this layer, so every route that reads

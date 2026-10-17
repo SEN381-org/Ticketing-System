@@ -1,0 +1,41 @@
+Negative verification NV-102
+Track: T1 (request submission)
+Protects: DEC-016: the request insert and its created history entry commit together or not at all
+Test(s): DEC-016, FR-2.6: category read, number, request insert and history append all use the unit of work's session
+File broken: src/services/requestSubmissionService.js
+Test file: tests/requestSubmission.test.js
+
+EXPECTED RESULT (written before the run, from the requirement and the intended break)
+  The history append is called without the unit of work session, which is the way a write escapes the transaction. The session test must FAIL on the append assertion (undefined, not the session). The other tests may pass; this one is the one that must catch it.
+
+THE BREAK
+--- src/services/requestSubmissionService.js
+- idempotencyKey,
+-         idempotencyFingerprint: fingerprint,
+-       }, { session });
++ idempotencyKey,
++         idempotencyFingerprint: fingerprint,
++       });
+
+RUN WITH THE BREAK (2026-10-17 12:27:56 UTC -> 2026-10-17 12:27:57 UTC)
+Node: v24.16.0
+# tests 28
+# pass 27
+# fail 1
+Failing tests:
+  not ok - DEC-016, FR-2.6: category read, number, request insert and history append all use the unit of work's session
+
+RESTORED, THEN RUN AGAIN (2026-10-17 12:27:58 UTC)
+SHA-256 before the break : e49ae9562cef9bf3b30f56ad70b453d4f6743766d2b0bc0e65bf5036d2acfab2
+SHA-256 after restoring  : e49ae9562cef9bf3b30f56ad70b453d4f6743766d2b0bc0e65bf5036d2acfab2
+Byte-identical           : true
+# tests 28
+# pass 28
+# fail 0
+
+WHAT THIS DOES SHOW
+  The named assertion fails when the protected code is broken, and passes when it is restored,
+  so it detects the condition it is written for.
+WHAT THIS DOES NOT SHOW
+  Behaviour against a real database: the persistence is fake. It shows that the test would catch this
+  one break, not every way the protection could fail.
