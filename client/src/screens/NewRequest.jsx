@@ -1,64 +1,67 @@
 // Submit a request. Traces to: FR-2.1, FR-2.2 (exactly three mandatory fields:
-// category, location, description), AC-FR-2.2b (the 400 names the field),
-// AC-FR-2.6 (the confirmation shows the reference), NFR-4.3 (privacy notice
-// before submit). The server validates; the client only displays what it says.
+// category, location, description), AC-FR-2.2b (the 400 names the missing field
+// in its detail, for example "'location' is required"), AC-FR-2.3 (a category
+// that cannot be chosen is a 422), AC-FR-2.6 (the confirmation shows the
+// reference), NFR-4.3 (privacy notice before submit). The server validates; the
+// client only displays what it says.
 
 import { useState } from 'react';
-import { ApiError, listCategories, submitRequest, itemsOf } from '../api.js';
+import { ApiError, submitRequest } from '../api.js';
+import { useAuth } from '../auth.jsx';
+import { homePath } from '../permissions.js';
 import PrivacyNotice from '../PrivacyNotice.jsx';
 import { Link } from '../router.jsx';
-import { Empty, Field, Loading, PageHead, Problem, asError, useActionKey, useLoad } from '../ui.jsx';
+import { BackLink, Empty, Field, Loading, NoAccess, Problem, asError, useActionKey, useCategories } from '../ui.jsx';
 
-const MANDATORY = ['category', 'location', 'description'];
-
-/** Field-level messages from a 400 problem: a structured list if sent, else a field name found in the detail. */
-export function fieldErrorsOf(problem) {
-  if (!problem) return {};
-  const out = {};
-  const structured = problem.errors ?? problem.fields;
-  if (Array.isArray(structured)) {
-    for (const item of structured) {
-      const name = String(item.field ?? item.name ?? item.pointer ?? '').replace(/^.*\//, '');
-      if (name) out[name === 'categoryId' ? 'category' : name] = item.detail ?? item.message ?? problem.detail ?? problem.title;
-    }
+/**
+ * Field-level messages from a 400 problem. The server names the field inside
+ * the detail, quoted ('location' is required) or bare (email is required).
+ * `names` are the field names to look for, in the form the server uses.
+ */
+export function fieldErrorsOf(problem, names) {
+  if (!problem?.detail) return {};
+  let found = null;
+  for (const name of names) {
+    const at = problem.detail.search(new RegExp(String.raw`(^|[\s'"])${name}(?=$|[\s'"])`));
+    if (at !== -1 && (!found || at < found.at)) found = { name, at };
   }
-  if (problem.field) out[problem.field === 'categoryId' ? 'category' : problem.field] = problem.detail ?? problem.title;
-  if (!Object.keys(out).length && problem.detail) {
-    for (const name of MANDATORY) {
-      if (new RegExp(`\\b${name}(Id)?\\b`, 'i').test(problem.detail)) out[name] = problem.detail;
-    }
-  }
-  return out;
+  return found ? { [found.name]: problem.detail } : {};
 }
 
-const idFromLocation = (location) => (location ? decodeURIComponent(location.split('/').filter(Boolean).pop()) : null);
+const SUBMIT_FIELDS = ['categoryId', 'location', 'description'];
 
 export default function NewRequest() {
-  const categories = useLoad(listCategories, []);
-  const [form, setForm] = useState({ category: '', location: '', description: '' });
+  const auth = useAuth();
+  const categories = useCategories();
+  const [form, setForm] = useState({ categoryId: '', location: '', description: '' });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
   const key = useActionKey();
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
-  const fields = error?.status === 400 ? fieldErrorsOf(error.problem) : {};
+  const fields = error?.status === 400 ? fieldErrorsOf(error.problem, SUBMIT_FIELDS) : {};
+  // 422: the chosen category is not one that can be used (AC-FR-2.3).
+  if (error?.status === 422 && error.problem?.code === 'CATEGORY_NOT_SELECTABLE') fields.categoryId = error.problem.detail;
 
   const submit = async (e) => {
     e.preventDefault();
     setError(null); setBusy(true);
     try {
-      const r = await submitRequest({ categoryId: form.category, location: form.location, description: form.description }, key.current());
+      const r = await submitRequest(form, key.current());
       key.renew();
-      setDone({ reference: r.data?.reference, id: r.data?.id ?? idFromLocation(r.location) });
-      setForm({ category: '', location: '', description: '' });
+      setDone({ reference: r.data?.reference, id: r.data?.id });
+      setForm({ categoryId: '', location: '', description: '' });
     } catch (err) { setError(err instanceof ApiError ? err : asError(err)); }
     setBusy(false);
   };
 
+  const back = <BackLink to={homePath(auth.user)}>Back</BackLink>;
+
   if (done) {
     return (
       <div className="view">
-        <PageHead title="New request" />
+        {back}
+        <h1>Request received</h1>
         <div className="success" role="status">
           <p>Your request has been received.</p>
           <p>Reference: <strong className="mono" data-testid="submitted-reference">{done.reference}</strong></p>
@@ -66,19 +69,19 @@ export default function NewRequest() {
         </div>
         <div className="row">
           {done.id ? <Link className="btn" to={`/requests/${encodeURIComponent(done.id)}`}>View this request</Link> : null}
-          <Link className="btn btn--quiet" to="/requests">My requests</Link>
           <button className="btn btn--quiet" type="button" onClick={() => setDone(null)}>Submit another</button>
         </div>
       </div>
     );
   }
 
-  if (categories.loading) return <div className="card"><Loading label="Loading categories" /></div>;
-  const list = itemsOf(categories.data?.data);
-  if (categories.error || !list.length) {
+  if (categories.loading) return <div className="panel"><Loading label="Loading categories" /></div>;
+  if (categories.error?.status === 403) return <NoAccess what="submitting requests" />;
+  if (categories.error || !categories.list.length) {
     return (
       <div className="view">
-        <PageHead title="New request" />
+        {back}
+        <h1>New request</h1>
         <Problem error={categories.error} />
         <Empty title="No categories available" mark="?">A request cannot be submitted until a category is available.</Empty>
       </div>
@@ -88,23 +91,36 @@ export default function NewRequest() {
   const invalid = (name) => (fields[name] ? { 'aria-invalid': 'true', 'aria-describedby': `${name}-error` } : {});
 
   return (
-    <form className="view card" onSubmit={submit} noValidate>
-      <PageHead title="New request" />
-      <PrivacyNotice />
-      <Field id="category" label="Category" error={fields.category}>
-        <select className="select" id="category" value={form.category} onChange={set('category')} {...invalid('category')}>
-          <option value="">Choose a category</option>
-          {list.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </Field>
-      <Field id="location" label="Location" hint="Where the problem is." error={fields.location}>
+    <form className="view" onSubmit={submit} noValidate>
+      {back}
+      <div>
+        <h1>What needs attention?</h1>
+        <p className="muted">All three fields are required.</p>
+      </div>
+
+      <fieldset className="field" aria-describedby={fields.categoryId ? 'categoryId-error' : undefined}>
+        <legend className="field__label">Category</legend>
+        <div className="choices">
+          {categories.list.map((c) => (
+            <label className="choice" key={c.id}>
+              <input type="radio" name="category" value={c.id} checked={form.categoryId === c.id} onChange={set('categoryId')} />
+              <span className="cap">{c.name}</span>
+            </label>
+          ))}
+        </div>
+        {fields.categoryId ? <span className="field__error" id="categoryId-error">{fields.categoryId}</span> : null}
+      </fieldset>
+
+      <Field id="location" label="Location" error={fields.location}>
         <input className="input" id="location" value={form.location} onChange={set('location')} {...invalid('location')} />
       </Field>
-      <Field id="description" label="Description" hint="What needs attention." error={fields.description}>
-        <textarea className="textarea" id="description" value={form.description} onChange={set('description')} {...invalid('description')} />
+      <Field id="description" label="Description" error={fields.description}>
+        <textarea className="textarea" id="description" rows={4} value={form.description} onChange={set('description')} {...invalid('description')} />
       </Field>
-      <Problem error={error} />
-      <button className="btn" type="submit" disabled={busy}>{busy ? 'Submitting' : 'Submit request'}</button>
+
+      <PrivacyNotice />
+      {Object.keys(fields).length ? null : <Problem error={error} />}
+      <button className="btn btn--lg" type="submit" disabled={busy}>{busy ? 'Submitting' : 'Submit request'}</button>
     </form>
   );
 }

@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './auth.jsx';
-import { shows } from './permissions.js';
+import { destinations, homePath, isRequesterOnly } from './permissions.js';
 import PrivacyNotice from './PrivacyNotice.jsx';
 import RequestDetail from './RequestDetail.jsx';
-import { Link, matchRoute, usePath } from './router.jsx';
+import { Link, matchRoute, navigate, usePath } from './router.jsx';
 import { SignInGate } from './SignIn.jsx';
 import { AdminCategories, AdminUsers } from './screens/Admin.jsx';
 import Management from './screens/Management.jsx';
@@ -10,21 +11,14 @@ import NewRequest from './screens/NewRequest.jsx';
 import Notifications, { NotificationBell } from './screens/Notifications.jsx';
 import MyRequests from './screens/RequestList.jsx';
 import StaffList from './screens/StaffList.jsx';
-import { Empty, PageHead } from './ui.jsx';
+import { Empty, Logo, NoAccess } from './ui.jsx';
 
+/** Sends a signed-in user to where their role starts; a user with nowhere to go is told so. */
 function Home() {
   const auth = useAuth();
-  return (
-    <div className="view">
-      <PageHead title="CivicConnect" />
-      <p className="muted">{auth.user?.displayName ? `Signed in as ${auth.user.displayName}.` : 'Signed in.'} Choose where to go.</p>
-      <ul className="list">
-        {links(auth.user).map(([to, label]) => (
-          <li className="list__item" key={to}><Link className="list__link" to={to}>{label}</Link></li>
-        ))}
-      </ul>
-    </div>
-  );
+  const to = homePath(auth.user);
+  useEffect(() => { if (to !== '/') navigate(to, { replace: true }); }, [to]);
+  return to === '/' ? <NoAccess what="any page" /> : null;
 }
 
 const NotFound = () => <Empty title="No such page" mark="?" action={<Link className="btn" to="/">Go home</Link>}>Check the address, or start from the home page.</Empty>;
@@ -47,42 +41,57 @@ const ROUTES = [
   { pattern: '/privacy', render: () => <PrivacyNotice /> },
 ];
 
-/** The destinations offered to a user; shown by role, decided by the server. */
-function links(user) {
-  const out = [];
-  if (shows(user, 'mine')) out.push(['/requests/mine', 'My requests']);
-  if (shows(user, 'submit')) out.push(['/requests/new', 'New request']);
-  if (shows(user, 'staffList')) out.push(['/requests', 'Requests']);
-  if (shows(user, 'report')) out.push(['/management', 'Management view']);
-  if (shows(user, 'administerUsers')) out.push(['/admin/users', 'Users']);
-  if (shows(user, 'setTarget') || shows(user, 'administerCategories')) out.push(['/admin/categories', 'Categories']);
-  return out;
+function SignOutButton() {
+  const auth = useAuth();
+  return <button className="btn btn--ghost" type="button" onClick={() => auth.signOut().catch(() => {})}>Sign out</button>;
+}
+
+/** Teal bar for a requester: brand, notifications, sign out. */
+function Bar() {
+  const auth = useAuth();
+  return (
+    <header className="bar">
+      <div className="bar__inner">
+        <Link className="brand" to="/"><Logo size={32} inverse />CivicConnect</Link>
+        <div className="bar__user">
+          {auth.user?.displayName ? <span className="bar__name">{auth.user.displayName}</span> : null}
+          <NotificationBell />
+          <SignOutButton />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/** Dark side panel for staff and administrators; it stacks above the page on a phone. */
+function Side() {
+  const auth = useAuth();
+  const path = usePath();
+  return (
+    <header className="side">
+      <Link className="brand" to="/"><Logo size={36} />CivicConnect</Link>
+      <nav className="side__nav" aria-label="Main">
+        {destinations(auth.user).map(([to, label]) => (
+          <Link key={to} className="side__link" to={to} aria-current={path === to ? 'page' : undefined}>{label}</Link>
+        ))}
+      </nav>
+      <div className="side__user">
+        <span className="side__name">{auth.user?.displayName ?? 'Signed in'}</span>
+        <div className="side__actions">
+          <NotificationBell />
+          <SignOutButton />
+        </div>
+      </div>
+    </header>
+  );
 }
 
 function Shell({ children }) {
   const auth = useAuth();
-  const path = usePath();
+  const side = auth.authed && !isRequesterOnly(auth.user);
   return (
-    <div className="shell">
-      <header className="shell__bar">
-        <div className="shell__inner">
-          <Link className="brand" to="/">CivicConnect</Link>
-          {auth.authed ? (
-            <>
-              <nav className="nav" aria-label="Main">
-                {links(auth.user).map(([to, label]) => (
-                  <Link key={to} className="nav__link" to={to} aria-current={path === to ? 'page' : undefined}>{label}</Link>
-                ))}
-              </nav>
-              <div className="shell__user">
-                {auth.user?.displayName ? <span className="shell__name">{auth.user.displayName}</span> : null}
-                <NotificationBell />
-                <button className="btn btn--quiet" type="button" onClick={() => auth.signOut().catch(() => {})}>Sign out</button>
-              </div>
-            </>
-          ) : null}
-        </div>
-      </header>
+    <div className={side ? 'shell shell--side' : 'shell'}>
+      {auth.authed ? (side ? <Side /> : <Bar />) : null}
       <main className="shell__main">{children}</main>
     </div>
   );

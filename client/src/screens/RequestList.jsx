@@ -1,53 +1,62 @@
-// The request row used by both lists, and the "My requests" screen.
-// Traces to: FR-3.1 (a requester sees status), FR-3.6 (own requests only; the
-// server filters, the client does not).
+// The requester's own list as tickets. Traces to: FR-3.1 (a requester sees
+// status), FR-3.5 (the status is the mapped one the server returns; nothing is
+// computed here), FR-3.6 (own requests only; the server filters), FR-4.4
+// (filter by status, requested from the server). A 403 (no Requester role) is
+// shown as a no-access state.
 
-import { itemsOf, listRequests } from '../api.js';
+import { useState } from 'react';
+import { STATUS } from '../../../shared/domainValues.js';
+import { listRequests } from '../api.js';
 import { Link } from '../router.jsx';
-import { Empty, Loading, PageHead, Problem, StatusBadge, formatWhen, useLoad } from '../ui.jsx';
+import { Chips, Empty, Loading, NoAccess, PageHead, Problem, Ticket, formatDay, useCategories, usePages } from '../ui.jsx';
 
-const nameOf = (v) => (v && typeof v === 'object' ? (v.displayName ?? v.name ?? v.id) : v);
+const ALL = '';
+const FILTERS = [{ value: ALL, label: 'All' }, ...Object.values(STATUS).map((s) => ({ value: s, label: s }))];
 
-export function RequestRow({ item }) {
-  const category = nameOf(item.category ?? item.categoryName);
-  const assignee = nameOf(item.assignee ?? item.assigneeName);
-  const when = item.submittedAt ?? item.createdAt;
+/** A request from a list response as a ticket. */
+export function RequestTicket({ item, categoryName }) {
+  const when = formatDay(item.submittedAt);
   return (
-    <li className="list__item">
-      <Link className="list__link" to={`/requests/${encodeURIComponent(item.id)}`}>
-        <div className="list__top">
-          <span className="list__ref">{item.reference}</span>
-          <StatusBadge status={item.status} />
-        </div>
-        <div className="small muted">
-          {[category, item.location, when ? formatWhen(when) : null].filter(Boolean).join(' · ')}
-        </div>
-        {assignee ? <div className="small muted">Assignee: {assignee}</div> : null}
-      </Link>
-    </li>
+    <Ticket
+      to={`/requests/${encodeURIComponent(item.id)}`}
+      title={categoryName ?? 'Request'}
+      status={item.status}
+      meta={[item.location, when].filter(Boolean).join(' · ')}
+      reference={item.reference}
+    />
   );
 }
 
-export function RequestItems({ items, emptyTitle, emptyText, action }) {
-  if (!items.length) return <Empty title={emptyTitle} mark="☐" action={action}>{emptyText}</Empty>;
-  return <ul className="list">{items.map((i) => <RequestRow item={i} key={i.id ?? i.reference} />)}</ul>;
-}
-
 export default function MyRequests() {
-  const { data, error, loading } = useLoad(() => listRequests({ sort: '-submittedAt' }), []);
+  const [status, setStatus] = useState(ALL);
+  const categories = useCategories();
+  const pages = usePages((cursor) => listRequests({ status, sort: '-submittedAt', cursor }), [status]);
+
+  if (pages.error?.status === 403) return <NoAccess what="a list of your requests" />;
+
   return (
-    <div className="view">
+    <div className="view view--fab">
       <PageHead title="My requests">
-        <Link className="btn" to="/requests/new">New request</Link>
+        {!pages.loading || pages.items.length ? <span className="muted small">{pages.items.length}{pages.cursor ? '+' : ''} shown</span> : null}
       </PageHead>
-      <Problem error={error} />
-      {loading ? <Loading lines={3} label="Loading your requests" /> : (
-        <RequestItems
-          items={itemsOf(data?.data)}
-          emptyTitle="No requests yet"
-          emptyText="Requests you submit will be listed here with their current status."
-          action={<Link className="btn" to="/requests/new">Submit your first request</Link>} />
+      <Chips label="Filter by status" options={FILTERS} value={status} onChange={setStatus} />
+      <Problem error={pages.error} />
+      {pages.loading && !pages.items.length ? <Loading lines={3} label="Loading your requests" /> : !pages.items.length && !pages.error ? (
+        <Empty title={status === ALL ? 'No requests yet' : 'Nothing with this status'} mark="☐">
+          {status === ALL ? 'Requests you submit will be listed here with their current status.' : 'Try another filter.'}
+        </Empty>
+      ) : (
+        <ul className="tickets">
+          {pages.items.map((i) => <RequestTicket key={i.id} item={i} categoryName={categories.nameOf(i.categoryId)} />)}
+        </ul>
       )}
+      {pages.cursor ? <button className="btn btn--quiet" type="button" onClick={pages.loadMore} disabled={pages.loading}>Load more</button> : null}
+      <Link className="fab" to="/requests/new">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+        </svg>
+        New request
+      </Link>
     </div>
   );
 }

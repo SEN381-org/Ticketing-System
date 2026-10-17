@@ -1,58 +1,65 @@
-// Management view. Traces to: FR-8.1 (counts by status), FR-8.2 (by category),
-// FR-8.3 (date range), FR-8.5 (category filter), FR-8.6 (counts only: no
-// description, comment or action is ever shown here).
+// Management view. Traces to: FR-8.1 (counts by status), FR-8.2 (by category,
+// deactivated ones included, FR-9.2), FR-8.3 (overdue), FR-8.5 (date range and
+// category filter), FR-8.6 (counts and references only: no description, comment
+// or action is ever shown here). GET /reports/summary returns
+// { byStatus: { <status>: n }, byCategory: [{ categoryId, code, name, active, count }],
+// overdue: { count, requests: [{ id, reference, categoryId, status, openHours }] }, total }.
+// A 403 is shown as a no-access state.
 
 import { useState } from 'react';
 import { STATUS } from '../../../shared/domainValues.js';
-import { getSummary, itemsOf, listCategories } from '../api.js';
-import { Empty, Field, Loading, PageHead, Problem, StatusBadge, useLoad } from '../ui.jsx';
+import { getSummary } from '../api.js';
+import { useAuth } from '../auth.jsx';
+import { homePath } from '../permissions.js';
+import {
+  BackLink, Empty, Field, Loading, NoAccess, PageHead, Problem, StatusBadge, Ticket, useCategories, useLoad,
+} from '../ui.jsx';
 
-/** { key: n } or [{ key|status|category|name, count }] become [[key, n]]. */
-function pairs(value) {
-  if (Array.isArray(value)) {
-    return value.map((v) => [v.status ?? v.category ?? v.categoryName ?? v.name ?? v.categoryId ?? v.key, v.count ?? v.n ?? 0]);
-  }
-  return Object.entries(value ?? {}).map(([k, v]) => [k, typeof v === 'object' && v ? (v.count ?? 0) : v]);
-}
-
-function Bars({ rows, total, renderKey }) {
+function Meters({ rows, total }) {
   return (
-    <ul className="list">
-      {rows.map(([k, n]) => (
-        <li className="list__item" key={k} style={{ padding: 'var(--space-3) var(--space-4)' }}>
-          <div className="list__top"><span>{renderKey(k)}</span><strong>{n}</strong></div>
-          <div className="bar" aria-hidden="true"><div className="bar__fill" style={{ width: `${total ? Math.round((n / total) * 100) : 0}%` }} /></div>
-        </li>
+    <div>
+      {rows.map(([key, label, n]) => (
+        <div className="meter" key={key}>
+          <div className="meter__top"><span>{label}</span><span className="meter__n">{n}</span></div>
+          <div className="bar-track" aria-hidden="true"><div className="bar-track__fill" style={{ width: `${total ? Math.round((n / total) * 100) : 0}%` }} /></div>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
 export default function Management() {
+  const auth = useAuth();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const categories = useLoad(listCategories, []);
+  const categories = useCategories();
   const { data, error, loading } = useLoad(() => getSummary({ from, to, categoryId }), [from, to, categoryId]);
-  const summary = data?.data;
-  const cats = itemsOf(categories.data?.data);
-  const nameOfCategory = (k) => cats.find((c) => c.id === k)?.name ?? k;
 
-  const byStatus = pairs(summary?.byStatus);
-  const statusRows = Object.values(STATUS).map((s) => [s, byStatus.find(([k]) => k === s)?.[1] ?? 0]);
+  if (error?.status === 403) return <NoAccess what="the management view" />;
+
+  const summary = data?.data;
   const total = summary?.total ?? 0;
+  const statusRows = Object.values(STATUS).map((s) => [s, <StatusBadge status={s} />, summary?.byStatus?.[s] ?? 0]);
+  const categoryRows = (summary?.byCategory ?? []).map((c) => [
+    c.categoryId,
+    <span className="cap">{c.name ?? c.code ?? 'Unnamed category'}{c.active === false ? ' (deactivated)' : ''}</span>,
+    c.count,
+  ]);
+  const late = summary?.overdue?.requests ?? [];
 
   return (
     <div className="view">
+      <BackLink to={homePath(auth.user)} />
       <PageHead title="Management view" />
-      <form className="card" onSubmit={(e) => e.preventDefault()}>
+      <form className="panel" onSubmit={(e) => e.preventDefault()}>
         <div className="row">
           <Field id="from" label="From"><input className="input" id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
           <Field id="to" label="To"><input className="input" id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
           <Field id="m-category" label="Category">
             <select className="select" id="m-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
               <option value="">All categories</option>
-              {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.list.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
         </div>
@@ -60,20 +67,27 @@ export default function Management() {
       <Problem error={error} />
       {loading ? <Loading lines={4} label="Loading counts" /> : !summary ? null : (
         <>
-          <div className="stats">
-            <div className="stat"><div className="muted small">Total</div><div className="stat__n" data-testid="total">{total}</div></div>
-            <div className="stat"><div className="muted small">Overdue</div><div className="stat__n" data-testid="overdue">{summary.overdue ?? 0}</div></div>
+          <div className="tiles">
+            <div className="tile tile--dark"><span className="label">Total</span><span className="tile__n" data-testid="total">{total}</span></div>
+            <div className="tile"><span className="label">Overdue</span><span className="tile__n" data-testid="overdue">{summary.overdue?.count ?? 0}</span></div>
           </div>
           {total === 0 ? <Empty title="No requests in this range" mark="0">Widen the dates or clear the category filter.</Empty> : (
             <>
-              <section className="card"><h2>By status</h2>
-                <Bars rows={statusRows} total={total} renderKey={(k) => <StatusBadge status={k} />} />
-              </section>
-              <section className="card"><h2>By category</h2>
-                <Bars rows={pairs(summary.byCategory)} total={total} renderKey={nameOfCategory} />
-              </section>
+              <section className="panel"><h2 className="label">By status</h2><Meters rows={statusRows} total={total} /></section>
+              <section className="panel"><h2 className="label">By category</h2><Meters rows={categoryRows} total={total} /></section>
             </>
           )}
+          {late.length ? (
+            <section aria-label="Overdue requests">
+              <h2 className="label">Overdue</h2>
+              <ul className="tickets">
+                {late.map((r) => (
+                  <Ticket key={r.id} to={`/requests/${encodeURIComponent(r.id)}`} reference={r.reference} status={r.status}
+                    title={categories.nameOf(r.categoryId) ?? 'Request'} meta={`Open for ${r.openHours} hours`} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </>
       )}
     </div>

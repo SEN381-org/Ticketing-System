@@ -34,6 +34,8 @@ export async function call(method, path, { body, headers = {} } = {}) {
     data,
     etag: response.headers.get('etag'),
     location: response.headers.get('location'),
+    // DEC-015 §3: a replay carries the original status and this header.
+    replayed: response.headers.get('idempotent-replayed') === 'true',
   };
 }
 
@@ -63,7 +65,7 @@ export const signOut = () => call('DELETE', '/api/v1/sessions/current');
 // --- requests (DEC-015 §1) ---
 export const getRequest = (id) => call('GET', base(id));
 export const getHistory = (id) => call('GET', `${base(id)}/history`);
-export const listRequests = (params) => call('GET', `/api/v1/requests${query(params)}`);
+export const listRequests = (params) => call('GET', `/api/v1/requests${query(params)}`); // { items, nextCursor }
 export const searchRequests = (body) => call('POST', '/api/v1/requests/search', { body });
 export const submitRequest = (body, key) => call('POST', '/api/v1/requests', { body, headers: idem(key) });
 
@@ -98,5 +100,14 @@ export const setCategoryTarget = (id, targetResolutionHours, key) => call('PUT',
 });
 export const deactivateCategory = (id, key) => call('POST', `/api/v1/categories/${enc(id)}/deactivation`, { headers: idem(key) }); // A8
 
-/** Lists come back as an array or as { items }; both are read the same way. */
-export const itemsOf = (data) => (Array.isArray(data) ? data : (data?.items ?? []));
+/**
+ * The rows of a list response: a bare array, or the object a route returns
+ * ({ items } for request lists, { entries } for history, { notifications }).
+ */
+export const itemsOf = (data) => {
+  if (Array.isArray(data)) return data;
+  return data?.items ?? data?.entries ?? data?.notifications ?? [];
+};
+
+/** The cursor of the next page, or null on the last one ({ items, nextCursor }). */
+export const nextCursorOf = (data) => data?.nextCursor ?? null;

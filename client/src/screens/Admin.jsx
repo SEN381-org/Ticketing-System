@@ -9,8 +9,8 @@ import {
   createUser, deactivateCategory, itemsOf, listCategories, listUsers, revokeUser, setCategoryTarget, setUserRoles,
 } from '../api.js';
 import { useAuth } from '../auth.jsx';
-import { shows } from '../permissions.js';
-import { Empty, Field, Loading, PageHead, Problem, asError, useActionKey, useLoad } from '../ui.jsx';
+import { homePath, shows } from '../permissions.js';
+import { BackLink, Empty, Field, Loading, NoAccess, PageHead, Problem, asError, useActionKey, useLoad } from '../ui.jsx';
 import { fieldErrorsOf } from './NewRequest.jsx';
 
 const ROLES = Object.values(ROLE);
@@ -18,7 +18,7 @@ const ROLES = Object.values(ROLE);
 function RoleChecks({ idPrefix, value, onChange }) {
   const toggle = (r) => onChange(value.includes(r) ? value.filter((x) => x !== r) : [...value, r]);
   return (
-    <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+    <fieldset className="field">
       <legend className="field__label">Roles</legend>
       {ROLES.map((r) => (
         <div className="check" key={r}>
@@ -35,7 +35,7 @@ function NewUser({ onCreated }) {
   const [error, setError] = useState(null);
   const key = useActionKey();
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
-  const fields = error?.status === 400 ? fieldErrorsOf(error.problem) : {};
+  const fields = error?.status === 400 ? fieldErrorsOf(error.problem, ['email', 'displayName', 'password', 'roles']) : {};
   const submit = async (e) => {
     e.preventDefault(); setError(null);
     try {
@@ -45,7 +45,7 @@ function NewUser({ onCreated }) {
     } catch (err) { setError(asError(err)); }
   };
   return (
-    <form className="card" onSubmit={submit} noValidate>
+    <form className="panel" onSubmit={submit} noValidate>
       <h2>Create a user</h2>
       <Field id="u-email" label="User email" error={fields.email}><input className="input" id="u-email" value={form.email} onChange={set('email')} /></Field>
       <Field id="u-name" label="Display name" error={fields.displayName}><input className="input" id="u-name" value={form.displayName} onChange={set('displayName')} /></Field>
@@ -66,7 +66,7 @@ function UserRow({ user, onChanged }) {
   const revokeKey = useActionKey();
   const run = async (fn) => { setError(null); try { await fn(); await onChanged(); } catch (e) { setError(asError(e)); } };
   return (
-    <li className="card">
+    <li className="panel">
       <h3>{user.displayName}</h3>
       {user.email ? <p className="muted small">{user.email}</p> : null}
       <RoleChecks idPrefix={`r-${user.id}`} value={roles} onChange={setRoles} />
@@ -84,16 +84,19 @@ function UserRow({ user, onChanged }) {
 }
 
 export function AdminUsers() {
+  const auth = useAuth();
   const users = useLoad(() => listUsers(), []);
   const list = itemsOf(users.data?.data);
+  if (users.error?.status === 403) return <NoAccess what="user administration" />;
   return (
     <div className="view">
+      <BackLink to={homePath(auth.user)} />
       <PageHead title="Users" />
       <NewUser onCreated={users.reload} />
       <Problem error={users.error} />
       {users.loading ? <Loading lines={4} label="Loading users" /> : !list.length ? (
-        <Empty title="No users" mark="☺">Created users are listed here.</Empty>
-      ) : <ul className="list">{list.map((u) => <UserRow key={u.id} user={u} onChanged={users.reload} />)}</ul>}
+        <Empty title="No users" mark="·">Created users are listed here.</Empty>
+      ) : <ul className="plain-list">{list.map((u) => <UserRow key={u.id} user={u} onChanged={users.reload} />)}</ul>}
     </div>
   );
 }
@@ -105,8 +108,8 @@ function CategoryRow({ category, canTarget, canDeactivate, onChanged }) {
   const deactKey = useActionKey();
   const run = async (fn) => { setError(null); try { await fn(); await onChanged(); } catch (e) { setError(asError(e)); } };
   return (
-    <li className="card">
-      <h3>{category.name}</h3>
+    <li className="panel">
+      <h3 className="cap">{category.name}</h3>
       {category.isSecurity ? <p className="small muted">Security category</p> : null}
       {canTarget ? (
         <div className="row">
@@ -134,14 +137,16 @@ export function AdminCategories() {
   const auth = useAuth();
   const cats = useLoad(listCategories, []);
   const list = itemsOf(cats.data?.data);
+  if (cats.error?.status === 403) return <NoAccess what="category administration" />;
   return (
     <div className="view">
+      <BackLink to={homePath(auth.user)} />
       <PageHead title="Categories" />
       <Problem error={cats.error} />
       {cats.loading ? <Loading lines={4} label="Loading categories" /> : !list.length ? (
         <Empty title="No active categories" mark="☐">Deactivated categories are not listed.</Empty>
       ) : (
-        <ul className="list">
+        <ul className="plain-list">
           {list.map((c) => (
             <CategoryRow key={c.id} category={c} onChanged={cats.reload}
               canTarget={shows(auth.user, 'setTarget')} canDeactivate={shows(auth.user, 'administerCategories')} />
