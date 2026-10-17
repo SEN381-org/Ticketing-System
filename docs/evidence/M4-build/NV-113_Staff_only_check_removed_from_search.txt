@@ -1,0 +1,40 @@
+Negative verification NV-113 - Staff-only check removed from search
+Track T2 (request lists and search); method as docs/evidence/R-01_negative_verification.txt
+
+Run start (UTC) : 2026-10-17T12:28:50.225Z
+Run end   (UTC) : 2026-10-17T12:28:57.020Z
+Node            : v24.16.0
+Code under test : the T2 track working tree (src/services/requestListService.js, src/repositories/requestListRepository.js, src/routes/requestListRoutes.js, tests/requestList.test.js)
+
+CLAIM
+  Search is for staff; a Requester is refused (FR-4.3).
+Test protecting it: search is for staff: a Requester is refused, an Administrator-only actor is refused
+File broken       : src/services/requestListService.js
+
+1. EXPECTED (written before the run, from the claim): the full suite fails, and at least these tests fail:
+     - search is for staff: a Requester is refused
+     - search over HTTP: staff find the term, a Requester is 403
+
+2. The break:
+     --- src/services/requestListService.js (original)
+     +++ src/services/requestListService.js (broken)
+     - if (!roles.some((r) => STAFF_ROLES.includes(r))) {
+     + if (false && !roles.some((r) => STAFF_ROLES.includes(r))) {
+
+3. Result of npm test with the break applied: tests 231, pass 221, fail 2, skipped 8
+   Failing tests:
+     not ok - search is for staff: a Requester is refused, an Administrator-only actor is refused — FR-4.3
+     not ok - search over HTTP: staff find the term, a Requester is 403, the body carries no description — AC-FR-4.3, FR-1.5
+   Expected tests that did NOT fail: none
+   Outcome: CAUGHT
+
+4. Restored by writing back the original content. SHA-256 of src/services/requestListService.js:
+     before the break: 72957335eb0a3bcb0cb8a2818a097f5041341494eb160913145deb123b2c56a5
+     after restore   : 72957335eb0a3bcb0cb8a2818a097f5041341494eb160913145deb123b2c56a5
+     Identical.
+   Full suite after restore: tests 231, pass 223, fail 0, skipped 8
+
+WHAT THIS SHOWS
+  With the protected behaviour broken, the named test(s) fail; with it restored they pass. The assertion detects the condition it claims to.
+WHAT THIS DOES NOT SHOW
+  That MongoDB evaluates the real filter, text index or projection as the in-memory fake does (no database in this suite); that the break is the only way the behaviour could regress; or anything about the other tracks' code.

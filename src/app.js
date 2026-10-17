@@ -29,6 +29,7 @@ import { createHealthRouter, HEALTH_PATH } from './routes/healthRoutes.js';
 import { createSessionRouter, SESSIONS_BASE } from './routes/sessionRoutes.js';
 import { createRequestRouter, API_BASE as REQUESTS_BASE } from './routes/requestRoutes.js';
 import { createSubmissionRouter, createCategoryRouter, CATEGORIES_BASE } from './routes/submissionRoutes.js';
+import { createRequestListRouter } from './routes/requestListRoutes.js';
 import { RouteNotFoundError } from './errors.js';
 
 function mount(app, path, router) {
@@ -38,7 +39,7 @@ function mount(app, path, router) {
 
 export function createApp({
   authService, healthService, statusTransitionService, requestQueryService,
-  requestSubmissionService, categoryService, log = console,
+  requestSubmissionService, categoryService, requestListService, log = console,
 }) {
   const app = express();
   app.locals.mounts = [];
@@ -56,6 +57,7 @@ export function createApp({
   app.use('/api', createSessionMiddleware({ authService }));
 
   mount(app, SESSIONS_BASE, createSessionRouter({ authService }));
+  mount(app, REQUESTS_BASE, createRequestListRouter({ requestListService }));   // before /:id
   mount(app, REQUESTS_BASE, createRequestRouter({ statusTransitionService, requestQueryService }));
   mount(app, REQUESTS_BASE, createSubmissionRouter({ requestSubmissionService }));
   mount(app, CATEGORIES_BASE, createCategoryRouter({ categoryService }));

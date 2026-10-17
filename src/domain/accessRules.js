@@ -95,6 +95,31 @@ export function mayViewRequest(request, actor) {
 }
 
 /**
+ * Enforcement point 2, list path — the set of requests mayViewRequest permits,
+ * stated as data so a query can select it instead of loading every request and
+ * filtering. It restates mayViewRequest's three branches in the same order
+ * (staff first, then requester, else nothing); tests/requestList.test.js proves
+ * the two agree on a fixture set, so a change to one fails against the other.
+ *
+ * @returns {{kind:'staff', categoryIds:string[], includeSecurity:boolean}
+ *          |{kind:'own', requesterId:string}
+ *          |{kind:'none'}}
+ */
+export function viewScopeFor(actor) {
+  if (isStaff(actor)) {
+    return {
+      kind: 'staff',
+      categoryIds: (actor?.categoryAuthorisations ?? []).map(String),
+      includeSecurity: has(actor, ROLE.SECURITY_OFFICER),
+    };
+  }
+  if (has(actor, ROLE.REQUESTER) && actor.id != null) {
+    return { kind: 'own', requesterId: String(actor.id) };            // FR-3.1, FR-3.6
+  }
+  return { kind: 'none' };
+}
+
+/**
  * Enforcement point 3 — response serialiser, and the notification subscriber.
  *
  * FR-3.5: on a security-category request the requester sees only Received,
