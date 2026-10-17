@@ -16,10 +16,13 @@ import assert from 'node:assert/strict';
 import { composeApplication } from '../src/composition.js';
 import { listSubscriptions, publish, EVENTS } from '../src/events/requestEvents.js';
 
-test('no DEC-011 subscriber is registered in the composed application — TD-001', () => {
+// M4 (T4): the intended TD-001 change. FR-3.4 needs the NotificationSubscriber, so exactly
+// that registration is expected. The reporting projection stays unregistered (OI-14).
+test('exactly the NotificationSubscriber is registered in the composed application — TD-001, FR-3.4, OI-14', () => {
   composeApplication({ log: { error() {} } });
-  assert.deepEqual(listSubscriptions(), [],
-    'a subscriber is registered: repay TD-001 in the Technical Debt Register and replace this test');
+  assert.deepEqual(listSubscriptions(), [{
+    event: EVENTS.REQUEST_STATUS_CHANGED, name: 'NotificationSubscriber', requirement: 'FR-3.4 / FR-3.5 / SCP-004',
+  }], 'a different set of subscribers is registered: update TD-001 and this test together');
 });
 
 test('publishing with no subscriber is a no-op, so a transition is unaffected — TD-001', () => {
