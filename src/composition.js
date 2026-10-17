@@ -24,6 +24,8 @@ import { sessionRepository } from './repositories/sessionRepository.js';
 import { userRepository } from './repositories/userRepository.js';
 import { auditRepository } from './repositories/auditRepository.js';
 import { createStatusTransitionService } from './services/statusTransitionService.js';
+import { createAssignmentService } from './services/assignmentService.js';
+import { createAccessAuditService } from './services/accessAuditService.js';
 import { createRequestQueryService } from './services/requestQueryService.js';
 import { createAuthService } from './services/authService.js';
 import { createHealthService } from './services/healthService.js';
@@ -41,5 +43,11 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
     }),
   };
-  return { app: createApp({ ...services, log }), services };
+  // T3: kept out of `services` so the key-set assertion in tests/composition.test.js is unchanged.
+  const { recordRefusal } = createAccessAuditService({ audit: auditRepository, log });
+  const assignmentService = createAssignmentService({
+    requests: requestRepository, users: userRepository, history: historyRepository,
+    unitOfWork: createUnitOfWork(), recordRefusal,
+  });
+  return { app: createApp({ ...services, assignmentService, recordRefusal, log }), services };
 }
