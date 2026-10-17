@@ -14,7 +14,7 @@
 | Requirements affected | NFR-1.10 (AC only), NFR-1.9 (unchanged; its AC already targets a trigger-written row) |
 | Architecture/design | DEC-011 unchanged. DEC-016 new. StatusTransitionService gains a unit-of-work port |
 | UI/API/data | DEC-015 `If-Match`/412. `version` field added to `requests` |
-| Approval | Approved 17/10/2026 by the team (E. Lindsay, Team Lead) at M4 closure. **Not validated with a client stakeholder.** Reason: the narrowed criterion is the one the chosen platform can meet and verify (Atlas triggers write the audit row after commit, through change streams; DEC-016), and the transaction-boundary integration case verifies AC-NFR-1.10 v0.3 against a real cluster (40 of 40 on 17/10/2026). The v0.2 criterion is preserved above |
+| Approval | Approved 17/10/2026 by the team (E. Lindsay, Team Lead) at M4 closure. **Not validated with a client stakeholder.** Reason: the narrowed criterion is the one the chosen platform can meet and verify (Atlas triggers write the audit row after commit, through change streams; DEC-016), and the transaction-boundary integration case verifies, against a real cluster, the clauses that do not depend on the trigger: neither document is changed and no event is published (integration run of 40 of 40 cases, 17/10/2026). The two `auditLog` clauses are not verified: the trigger is defined in `scripts/atlas/app/` but not deployed to the test cluster. The v0.2 criterion is preserved above |
 | Security/privacy | None negative; audit remains unbypassable |
 | Quality/testing | New unit test (append failure → nothing published); M3 integration fault-injection test; audit-lag measurement |
 | Scope / schedule / cost | Small, within the follow-up PR to the slice; no cost |
