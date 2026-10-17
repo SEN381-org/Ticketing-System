@@ -96,9 +96,12 @@ const permittedFor = (r) => (MOCK_TRANSITIONS[r.status] ?? [])
 const OPEN_FOR_ASSIGNMENT = [STATUS.RECEIVED, STATUS.ASSIGNED, STATUS.IN_PROGRESS, STATUS.ON_HOLD];
 const permittedAssignmentFor = (r) => {
   const open = OPEN_FOR_ASSIGNMENT.includes(r.status);
+  const assign = open && can([ROLE.COORDINATOR, ROLE.MANAGER]);
   return {
-    assign: open && can([ROLE.COORDINATOR, ROLE.MANAGER]),
+    assign,
     accept: open && !r.assigneeId && can([ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER]),
+    // Mirrors the server's decision #10 pool: Security Officers for a security request.
+    assigneeRoles: assign ? [r.securityCategory ? ROLE.SECURITY_OFFICER : ROLE.TECHNICIAN] : [],
   };
 };
 

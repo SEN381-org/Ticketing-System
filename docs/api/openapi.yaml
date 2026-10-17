@@ -1294,11 +1294,18 @@ components:
     PermittedAssignment:
       type: object
       additionalProperties: false
-      required: [assign, accept]
+      required: [assign, accept, assigneeRoles]
       description: What this caller may do about assignment on this request now (OI-15, TD-003 style).
       properties:
         assign: { type: boolean, description: The caller may assign, or reassign, the request (FR-5.1, FR-5.5). }
         accept: { type: boolean, description: The caller may accept the request for themselves (FR-5.2). }
+        assigneeRoles:
+          type: array
+          items: { $ref: '#/components/schemas/Role' }
+          description: >-
+            The roles a user must hold to be named as the owner (decision 10 - Security
+            Officer for a security-category request, Technician otherwise). Empty when assign
+            is false. The client offers only users holding one of these roles.
     PermittedTransition:
       type: object
       additionalProperties: false

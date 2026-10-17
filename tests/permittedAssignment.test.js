@@ -34,7 +34,9 @@ function expected(doc, actor) {
   const assign = [ROLE.COORDINATOR, ROLE.MANAGER].includes(role) && !security && statusFitsAssign;
   const accept = ((role === ROLE.TECHNICIAN && !security) || (role === ROLE.SECURITY_OFFICER && security))
     && unassigned && doc.status === STATUS.RECEIVED;
-  return { assign, accept };
+  // decision #10: the pool is Security Officers for a security request, Technicians otherwise.
+  const assigneeRoles = assign ? [security ? ROLE.SECURITY_OFFICER : ROLE.TECHNICIAN] : [];
+  return { assign, accept, assigneeRoles };
 }
 
 const docFor = (status, assigneeId, securityCategory) => ({
@@ -86,9 +88,29 @@ test('permittedAssignmentFor agrees with the assignment service: true exactly wh
 
 test('permittedAssignmentFor: a Requester gets false/false, and a worked case for each flag - FR-5.1, FR-5.2', () => {
   const received = docFor(STATUS.RECEIVED, null, false);
-  assert.deepEqual(permittedAssignmentFor(received, PEOPLE.requester), { assign: false, accept: false });
-  assert.deepEqual(permittedAssignmentFor(received, PEOPLE.coord), { assign: true, accept: false });
-  assert.deepEqual(permittedAssignmentFor(received, PEOPLE.tech), { assign: false, accept: true });
+  assert.deepEqual(permittedAssignmentFor(received, PEOPLE.requester), { assign: false, accept: false, assigneeRoles: [] });
+  assert.deepEqual(permittedAssignmentFor(received, PEOPLE.coord), { assign: true, accept: false, assigneeRoles: [ROLE.TECHNICIAN] });
+  assert.deepEqual(permittedAssignmentFor(received, PEOPLE.tech), { assign: false, accept: true, assigneeRoles: [] });
   assert.deepEqual(permittedAssignmentFor(docFor(STATUS.RESOLVED, OWNER, false), PEOPLE.coord),
-    { assign: false, accept: false });
+    { assign: false, accept: false, assigneeRoles: [] });
+});
+
+// Technique: for a request a Coordinator may assign (Received, unassigned, non-security), name
+// every person in the fixtures through the REAL service. Expected (decision #10, written before
+// the run): the service accepts the named user exactly when their role is in assigneeRoles.
+// Shows: the pool the client is told to offer never contains someone the service refuses, and
+// never leaves out someone it would accept. Does NOT show: the client's pool query.
+test('assigneeRoles agrees with the assignment service: a role is offered exactly when the service accepts that user - decision #10, FR-5.1', async () => {
+  const doc = docFor(STATUS.RECEIVED, null, false);
+  const coordinator = PEOPLE.coord;
+  const { assign, assigneeRoles } = permittedAssignmentFor(doc, coordinator);
+  assert.equal(assign, true, 'precondition: the Coordinator may assign this request');
+  assert.ok(assigneeRoles.length > 0, 'the pool must not be empty or this proves nothing');
+  for (const person of Object.values(PEOPLE)) {
+    const h = harness({ doc });
+    let accepted = true;
+    try { await h.service.assign('r1', person.id, coordinator, h.command()); } catch { accepted = false; }
+    const offered = person.roles.some((r) => assigneeRoles.includes(r));
+    assert.equal(accepted, offered, `${person.id} (${person.roles.join('+')}): service ${accepted} vs pool ${offered}`);
+  }
 });

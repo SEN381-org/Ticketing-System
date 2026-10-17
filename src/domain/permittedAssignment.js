@@ -20,7 +20,7 @@
  */
 
 import { mayActOnRequest, mayBeAssigned, mayPerformOperation } from './accessRules.js';
-import { STATUS } from '../models/_shared.js';
+import { STATUS, ROLE } from '../models/_shared.js';
 
 /** The statuses in which an owned request may be reassigned. */
 const REASSIGNABLE = Object.freeze([STATUS.ASSIGNED, STATUS.IN_PROGRESS, STATUS.ON_HOLD]);
@@ -50,16 +50,33 @@ export function assignmentRefusal(request, accepting) {
 }
 
 /**
+ * The FR-1.2 roles a user must hold to be named as this request's owner (decision #10:
+ * Security Officer for a security-category request, Technician otherwise). Derived by
+ * asking mayBeAssigned about a user holding only that role and authorised for the
+ * request's category, so the pool a client offers can never disagree with the rule the
+ * service enforces.
+ */
+export function assigneeRolesFor(request) {
+  const categoryId = request.categoryId == null ? null : String(request.categoryId);
+  return Object.values(ROLE).filter((role) => mayBeAssigned(request, {
+    roles: [role], categoryAuthorisations: categoryId ? [categoryId] : [], campusId: request.campusId,
+  }));
+}
+
+/**
  * @param {object} request
  * @param {{id?: string, roles?: string[], categoryAuthorisations?: string[], campusId?: string}} actor
- * @returns {{assign: boolean, accept: boolean}}
+ * @returns {{assign: boolean, accept: boolean, assigneeRoles: string[]}}
+ *   assigneeRoles is the pool to offer when assign is true, otherwise empty.
  */
 export function permittedAssignmentFor(request, actor) {
-  if (!mayActOnRequest(request, actor)) return { assign: false, accept: false };
+  if (!mayActOnRequest(request, actor)) return { assign: false, accept: false, assigneeRoles: [] };
   const sameCampus = !actor.campusId || String(actor.campusId) === String(request.campusId);
+  const assign = mayPerformOperation('request:assign', actor) && assignmentRefusal(request, false) === null;
   return {
-    assign: mayPerformOperation('request:assign', actor) && assignmentRefusal(request, false) === null,
+    assign,
     accept: mayPerformOperation('request:accept', actor) && assignmentRefusal(request, true) === null
       && mayBeAssigned(request, actor) && sameCampus,
+    assigneeRoles: assign ? assigneeRolesFor(request) : [],
   };
 }

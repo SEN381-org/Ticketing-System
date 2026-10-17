@@ -1,0 +1,35 @@
+Negative verification NV-168 — Decision #10: the assignee pool offers Technicians and Security Officers for every request
+Track assignment pool (assigneeRoles). Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T17:23:16Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/permittedAssignment.test.js
+File broken : src/domain/permittedAssignment.js (never a test)
+
+CLAIM
+  The pool the read advertises (assigneeRoles) must match what the assignment service accepts; a pool that offers a Security Officer for an ordinary request would let the Coordinator pick someone the service refuses with 422.
+
+BREAK
+  -   return Object.values(ROLE).filter((role) => mayBeAssigned(request, {
+  +   if (request) return [ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER];
+  +   return Object.values(ROLE).filter((role) => mayBeAssigned(request, {
+
+EXPECTED (written before the run)
+  'assigneeRoles agrees with the assignment service' fails (Security Officers offered but refused); the exhaustive flags test also fails (its expected pool is [Technician]); the agreement test for assign/accept passes.
+
+RESULT WITH THE BREAK
+  tests 4, pass 1, fail 3, exit 1
+  failing: permittedAssignmentFor matches the decisions for every status, ownership, security flag and actor - FR-5.1, FR-5.5, OI-15, NV-165
+  failing: permittedAssignmentFor: a Requester gets false/false, and a worked case for each flag - FR-5.1, FR-5.2
+  failing: assigneeRoles agrees with the assignment service: a role is offered exactly when the service accepts that user - decision #10, FR-5.1
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 8e751fca87d54fedb15470f4b36eb545900c859625cb17b34c76343d8b2ecbcd
+  SHA-256 after  : 8e751fca87d54fedb15470f4b36eb545900c859625cb17b34c76343d8b2ecbcd
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 4, pass 4, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the advertised pool is checked against the real service for every role.
+  Does NOT show: the client's use of the pool (E2E-4 assigns through the queue on the test cluster).
