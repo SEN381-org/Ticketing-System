@@ -1,0 +1,36 @@
+Negative verification NV-166 - resolution target shown to every role on the category list
+Track fixA-server (Section A server fixes). Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T16:23:27Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/categoryTargetVisibility.test.js
+File broken : src/services/categoryService.js (never a test)
+
+CLAIM
+  GET /api/v1/categories returns targetResolutionHours only to the Manager (category:set-target) and the Administrator (category:administer).
+
+BREAK
+  - const seesTarget = mayPerformOperation('category:set-target', actor)
+  + const seesTarget = true || mayPerformOperation('category:set-target', actor)
+
+EXPECTED (written before the run)
+  'targetResolutionHours is returned to the Manager and the Administrator and to no one else' fails on the first non-privileged role (Requester) because the key is present; the active-categories test passes.
+
+RESULT BEFORE THE BREAK (control)
+  tests 2, pass 2, fail 0, exit 0
+
+RESULT WITH THE BREAK
+  tests 2, pass 1, fail 1, exit 1
+  failing:
+    A1: targetResolutionHours is returned to the Manager and the Administrator and to no one else - FR-8.4, FR-9.1, DEC-012, NV-166
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : edd4ba5ca3d772c10f1005fb44362b5ece397452c95fba53633c692b66a32600
+  SHA-256 after  : edd4ba5ca3d772c10f1005fb44362b5ece397452c95fba53633c692b66a32600
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 2, pass 2, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the withholding of the target from the four other FR-1.2 roles is asserted on the response text over real HTTP.
+  Does NOT show: the Manager/Administrator rule itself changing in accessRules (separately covered by authorisationGuard tests).

@@ -1,0 +1,31 @@
+NV-133  Track T4 (history, work record and notifications)
+
+Test:       FR-3.6: another requester gets the same 404 as a missing request, on history and details
+File:       src/services/workRecordService.js
+Run command: node --test tests/requestHistory.test.js tests/composition.test.js
+Node:       v24.16.0 (project target is Node 22; run on the installed version)
+Started:    2026-10-17T12:30:43.964Z (UTC)
+Finished:   2026-10-17T12:30:49.236Z (UTC)
+
+Expected result (written before the run):
+  The other-requester test fails (the detail is appended to another user's request, 201, not 404); the AC-FR-2.4 own-request test still passes.
+
+The break (replacement in the file above):
+  -   assertMayView(request, actor, requestId);                       // 404 for another user's request
+      if (String(request.requesterId) !== String(actor.id)) {
+  +   if (false) {
+
+Run with the break:
+  tests 39, pass 38, fail 1, skipped 0
+  failing: FR-3.6: another requester gets the same 404 as a missing request, on history and details
+  the named test failed: YES
+
+Restored:
+  SHA-256 before the break: 59b5890fedc840aeed849092b4c6d7aa1a7a6396f632d489362162aec9df3884
+  SHA-256 after restoring:  59b5890fedc840aeed849092b4c6d7aa1a7a6396f632d489362162aec9df3884
+  byte-identical: YES
+  run after restoring: tests 39, pass 39, fail 0, skipped 0
+
+What this does show: the named assertion detects the removal of the protection it is written for.
+What this does not show: that the protection is complete, behaviour against a real database or
+cluster, or that the rule being protected is baselined where the record is silent.

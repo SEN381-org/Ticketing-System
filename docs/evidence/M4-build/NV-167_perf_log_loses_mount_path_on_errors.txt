@@ -1,0 +1,37 @@
+Negative verification NV-167 - mount path no longer recorded, so errors log the reset base URL
+Track fixA-server (Section A server fixes). Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T16:24:44Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/performanceLogRoute.test.js
+File broken : src/app.js (never a test)
+
+CLAIM
+  The performance log names the full route pattern for a 400, 401 and 403 as it does for a 201 (NFR-1.11).
+
+BREAK
+  - res.locals.mountPath = path; next();
+  + next();
+
+EXPECTED (written before the run)
+  'a 201, 400, 401 and 403 ... each log the operation' fails with POST / for the three errors; the GET /api/v1/requests/:id 404 test fails with 'GET /:id'; the unmatched-path test passes.
+
+RESULT BEFORE THE BREAK (control)
+  tests 3, pass 3, fail 0, exit 0
+
+RESULT WITH THE BREAK
+  tests 3, pass 1, fail 2, exit 1
+  failing:
+    a 201, 400, 401 and 403 from POST /api/v1/requests each log the operation "POST /api/v1/requests" - NFR-1.11, AC-NFR-1.11, NV-167
+    a 404 from GET /api/v1/requests/:id logs the pattern, not the concrete id - NFR-1.11, CON-007
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : b782de46f0e2870c01fd71b059797e8b2cb488d9afa291a753d24ca476ea7c9e
+  SHA-256 after  : b782de46f0e2870c01fd71b059797e8b2cb488d9afa291a753d24ca476ea7c9e
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 3, pass 3, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the operation label is asserted over real HTTP for each outcome of one route.
+  Does NOT show: the log's retention or shipping.

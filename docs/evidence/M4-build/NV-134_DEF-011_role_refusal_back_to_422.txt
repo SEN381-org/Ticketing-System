@@ -1,0 +1,35 @@
+Negative verification NV-134 — DEF-011: a role refusal answered as 422 again
+Track T5. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T13:10:26Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/dec015Conformance.test.js
+File broken : src/services/statusTransitionService.js (never a test)
+
+CLAIM
+  The DEF-011 tests detect a role refusal that is answered as 422 instead of DEC-015 §4's 403.
+
+BREAK
+  -         throw verdict.refusal === 'role'
+  -           ? new AuthorisationError(verdict.reason)
+  -           : new TransitionError(verdict.reason);
+  +         throw new TransitionError(verdict.reason);
+
+EXPECTED (written before the run)
+  Two tests fail: 'a role that may not make the move is refused as 403…' and 'over HTTP a wrong-role transition is 403 FORBIDDEN…'. The 422 boundary test still passes.
+
+RESULT WITH THE BREAK
+  tests 14, pass 12, fail 2, exit 1
+  failing: a role that may not make the move is refused as 403, and nothing is written — DEF-011, DEC-015 §4, AC-FR-6.4
+  failing: over HTTP a wrong-role transition is 403 FORBIDDEN — DEF-011, DEC-015 §4, AC-FR-6.4
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 0bd44cee6261236dd5134194cf2b0683329304f2f8fb5d3fb6e9ed5467f49bc2
+  SHA-256 after  : 0bd44cee6261236dd5134194cf2b0683329304f2f8fb5d3fb6e9ed5467f49bc2
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 14, pass 14, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the role refusal is asserted as 403 at service and HTTP level.
+  Does NOT show: the same against a real cluster (integration case 'a role not permitted … 403', E2E-2b).

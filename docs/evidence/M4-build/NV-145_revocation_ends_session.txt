@@ -1,0 +1,37 @@
+NV-145  (track T7, management view and administration)
+
+Test        : A5 / AC-FR-1.4: after revocation the existing session is refused and the account cannot log in again (tests/userAdmin.test.js)
+Files run   : tests/userAdmin.test.js
+File broken : src/services/userAdminService.js
+Started     : 2026-10-17T12:31:15Z UTC
+Finished    : 2026-10-17T12:31:18Z UTC
+Node        : v24.16.0
+
+THE BREAK (reverted afterwards)
+  - await users.revoke(userId, campusId, now)
+  + true
+
+EXPECTED RESULT (written before the run)
+  If the service reports a revocation without writing it (status, revokedAt and sessionEpoch untouched), the revoked session still resolves and the account still logs in. The AC-FR-1.4 test must FAIL (the session is not 401 after revocation).
+
+RUN OUTPUT
+  Before the break : tests 23, pass 23, fail 0
+  With the break   : tests 23, pass 20, fail 3
+  Failing tests with the break:
+    - A5: revocation sets status and revokedAt and advances the session epoch — 201
+    - A5 / AC-FR-1.4: after revocation the existing session is refused and the account cannot log in again
+    - A5: a repeated revocation replays (200), and the epoch advances once only — idempotent
+  After restoring  : tests 23, pass 23, fail 0
+
+RESTORED
+  SHA-256 before : dd32b5ea6a09998dfe16ca88bf718fecaa8adefb13a85afb535924a5b72e5915
+  SHA-256 after  : dd32b5ea6a09998dfe16ca88bf718fecaa8adefb13a85afb535924a5b72e5915
+  Byte-identical : yes
+
+RESULT: the test failed with the break and passed after restoring
+
+WHAT THIS DOES SHOW
+  Ending sessions on revocation depends on the revoke write reaching the user document; the real auth service resolves sessions against it, and the test detects its absence.
+
+WHAT THIS DOES NOT SHOW
+  The MongoDB update itself (only its document is asserted separately); a session on another process or node.

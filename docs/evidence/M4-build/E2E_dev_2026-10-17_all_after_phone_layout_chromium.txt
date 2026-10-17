@@ -1,0 +1,97 @@
+
+Running 14 tests using 1 worker
+
+  ✓   1 [chromium] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (4.2s)
+  ✓   2 [chromium] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (1.7s)
+  ✓   3 [chromium] › detail-search.spec.js:60:1 › E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page (4.1s)
+  ✓   4 [chromium] › detail-search.spec.js:146:1 › E2E-12: a Technician finds a request by a description term, through the text index (1.5s)
+  ✘   5 [chromium] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (805ms)
+  ✓   6 [chromium] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (4.2s)
+  ✓   7 [chromium] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (1.1s)
+  ✓   8 [chromium] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.4s)
+  ✓   9 [chromium] › mobile.spec.js:158:1 › E2E-13: 360 px, measured after each Requester and Technician interaction (AC-NFR-1.2) (3.9s)
+  ✘  10 [chromium] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (2.6s)
+  ✓  11 [chromium] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (1.6s)
+  ✓  12 [chromium] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (5.2s)
+  ✓  13 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (890ms)
+  ✓  14 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (727ms)
+
+
+  1) [chromium] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request › 2. sign in: the read returns the Coordinator allow-list and nothing outside it (NV-43, FR-4.2) 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+    @@ -1,7 +1,8 @@
+      Array [
+        "assigneeId",
+    +   "assigneeName",
+        "categoryId",
+        "closureReason",
+        "description",
+        "id",
+        "location",
+
+      84 |     expect(etag).toBe('"v0"');                         // DEC-015 §2: ETag "v<version>"
+      85 |     const detail = await get.json();
+    > 86 |     expect(Object.keys(detail).sort()).toEqual(COORDINATOR_ALLOW_LIST); // no key outside the allow-list
+         |                                        ^
+      87 |     expect(detail.reference).toBe(reference);
+      88 |     expect(detail.status).toBe(STATUS.RECEIVED);
+      89 |     expect(detail.version).toBe(0);
+        at C:\Users\elind\m4-wt\final\e2e\journey.spec.js:86:40
+        at C:\Users\elind\m4-wt\final\e2e\journey.spec.js:79:3
+
+    Error Context: test-results\artifacts\journey-E2E-1-Coordinator-rejects-a-Received-request-chromium\error-context.md
+
+    Error Context: test-results\artifacts\journey-E2E-1-Coordinator-rejects-a-Received-request-chromium\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\journey-E2E-1-Coordinator-rejects-a-Received-request-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\journey-E2E-1-Coordinator-rejects-a-Received-request-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) › 2. Security Officer sees the description and is offered Accept (FR-1.5, decision #10) 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+      Object {
+        "accept": true,
+        "assign": false,
+    +   "assigneeRoles": Array [],
+      }
+
+      108 |       expect(body.description).toBe(description);
+      109 |       expect(body.status).toBe(STATUS.RECEIVED);
+    > 110 |       expect(body.permittedAssignment).toEqual({ assign: false, accept: true });
+          |                                        ^
+      111 |       await expect(so.page.getByTestId('reference')).toHaveText(reference);
+      112 |       await expect(so.page.getByText(description)).toBeVisible();
+      113 |       await expect(so.page.getByRole('button', { name: ACCEPT })).toBeVisible();
+        at C:\Users\elind\m4-wt\final\e2e\security.spec.js:110:40
+        at C:\Users\elind\m4-wt\final\e2e\security.spec.js:105:5
+
+    Error Context: test-results\artifacts\security-E2E-8-security-ca-ca1b4-NFR-4-4-FR-3-5-decision-10--chromium\error-context.md
+
+    Error Context: test-results\artifacts\security-E2E-8-security-ca-ca1b4-NFR-4-4-FR-3-5-decision-10--chromium\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\security-E2E-8-security-ca-ca1b4-NFR-4-4-FR-3-5-decision-10--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\security-E2E-8-security-ca-ca1b4-NFR-4-4-FR-3-5-decision-10--chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request ──────────────
+    [chromium] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) 
+  12 passed (44.4s)

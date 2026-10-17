@@ -39,6 +39,14 @@ export function createErrorHandler({ log = console } = {}) {
 
     if (req?.originalUrl) problem.instance = req.originalUrl;
 
+    // RFC 9457 §3.2 extension members, e.g. the current ETag on a 412 (DEC-015 §2).
+    // A standard member is never overwritten by an extension.
+    if (known && error.extensions) {
+      for (const [name, value] of Object.entries(error.extensions)) {
+        if (!(name in problem)) problem[name] = value;
+      }
+    }
+
     res.status(problem.status)
        .type('application/problem+json')
        .json(problem);

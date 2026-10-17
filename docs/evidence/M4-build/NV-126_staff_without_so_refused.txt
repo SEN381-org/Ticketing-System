@@ -1,0 +1,33 @@
+NV-126  Track T4 (history, work record and notifications)
+
+Test:       AC-NFR-4.4, FR-1.5: staff without the Security Officer role are refused a security request history (403) and receive no content
+File:       src/services/viewAccess.js
+Run command: node --test tests/requestHistory.test.js tests/composition.test.js
+Node:       v24.16.0 (project target is Node 22; run on the installed version)
+Started:    2026-10-17T12:30:25.152Z (UTC)
+Finished:   2026-10-17T12:30:27.345Z (UTC)
+
+Expected result (written before the run):
+  The staff-without-Security-Officer refusal test fails (200 and the seeded comment returned instead of 403); the 403/404 tests for category and other-requester also fail.
+
+The break (replacement in the file above):
+  - export function assertMayView(request, actor, requestId) {
+    
+  + export function assertMayView(request, actor, requestId) {
+      if (request) return;
+    
+
+Run with the break:
+  tests 39, pass 35, fail 4, skipped 0
+  failing: FR-4.1, DEC-012: staff not authorised for the category get 403 on history and cannot comment | FR-1.3: an Administrator-only actor is refused the history (403), as the single-request read refuses | FR-3.6: another requester gets the same 404 as a missing request, on history and details | AC-NFR-4.4, FR-1.5: staff without the Security Officer role are refused a security request history (403) and receive no content
+  the named test failed: YES
+
+Restored:
+  SHA-256 before the break: 947edf36503eb8804c171741b3e304949656ec6b0db62f2287bafd7b11ed731a
+  SHA-256 after restoring:  947edf36503eb8804c171741b3e304949656ec6b0db62f2287bafd7b11ed731a
+  byte-identical: YES
+  run after restoring: tests 39, pass 39, fail 0, skipped 0
+
+What this does show: the named assertion detects the removal of the protection it is written for.
+What this does not show: that the protection is complete, behaviour against a real database or
+cluster, or that the rule being protected is baselined where the record is silent.

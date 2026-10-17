@@ -15,6 +15,9 @@ export const userRepository = {
   /** Read on every authenticated request, so a role change or revocation applies at the next one. */
   findById: (id) => User.findById(id).lean(),
 
+  /** Display names for a set of ids in one query (assigneeName, request:assign holders). */
+  findDisplayNames: (ids) => User.find({ _id: { $in: ids } }).select('displayName').lean(),
+
   /** DEC-018 §2 — re-hash with current parameters after a successful login. */
   updatePasswordHash: async (id, passwordHash) => {
     await User.updateOne({ _id: id }, { $set: { passwordHash } });

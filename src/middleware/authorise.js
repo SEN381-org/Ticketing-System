@@ -44,30 +44,73 @@ export function assertActorNotClientSupplied(req) {
     }
   }
 }
+/**
+ * AC-FR-1.3, TD-005 - the rejected attempt is recorded.
+ *
+ * The recorder is not imported here: a middleware does not reach a repository
+ * (DEC-014). It is read at refusal time from `app.locals.recordRefusal`, which
+ * createApp sets from the composition root, so every guarded route records
+ * without each router having to be handed it. Only a 403 for an authenticated
+ * actor is recorded; a 401 has no actor to attribute (DEC-017 M-1).
+ *
+ * A failure to record never changes the response. The recorder is contracted
+ * not to throw; this also contains one that does, so the refusal stays a 403
+ * and does not become a 500. With no recorder (a bare guard in a unit test) the
+ * refusal is passed on synchronously, exactly as before.
+ */
+function refuse(req, operation, error, next) {
+  const record = req.app?.locals?.recordRefusal;
+  if (!(error instanceof AuthorisationError) || !req.actor || typeof record !== 'function') {
+    return next(error);
+  }
+  return Promise.resolve()
+    .then(() => record({ actor: req.actor, operation, targetId: req.params?.id ?? null }))
+    .catch(() => {})
+    .then(() => next(error));
+}
+
+function composeGuard(operations) {
+  for (const operation of operations) {
+    if (!Object.hasOwn(OPERATION_RULES, operation)) {
+      throw new Error(`No authorisation rule is documented for operation '${operation}'`);
+    }
+  }
+  const named = operations.join('|');
+
+  function guard(req, res, next) {
+    try {
+      assertActorNotClientSupplied(req);
+      if (!req.actor) throw new AuthenticationError();
+      if (!operations.some((operation) => mayPerformOperation(operation, req.actor))) {
+        throw new AuthorisationError();
+      }
+      return next();
+    } catch (error) {
+      return refuse(req, named, error, next);   // handled by the RFC 9457 error handler (R-05)
+    }
+  }
+
+  guard.guardName = GUARD_NAME;
+  guard.operation = named;
+  return guard;
+}
 
 /**
  * @param {string} operation a key of OPERATION_RULES
  * @returns {Function} one composed middleware carrying GUARD_NAME
  */
 export function requireOperation(operation) {
-  if (!Object.hasOwn(OPERATION_RULES, operation)) {
-    throw new Error(`No authorisation rule is documented for operation '${operation}'`);
-  }
+  return composeGuard([operation]);
+}
 
-  function guard(req, res, next) {
-    try {
-      assertActorNotClientSupplied(req);
-      if (!req.actor) throw new AuthenticationError();
-      if (!mayPerformOperation(operation, req.actor)) throw new AuthorisationError();
-      return next();
-    } catch (error) {
-      return next(error);            // handled by the RFC 9457 error handler (R-05)
-    }
-  }
-
-  guard.guardName = GUARD_NAME;
-  guard.operation = operation;
-  return guard;
+/**
+ * For a route whose body can address either of two operations
+ * (POST /requests/{id}/assignments is an assign or an accept, FR-5.1, FR-5.2).
+ * The actor passes if they may perform ANY of the listed operations; the
+ * service then decides which one the body is and refuses the other.
+ */
+export function requireAnyOperation(operations) {
+  return composeGuard([...operations]);
 }
 
 export { OPERATION_RULES, mayPerformOperation };

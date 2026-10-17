@@ -94,9 +94,12 @@ export function createAuthService({
     }
 
     // The hash is checked even for a revoked account, so revocation is not
-    // distinguishable by timing either.
+    // distinguishable by timing either. An account holding no role (FR-1.2 requires
+    // at least one) is refused the same way: it used to reach primaryRole() below and
+    // answer 500 (found at M4 integration, 17/10/2026); DEC-018 §5 gives one identical 401.
     const verdict = await passwords.verify(password, user.passwordHash);
-    if (!verdict.ok || user.status !== 'active') {
+    const hasRole = Array.isArray(user.roles) && user.roles.length > 0;
+    if (!verdict.ok || user.status !== 'active' || !hasRole) {
       await recordFailure(user, occurredAt);
       throw loginRefused();
     }
@@ -180,6 +183,8 @@ export function createAuthService({
       categoryAuthorisations: (user.categoryAuthorisations ?? []).map(String),
       // Carried, not evaluated: the FR-1.6 union is TD-002 (DB-01 §3.7).
       groupIds:               (user.groupIds ?? []).map(String),
+      // Additive (DEC-018 §4): the campus every M4 query is scoped by (SCP-019).
+      campusId:               user.campusId == null ? undefined : String(user.campusId),
     };
   }
 

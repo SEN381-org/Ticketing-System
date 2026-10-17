@@ -3,7 +3,8 @@
  * status or write a history entry.
  *
  * Traces to: FR-6.2, FR-6.3, FR-6.4, FR-6.5, FR-6.6, FR-6.7, AC-FR-6.7,
- *            SCP-008, DEC-011, DEC-012 (enforcement point 2), DEC-015, DEC-016.
+ *            SCP-008, DEC-011, DEC-012 (enforcement point 2), DEC-015, DEC-016,
+ *            DEF-007, DEF-008, DEF-011.
  *
  * Ordering, and where DEC-011 draws its line:
  *
@@ -59,6 +60,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
     }
 
     let result;
+    let event;
 
     await unitOfWork.run(async (session) => {
       const request = await requests.findById(requestId, { session });
@@ -72,7 +74,8 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
 
       // DEC-015 / DEC-016 — optimistic concurrency, before any validation work.
       if (request.version !== expectedVersion) {
-        throw new PreconditionFailedError(requestId, expectedVersion);
+        // DEC-015 §2: the 412 carries the current ETag (DEF-008).
+        throw new PreconditionFailedError(requestId, expectedVersion, request.version);
       }
 
       const verdict = checkTransition(request.status, toStatus, actor.roles, {
@@ -85,7 +88,13 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
         // closure.closedAt, and PROC-001 would never anonymise it (CON-007).
         securityCategory: Boolean(request.securityCategory),
       });
-      if (!verdict.allowed) throw new TransitionError(verdict.reason);
+      // DEC-015 §4: a role that may not make the move is 403; any other domain
+      // refusal (illegal move, missing resolution or reason) is 422 (DEF-011).
+      if (!verdict.allowed) {
+        throw verdict.refusal === 'role'
+          ? new AuthorisationError(verdict.reason)
+          : new TransitionError(verdict.reason);
+      }
 
       const fromStatus = request.status;
       const occurredAt = clock();
@@ -114,7 +123,7 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
         idempotencyFingerprint: fingerprint,
       }, { session });
 
-      result = {
+      event = {
         requestId, fromStatus, toStatus, occurredAt, version,
         historyId:        entry._id,
         reporterId:       request.requesterId,
@@ -123,10 +132,17 @@ export function createStatusTransitionService({ requests, history, unitOfWork, c
         reference:        request.reference,
         securityCategory: request.securityCategory,
       };
+      // `entry` is a Mongoose document from the real repository: its `_id` is a
+      // getter, not an own property, so spreading the document would drop it and
+      // the response would lose historyId (found by integration case 2b, 17/10/2026).
+      result = { ...resultOf({ _id: entry._id, requestId: request._id ?? requestId,
+                               fromStatus, toStatus, occurredAt, requestVersion: version }),
+                 replayed: false };
     });
 
     // 3 — publish, after commit and outside the callback. DEC-011, R-16.
-    publish(EVENTS.REQUEST_STATUS_CHANGED, result);
+    // The event carries what the subscribers need; the caller gets only the result.
+    publish(EVENTS.REQUEST_STATUS_CHANGED, event);
     return result;
   }
 
@@ -146,10 +162,22 @@ function fieldsFor(toStatus, actor, at, reason, resolutionSummary) {
   return {};
 }
 
-function replayOf(entry) {
+/**
+ * DEC-015 §1 and §3: the result of a transition is its history entry, and a replay
+ * returns the same body as the original (DEF-007). Both are built here, from the
+ * fields the history entry stores, so the two cannot drift apart.
+ */
+function resultOf(entry) {
   return {
-    requestId: entry.requestId, fromStatus: entry.fromStatus, toStatus: entry.toStatus,
-    occurredAt: entry.occurredAt, version: entry.requestVersion, historyId: entry._id,
-    replayed: true,
+    requestId:  entry.requestId,
+    historyId:  entry._id,
+    fromStatus: entry.fromStatus,
+    toStatus:   entry.toStatus,
+    occurredAt: entry.occurredAt,
+    version:    entry.requestVersion,
   };
+}
+
+function replayOf(entry) {
+  return { ...resultOf(entry), replayed: true };
 }

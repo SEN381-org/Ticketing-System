@@ -1,0 +1,32 @@
+Negative verification NV-160 — No-role login: the role check removed from the login refusal
+Track no-role login follow-up. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T14:09:45Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/app.test.js
+File broken : src/services/authService.js (never a test)
+
+CLAIM
+  A login by an account with no role is refused with DEC-018 §5's identical 401; without the check it reaches primaryRole() and fails with a 500.
+
+BREAK
+  -     if (!verdict.ok || user.status !== 'active' || !hasRole) {
+  +     if (!verdict.ok || user.status !== 'active') {
+
+EXPECTED (written before the run)
+  'an account holding no role is refused with the same 401, not a 500' fails (status 500, not 401); the other app tests pass.
+
+RESULT WITH THE BREAK
+  tests 15, pass 14, fail 1, exit 1
+  failing: an account holding no role is refused with the same 401, not a 500 — DEC-018 §5, FR-1.2
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 01e363a82e6fbccc22c71f0b12571c1eb22233f09fd250f2e112653a888becb1
+  SHA-256 after  : 01e363a82e6fbccc22c71f0b12571c1eb22233f09fd250f2e112653a888becb1
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 15, pass 15, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the no-role refusal is asserted at HTTP level.
+  Does NOT show: how such an account comes to exist: the User model requires a role (AC-FR-1.2), so only a direct database write can create one.

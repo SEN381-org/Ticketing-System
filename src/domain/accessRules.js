@@ -26,11 +26,19 @@ import { ROLE, STATUS } from '../models/_shared.js';
 export const OPERATION_RULES = Object.freeze({
   'request:submit':     [ROLE.REQUESTER, ROLE.COORDINATOR],
   'request:read':       Object.values(ROLE),
+  'category:list':      Object.values(ROLE),   // DEC-015 Addendum A1
   'request:transition': [ROLE.TECHNICIAN, ROLE.COORDINATOR, ROLE.MANAGER, ROLE.SECURITY_OFFICER],
   'request:assign':     [ROLE.COORDINATOR, ROLE.MANAGER],
   'request:accept':     [ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER],   // FR-5.2
   'request:comment':    [ROLE.TECHNICIAN, ROLE.COORDINATOR, ROLE.MANAGER, ROLE.SECURITY_OFFICER],
   'report:read':        [ROLE.MANAGER, ROLE.COORDINATOR, ROLE.SECURITY_OFFICER],
+  'request:add-detail': [ROLE.REQUESTER],                                   // FR-2.4
+  'notification:list':  Object.values(ROLE),                                // FR-3.4, own notifications only
+  // DEC-015 Addendum A, A2 to A8.
+  'user:list':           [ROLE.COORDINATOR, ROLE.MANAGER, ROLE.ADMINISTRATOR],   // the request:assign roles, and FR-1.4
+  'user:administer':     [ROLE.ADMINISTRATOR],                                   // FR-1.4
+  'category:set-target': [ROLE.MANAGER],                                         // FR-8.4
+  'category:administer': [ROLE.ADMINISTRATOR],                                   // FR-9.1
 });
 
 /** Staff roles, i.e. everything that is not purely a requester. */
@@ -79,6 +87,26 @@ export function mayActOnRequest(request, actor) {
 }
 
 /**
+ * FR-5.1, FR-5.5: who can be named as owner. Only the roles that do the work -
+ * Technician and Security Officer. A Coordinator or Manager assigns; neither can
+ * be the owner, whatever categories they are authorised for.
+ *
+ * Decision of 17/10/2026 (OI-15, walkthrough #10): a Security Officer may be
+ * assigned, or accept, ONLY a security-category request; a Technician ONLY a
+ * non-security one. This one function is the rule for assign, reassign and accept;
+ * the category authorisation and the security-category access check still come
+ * from mayActOnRequest.
+ */
+export const ASSIGNABLE_ROLES = Object.freeze([ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER]);
+
+export function mayBeAssigned(request, user) {
+  const fitsRequest = request.securityCategory
+    ? has(user, ROLE.SECURITY_OFFICER)
+    : has(user, ROLE.TECHNICIAN);
+  return fitsRequest && mayActOnRequest(request, user);
+}
+
+/**
  * Enforcement point 2, read path — FR-3.6 (a requester sees only their own) and
  * FR-4.1 (staff see what their category authorisation permits).
  */
@@ -91,6 +119,47 @@ export function mayViewRequest(request, actor) {
     return String(request.requesterId) === String(actor.id);       // FR-3.6
   }
   return false;
+}
+
+/**
+ * Enforcement point 3 — FR-1.5: the description, resolution and closure reason of
+ * a security-category request are for the Security Officer only. Read literally,
+ * that excludes the requester who submitted it (OI-16 open, CFL-002). On any other
+ * request every viewer mayViewRequest permits may see them.
+ */
+export function mayViewRestrictedDetail(request, actor) {
+  if (!request.securityCategory) return true;
+  return has(actor, ROLE.SECURITY_OFFICER);
+}
+
+/** Who submitted and who owns the request is staff information, not the requester's. */
+export function mayViewPeople(actor) {
+  return isStaff(actor);
+}
+
+/**
+ * Enforcement point 2, list path — the set of requests mayViewRequest permits,
+ * stated as data so a query can select it instead of loading every request and
+ * filtering. It restates mayViewRequest's three branches in the same order
+ * (staff first, then requester, else nothing); tests/requestList.test.js proves
+ * the two agree on a fixture set, so a change to one fails against the other.
+ *
+ * @returns {{kind:'staff', categoryIds:string[], includeSecurity:boolean}
+ *          |{kind:'own', requesterId:string}
+ *          |{kind:'none'}}
+ */
+export function viewScopeFor(actor) {
+  if (isStaff(actor)) {
+    return {
+      kind: 'staff',
+      categoryIds: (actor?.categoryAuthorisations ?? []).map(String),
+      includeSecurity: has(actor, ROLE.SECURITY_OFFICER),
+    };
+  }
+  if (has(actor, ROLE.REQUESTER) && actor.id != null) {
+    return { kind: 'own', requesterId: String(actor.id) };            // FR-3.1, FR-3.6
+  }
+  return { kind: 'none' };
 }
 
 /**

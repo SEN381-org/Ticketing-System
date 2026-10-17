@@ -1,0 +1,78 @@
+M4 API/integration run on the integrated build (before the release candidate)
+
+Run (UTC)    : 2026-10-17T14:04:17.579Z to 2026-10-17T14:04:21.468Z
+Node         : v24.16.0
+Commit       : e973a9dc460aad7e4b3262cca74d5eb0de8b1867 (task/M4-final-product), working tree clean
+Environment  : Atlas test cluster; the connection string is never recorded
+DNS override : NODE_OPTIONS --import data: URL setting resolvers 8.8.8.8 and 1.1.1.1 (SRV lookups fail on this laptop otherwise)
+Command      : NODE_OPTIONS=<DNS override> node --env-file=<test-cluster env file> --test tests/integration/*.integration.test.js
+
+EXPECTED (written before the run)
+  Second run, on the fixed build (e973a9d), after run 1 (14:01:21Z, af46be0: 38 of 40; the one
+  failing case 2b "the replay has the same body", cause found and fixed in e973a9d, NV-158).
+  This is a run of a changed build, not a re-run of a flaky test.
+  Basis: tests/integration/ (8 cases, 40 checks), DEC-015 §2-4, DEC-016, AC-NFR-1.10 v0.3 (CR-001,
+  proposed).
+  Expected: all 8 cases pass, 40 of 40 checks, 0 fail, 0 skipped, exit code 0. In particular 2b:
+  same status, same body (now including historyId), Idempotent-Replayed: true.
+  If any check fails it is recorded as it happened, with its name.
+
+RESULT: exit code 0
+
+OUTPUT (unedited except that the local worktree path is written as <worktree>, at generation)
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (0.6132ms)
+  ✔ nothing is written (0.6228ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (1120.0844ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.2899ms)
+  ✔ the replay writes nothing (0.1464ms)
+  ✔ the replay has the same status code (0.1098ms)
+  ✔ the replay has the same body (0.0893ms)
+  ✔ the replay is marked Idempotent-Replayed: true (0.114ms)
+✔ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (548.2563ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.2215ms)
+  ✔ the problem type is idempotency-key-reused (0.1448ms)
+  ✔ no second history entry is written (0.0834ms)
+✔ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (471.9913ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✔ the request is refused with 422 (0.1832ms)
+  ✔ the response is not the first request's result (0.1186ms)
+  ✔ neither request gains a history entry (7.0642ms)
+✔ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (512.793ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✔ it is not refused as a different payload (0.1851ms)
+  ✔ no second history entry is written (0.0924ms)
+✔ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (483.4428ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.6661ms)
+  ✔ the stale request is refused with 412 (0.3314ms)
+  ✔ the request is unchanged (0.9733ms)
+  ✔ no history entry is written (0.1714ms)
+  ✔ the problem body carries the current ETag (0.1814ms)
+  ✔ nothing internal is returned (0.196ms)
+✔ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (969.18ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.8005ms)
+  ✔ the failure is a generic 500 (0.1575ms)
+  ✔ the status change is rolled back (0.9314ms)
+  ✔ the history entry is rolled back (0.1493ms)
+  ✔ no event is published (0.1525ms)
+  ✔ the same key then succeeds (0.1989ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1124.3352ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✔ the request is refused with 403 (0.895ms)
+  ✔ the refusal is problem details (0.2522ms)
+  ✔ the request is unchanged (0.6546ms)
+  ✔ no history entry is written (0.1065ms)
+  ✔ nothing internal is returned (0.1468ms)
+✔ a role not permitted for the transition is refused with 403 — DEC-015 §4 (1124.5672ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3839.2856

@@ -46,7 +46,18 @@ export default defineConfig({
     baseURL: `http://localhost:${PREVIEW_PORT}`,
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  // NFR-1.1: "the current release and one prior release of Google Chrome, Microsoft Edge
+  // and Mozilla Firefox on Windows". chromium is kept for continuity with the M3 evidence.
+  // chrome and msedge drive the browsers installed on this Windows machine (current
+  // releases only); firefox is Playwright's own Firefox build, not Mozilla's release.
+  // No project can show the prior release, so AC-NFR-1.1 is at most Partially Met.
+  // Install: npx playwright install chrome msedge firefox
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'chrome', use: { browserName: 'chromium', channel: 'chrome' } },
+    { name: 'msedge', use: { browserName: 'chromium', channel: 'msedge' } },
+    { name: 'firefox', use: { browserName: 'firefox' } },
+  ],
   webServer: refusal ? undefined : [
     {
       // The real entry point (composeApplication), with the same env file the fixtures use.

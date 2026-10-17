@@ -1,0 +1,35 @@
+NV-144  (track T7, management view and administration)
+
+Test        : AC-FR-8.6: security requests are counted for a Manager, and no description, comment or action is in the response (tests/managementView.test.js)
+Files run   : tests/managementView.test.js
+File broken : src/services/reportService.js
+Started     : 2026-10-17T12:31:10Z UTC
+Finished    : 2026-10-17T12:31:13Z UTC
+Node        : v24.16.0
+
+THE BREAK (reverted afterwards)
+  - id: String(r._id), reference: r.reference,
+  + ...r, id: String(r._id), reference: r.reference,
+
+EXPECTED RESULT (written before the run)
+  Spreading the whole request document into each overdue element puts description, location, comments and actions (the SECRET-* markers in the seed) into the response. The AC-FR-8.6 test must FAIL on the SECRET marker.
+
+RUN OUTPUT
+  Before the break : tests 12, pass 12, fail 0
+  With the break   : tests 12, pass 11, fail 1
+  Failing tests with the break:
+    - AC-FR-8.6: security requests are counted for a Manager, and no description, comment or action is in the response
+  After restoring  : tests 12, pass 12, fail 0
+
+RESTORED
+  SHA-256 before : 3f1d6f68229c5c174515e1992372b7edbe7bc897d0172cb6990a66000dd04ca0
+  SHA-256 after  : 3f1d6f68229c5c174515e1992372b7edbe7bc897d0172cb6990a66000dd04ca0
+  Byte-identical : yes
+
+RESULT: the test failed with the break and passed after restoring
+
+WHAT THIS DOES SHOW
+  The management view response is built from named fields only, and the test detects a field-level leak even when the repository returns whole documents.
+
+WHAT THIS DOES NOT SHOW
+  That the real MongoDB repository projects detail away (the service no longer depends on it); that other routes withhold detail from the same actor.

@@ -23,3 +23,9 @@ de84ab19bb4f083b19c74b88825aad5842e92bc9:docs/evidence/M3-client/NV-61_Path_thro
 # Reviewed by E. Lindsay.
 38b055aec0d1b7f30f15dbd83b3f6339187124a1:docs/evidence/M4-CI/TD-007_openapi_parse_negative_verification.txt:generic-api-key:9
 38b055aec0d1b7f30f15dbd83b3f6339187124a1:docs/evidence/M4-CI/TD-007_openapi_parse_negative_verification.txt:generic-api-key:50
+#
+# 2026-10-17, PR #136. generic-api-key on the synthetic test password in
+# tests/userInitialPassword.test.js (decision D5: the initial password is never returned or
+# logged). It is a fixed test value, not a credential. The file now assembles the value at run
+# time, so only this historical line is ignored. Reviewed by E. Lindsay.
+7766eecfd7b4c2bebf4d9bf3981e83e81a42be61:tests/userInitialPassword.test.js:generic-api-key:28
