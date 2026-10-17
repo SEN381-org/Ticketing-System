@@ -99,6 +99,7 @@ function persistence({ failHistoryAppend = false } = {}) {
   };
   const categories = {
     listActive: async (campusId) => CATEGORY_DOCS.filter((c) => c.campusId === campusId && c.active),
+    listAll: async (campusId) => CATEGORY_DOCS.filter((c) => c.campusId === campusId),      // the Administrator's list
     findActiveById: async (campusId, id, { session } = {}) => {
       calls.sessions.category.push(session);
       return CATEGORY_DOCS.find((c) => c._id === id && c.campusId === campusId && c.active) ?? null;

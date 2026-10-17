@@ -301,17 +301,20 @@ paths:
     get:
       tags: [requests]
       operationId: listCategories
-      summary: List the active categories
+      summary: List the categories
       description: |
         DEC-015 Addendum A1. The active categories of the caller's campus, for the
-        submission form (FR-2.3). A deactivated category is not listed (FR-9.1).
+        submission form (FR-2.3). A deactivated category is not listed (FR-9.1),
+        except for an actor who may administer categories (Administrator,
+        `category:administer`), who also receives the deactivated ones, each with
+        `active: false` (FR-9.2 keeps them on record). Names are sorted A-Z ignoring case.
         Every FR-1.2 role may call it. `targetResolutionHours` (null where none is
         set) is returned only to an actor who may set it (Manager, `category:set-target`,
         FR-8.4) or administer categories (Administrator, `category:administer`,
         FR-9.1); it is absent for every other role.
       responses:
         '200':
-          description: The active categories, ordered by name.
+          description: The active categories (and, for the Administrator only, the deactivated ones), ordered by name A-Z ignoring case.
           headers:
             Cache-Control: { $ref: '#/components/headers/NoStore' }
           content:
@@ -1268,6 +1271,7 @@ components:
         categoryId: { type: string, nullable: true }
         submittedAt: { type: string, format: date-time, nullable: true }
         assigneeId: { type: string, nullable: true, description: The current owner; null when unassigned. }
+        assigneeName: { type: string, nullable: true, description: "The assignee's display name, null when unassigned. Only for an actor holding `request:assign` (Coordinator, Manager); absent for every other viewer." }
         location: { type: string, nullable: true }
         description:
           type: string
@@ -1344,6 +1348,9 @@ components:
         code: { type: string }
         name: { type: string }
         isSecurity: { type: boolean }
+        active:
+          type: boolean
+          description: Only for the Administrator (`category:administer`, FR-9.1, FR-9.2), whose list includes deactivated categories; absent for every other role, who receive active categories only.
         targetResolutionHours:
           type: number
           nullable: true
@@ -1384,6 +1391,7 @@ components:
         location: { type: [string, 'null'] }
         submittedAt: { type: string, format: date-time }
         assigneeId: { type: [string, 'null'] }
+        assigneeName: { type: [string, 'null'], description: "The assignee's display name, null when unassigned. Only for an actor holding `request:assign` (Coordinator, Manager); absent for every other viewer." }
     RequestPage:
       type: object
       additionalProperties: false

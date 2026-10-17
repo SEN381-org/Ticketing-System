@@ -56,8 +56,8 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
     }),
     categoryAdminService: createCategoryAdminService({ categories: categoryRepository }),
     healthService: createHealthService({ pingDatabase, release }),
-    requestListService: createRequestListService({ lists: requestListRepository }),
-    requestQueryService: createRequestQueryService({ requests: requestRepository }),
+    requestListService: createRequestListService({ lists: requestListRepository, users: userRepository }),
+    requestQueryService: createRequestQueryService({ requests: requestRepository, users: userRepository }),
     reportService: createReportService({
       reports: reportRepository, categories: categoryRepository,
     }),

@@ -25,6 +25,7 @@ import { viewScopeFor, visibleStatusFor, STAFF_ROLES } from '../domain/accessRul
 import { AuthorisationError, ValidationError } from '../errors.js';
 import { STATUS } from '../models/_shared.js';
 import { campusOf } from './campusOf.js';
+import { assigneeNamesFor } from './assigneeNames.js';
 
 export const DEFAULT_LIMIT = 25;
 export const MAX_LIMIT = 100;
@@ -199,12 +200,14 @@ function buildFilter(q, scope, actor, extra) {
   return { $and: clauses };
 }
 
-export function createRequestListService({ lists }) {
+export function createRequestListService({ lists, users = null }) {
   async function page(q, scope, actor, extra) {
     const [field, dir] = SORTS[q.sort];
     const found = await lists.findPage(buildFilter(q, scope, actor, extra), [[field, dir], ['_id', dir]], q.limit + 1);
     const more = found.length > q.limit;
     const rows = more ? found.slice(0, q.limit) : found;
+    // One lookup for the page; only a holder of request:assign receives assigneeName.
+    const names = await assigneeNamesFor(users, actor, rows.map((r) => r.assigneeId));
     return {
       items: rows.map((r) => ({
         id:          String(r._id),
@@ -214,6 +217,7 @@ export function createRequestListService({ lists }) {
         location:    r.location ?? null,
         submittedAt: r.submittedAt instanceof Date ? r.submittedAt.toISOString() : r.submittedAt,
         assigneeId:  r.assigneeId == null ? null : String(r.assigneeId),
+        ...(names ? { assigneeName: r.assigneeId == null ? null : (names.get(String(r.assigneeId)) ?? null) } : {}),
       })),
       nextCursor: more ? encodeCursor(q.sort, rows[rows.length - 1]) : null,
     };

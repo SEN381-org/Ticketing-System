@@ -15,6 +15,7 @@
  *                 request only a Security Officer (a requester on their own
  *                 security request does not, OI-16 open); otherwise every viewer
  *   staff only    submittedById, requesterId
+ *   request:assign  assigneeName (the Coordinator and the Manager only)
  * The status is passed through visibleStatusFor, so a requester never learns the
  * internal status of a security-category request (FR-3.5). Comments, actions and
  * history are not embedded: GET /requests/{id}/history serves them.
@@ -27,8 +28,9 @@ import { permittedTransitionsFor } from '../domain/permittedTransitions.js';
 import { permittedAssignmentFor } from '../domain/permittedAssignment.js';
 import { AuthorisationError, NotFoundError } from '../errors.js';
 import { ROLE } from '../models/_shared.js';
+import { assigneeNamesFor } from './assigneeNames.js';
 
-export function createRequestQueryService({ requests }) {
+export function createRequestQueryService({ requests, users = null }) {
   async function getRequest(requestId, actor) {
     const request = await requests.findById(requestId);
     if (!request) throw new NotFoundError(requestId);
@@ -68,6 +70,9 @@ export function createRequestQueryService({ requests }) {
       };
       view.closureReason = request.closure?.reason ?? null;
     }
+    // Only a holder of request:assign receives the assignee's name; null when unassigned.
+    const names = await assigneeNamesFor(users, actor, [request.assigneeId]);
+    if (names) view.assigneeName = request.assigneeId == null ? null : (names.get(String(request.assigneeId)) ?? null);
     if (mayViewPeople(actor)) {
       view.submittedById = request.submittedById == null ? null : String(request.submittedById);
       view.requesterId = request.requesterId == null ? null : String(request.requesterId);

@@ -28,7 +28,7 @@ rule before they are built, so none is designed silently in code.
 
 | # | Route | Method | Requirement | Operation and roles | Success | Errors |
 |---|---|---|---|---|---|---|
-| A1 | `/api/v1/categories` | GET | FR-2.3; FR-9.1 (a deactivated category is not selectable) | `category:list` (new): every FR-1.2 role, as `request:read` | 200: the active categories of the actor's campus, `{ id, code, name, isSecurity }`, plus `targetResolutionHours` (null if unset) for an actor holding `category:set-target` (Manager) or `category:administer` (Administrator) | 401 |
+| A1 | `/api/v1/categories` | GET | FR-2.3; FR-9.1 (a deactivated category is not selectable) | `category:list` (new): every FR-1.2 role, as `request:read` | 200: the active categories of the actor's campus, `{ id, code, name, isSecurity }`, plus `targetResolutionHours` (null if unset) for an actor holding `category:set-target` (Manager) or `category:administer` (Administrator). An actor holding `category:administer` also receives the deactivated categories, each with `active` (boolean); no other role receives an inactive category or the `active` key. Sorted by name A-Z ignoring case | 401 |
 | A2 | `/api/v1/users` | GET | FR-5.1 ("a named staff user"); FR-1.4 | `user:list` (new): Coordinator and Manager (the `request:assign` roles) and Administrator. Query `role`, `categoryId` | 200: `{ id, displayName, roles }`. E-mail is returned to an Administrator only (data minimisation, CON-007) | 400 (role value not in FR-1.2), 401, 403 |
 | A3 | `/api/v1/users` | POST | FR-1.4 (create); FR-1.2 and AC-FR-1.2 (a role is required) | `user:administer` (new): Administrator (named by FR-1.4) | 201, `Location` | 400 (names the missing field; no role → "A role is required"), 401, 403, 409 (an account with that e-mail exists) |
 | A4 | `/api/v1/users/{id}/roles` | PUT | FR-1.4 (amend role assignments) | `user:administer` | 200 | 400, 401, 403, 404 |
@@ -60,3 +60,4 @@ is what 409 means in RFC 9110 §15.5.10.
 ## Changes
 
 - 17/10/2026: A1 returns targetResolutionHours to the roles that may set it (decision after the local walkthrough).
+- 17/10/2026: A1 returns inactive categories, with active, to the Administrator; names sorted A–Z ignoring case (polish pass).

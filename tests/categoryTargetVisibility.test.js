@@ -21,6 +21,8 @@ import { CAT, harness, serve, login, getJson } from './managementHarness.js';
 
 const FORM_KEYS = ['code', 'id', 'isSecurity', 'name'];
 const WITH_TARGET = [...FORM_KEYS, 'targetResolutionHours'];
+// The Administrator's list also carries the deactivated category, with `active` (polish pass, A1).
+const ADMIN_KEYS = [...WITH_TARGET, 'active'].sort();
 const listAs = async (base, email) => (await getJson(base, '/categories', await login(base, email))).json();
 
 // Technique: every FR-1.2 role lists the categories. Expected: Manager and Administrator
@@ -30,12 +32,14 @@ const listAs = async (base, email) => (await getJson(base, '/categories', await 
 test('A1: targetResolutionHours is returned to the Manager and the Administrator and to no one else - FR-8.4, FR-9.1, DEC-012, NV-166', async () => {
   const { app } = harness();
   await serve(app, async (base) => {
-    const targets = new Map([[CAT.roads, 48], [CAT.lights, null], [CAT.security, 24]]);
+    const targets = new Map([[CAT.roads, 48], [CAT.lights, null], [CAT.security, 24], [CAT.old, null]]);
     for (const email of ['mgr@example.test', 'admin@example.test']) {
+      const admin = email === 'admin@example.test';
       const list = await listAs(base, email);
-      assert.deepEqual(list.map((c) => c.id).sort(), [CAT.roads, CAT.lights, CAT.security].sort(), email);
+      assert.deepEqual(list.map((c) => c.id).sort(),
+        [CAT.roads, CAT.lights, CAT.security, ...(admin ? [CAT.old] : [])].sort(), email);
       for (const c of list) {
-        assert.deepEqual(Object.keys(c).sort(), WITH_TARGET, `${email} ${c.code}`);
+        assert.deepEqual(Object.keys(c).sort(), admin ? ADMIN_KEYS : WITH_TARGET, `${email} ${c.code}`);
         assert.equal(c.targetResolutionHours, targets.get(c.id), `${email} ${c.code}`);
       }
     }

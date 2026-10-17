@@ -32,6 +32,8 @@ import {
 } from './requestListFixtures.js';
 
 const ITEM_KEYS = ['assigneeId', 'categoryId', 'id', 'location', 'reference', 'status', 'submittedAt'];
+// assigneeName goes to a holder of request:assign only (Coordinator, Manager); see tests/polishAssigneeAndCategories.test.js.
+const ITEM_KEYS_ASSIGNER = [...ITEM_KEYS, 'assigneeName'].sort();
 
 const serviceWith = (rows = REQUESTS) => {
   const lists = fakeLists(rows);
@@ -146,7 +148,7 @@ test('a list item has exactly the seven DEC-015 fields and never a description â
     const { items } = await service.list({}, actor);       // the fake returns whole documents, description included
     assert.ok(items.length > 0);
     for (const item of items) {
-      assert.deepEqual(Object.keys(item).sort(), ITEM_KEYS);
+      assert.deepEqual(Object.keys(item).sort(), actor === ACTORS.coordinatorCat1 ? ITEM_KEYS_ASSIGNER : ITEM_KEYS);
       assert.ok(!JSON.stringify(item).includes('private detail'), 'description text reached the response');
     }
   }
@@ -279,7 +281,7 @@ test('a staff search for a term in a description returns that request, without t
   const { service } = serviceWith();
   const { items } = await service.search({ text: 'streetlight' }, ACTORS.coordinatorCat1);
   assert.deepEqual(refsOf(items), ['CC-2026-000004']);
-  assert.deepEqual(Object.keys(items[0]).sort(), ITEM_KEYS);
+  assert.deepEqual(Object.keys(items[0]).sort(), ITEM_KEYS_ASSIGNER);     // a Coordinator holds request:assign
   assert.ok(!JSON.stringify(items).includes('streetlight'));
 });
 

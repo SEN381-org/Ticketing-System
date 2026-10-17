@@ -43,6 +43,7 @@ const COMMON     = ['assigneeId', 'categoryId', 'id', 'location', 'permittedAssi
                     'reference', 'status', 'submittedAt', 'version'];
 const RESTRICTED = ['closureReason', 'description', 'resolution'];   // FR-1.5
 const PEOPLE     = ['requesterId', 'submittedById'];                 // staff only
+const ASSIGNER   = ['assigneeName'];                             // request:assign holders only (Coordinator, Manager)
 const sortedKeys = (o) => Object.keys(o).sort();
 const allowList = (...groups) => groups.flat().sort();
 // ASSIGNED is shown to a requester as RECEIVED on a security request (FR-3.5).
@@ -65,7 +66,7 @@ const viewers = {
   'a requester on their own security request': [{ ...baseRequest, securityCategory: true },
     actorOf([ROLE.REQUESTER], [], 'u2'), allowList(COMMON)],
   'staff on a non-security request': [baseRequest, actorOf([ROLE.COORDINATOR]),
-    allowList(COMMON, RESTRICTED, PEOPLE)],
+    allowList(COMMON, RESTRICTED, PEOPLE, ASSIGNER)],
   'a Security Officer on a security request': [{ ...baseRequest, securityCategory: true },
     actorOf([ROLE.SECURITY_OFFICER]), allowList(COMMON, RESTRICTED, PEOPLE)],
 };
@@ -334,7 +335,7 @@ test('GET 200 for a Coordinator: ETag "v<version>" and exactly the staff allow-l
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('etag'), '"v3"');
     const body = await res.json();
-    assert.deepEqual(sortedKeys(body), allowList(COMMON, RESTRICTED, PEOPLE));
+    assert.deepEqual(sortedKeys(body), allowList(COMMON, RESTRICTED, PEOPLE, ASSIGNER));
     assert.equal(body.reference, 'CC-2026-000001');
     assert.equal(body.status, STATUS.ASSIGNED);
     assert.equal(body.version, 3);
