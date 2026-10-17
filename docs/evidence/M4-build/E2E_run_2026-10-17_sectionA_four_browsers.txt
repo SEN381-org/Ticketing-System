@@ -1,0 +1,94 @@
+M4 E2E run on the integrated build (before the release candidate)
+
+Run (UTC)    : 2026-10-17T17:17:57.654Z to 2026-10-17T17:20:59.108Z
+Node         : v24.16.0
+Commit       : 09e6e6a05a532f693956fe15e1fa9a565b6cc293 (task/M4-final-product), working tree clean
+Environment  : Atlas test cluster; the connection string is never recorded
+DNS override : NODE_OPTIONS --import data: URL setting resolvers 8.8.8.8 and 1.1.1.1 (SRV lookups fail on this laptop otherwise)
+Command      : E2E_ENV_FILE=<test-cluster env file, outside the repository> NODE_OPTIONS=<DNS override> npm run test:e2e
+
+EXPECTED (written before the run)
+  E2E after the section A fixes, four browsers (expected results written 17/10/2026 before the run)
+  Build: task/M4-final-product 09e6e6a. Browsers as the four-browser run (Chromium 156.0.8078.4,
+  Google Chrome 155.0.8059.85, Microsoft Edge 155.0.4283.45, Firefox 157.0 Playwright build).
+  Basis: the spec headers in e2e/ (written before any run); DEF-024 to DEF-030 as proposed;
+  decisions #10 and 17/10/2026 (assignment by status, OI-15).
+  Expected: 44 tests (11 journeys x 4 projects), 44 passed, 0 failed, 0 flaky, exit code 0:
+    E2E-1 (allow-list now includes permittedAssignment), E2E-2a, E2E-2b, E2E-3 to E2E-6 as before;
+    E2E-7 Administrator: no-role user refused; Save roles 200 (if 415 recurs, this test fails and
+      names it); revoked user listed as Revoked, session ended, sign-in refused; deactivated
+      category gone from New request;
+    E2E-8 Security Officer: description shown; Accept on the security request; Coordinator 403;
+      owning Requester gets no description and the mapped status; no Accept for the Security
+      Officer on an ordinary request;
+    E2E-9 Coordinator closes a Resolved request: placeholder and disabled Submit; Closed offered;
+      422 without a reason; Closed with the reason in the history;
+    E2E-10 one tab, users switching: no 304 and Cache-Control: no-store on every read; the
+      Coordinator after the Technician is offered Closed; the owning Requester after the Security
+      Officer never receives the description; a Requester signing in where a Manager was lands on
+      My requests.
+  Known risks (not predictions): class- and heading-based selectors in E2E-7 and E2E-9; Firefox and
+  Edge HTTP-cache behaviour untested before; E2E-10 waits for network idle.
+  Any failure is recorded as it happened, with test and project names; the run is not repeated
+  until green.
+
+RESULT: exit code 0
+
+OUTPUT (unedited except that the local worktree path is written as <worktree>, at generation)
+
+> civicconnect@0.1.0 test:e2e
+> npm --prefix e2e test
+
+
+> civicconnect-e2e@0.0.0 test
+> playwright test
+
+
+Running 44 tests using 1 worker
+
+  ✓   1 [chromium] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (4.9s)
+  ✓   2 [chromium] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (1.7s)
+  ✓   3 [chromium] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (1.2s)
+  ✓   4 [chromium] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (3.9s)
+  ✓   5 [chromium] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (1.1s)
+  ✓   6 [chromium] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.2s)
+  ✓   7 [chromium] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (4.3s)
+  ✓   8 [chromium] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (1.5s)
+  ✓   9 [chromium] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (5.2s)
+  ✓  10 [chromium] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (782ms)
+  ✓  11 [chromium] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (716ms)
+  ✓  12 [chrome] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (4.3s)
+  ✓  13 [chrome] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (1.9s)
+  ✓  14 [chrome] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (1.4s)
+  ✓  15 [chrome] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (4.7s)
+  ✓  16 [chrome] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (1.2s)
+  ✓  17 [chrome] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.4s)
+  ✓  18 [chrome] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (5.3s)
+  ✓  19 [chrome] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (1.9s)
+  ✓  20 [chrome] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (5.9s)
+  ✓  21 [chrome] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (1.0s)
+  ✓  22 [chrome] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (976ms)
+  ✓  23 [msedge] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (5.3s)
+  ✓  24 [msedge] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (1.8s)
+  ✓  25 [msedge] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (1.5s)
+  ✓  26 [msedge] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (4.8s)
+  ✓  27 [msedge] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (1.2s)
+  ✓  28 [msedge] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (2.8s)
+  ✓  29 [msedge] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (5.3s)
+  ✓  30 [msedge] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (1.8s)
+  ✓  31 [msedge] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (5.3s)
+  ✓  32 [msedge] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (963ms)
+  ✓  33 [msedge] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (843ms)
+  ✓  34 [firefox] › admin.spec.js:59:1 › E2E-7: Administrator manages users and categories (AC-FR-1.2, AC-FR-1.4, AC-FR-9.1) (12.6s)
+  ✓  35 [firefox] › closure.spec.js:45:1 › E2E-9: Coordinator closes a Resolved request with a reason (AC-FR-6.6, FR-6.6, TD-003) (3.4s)
+  ✓  36 [firefox] › journey.spec.js:35:1 › E2E-1: Coordinator rejects a Received request (2.7s)
+  ✓  37 [firefox] › lifecycle.spec.js:69:1 › E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6, AC-FR-3.3, TD-003) (8.8s)
+  ✓  38 [firefox] › management.spec.js:58:1 › E2E-5: Manager management view (AC-FR-8.1, AC-FR-8.2) (5.2s)
+  ✓  39 [firefox] › mobile.spec.js:51:1 › E2E-6: 360 px, Requester and Technician screens (AC-NFR-1.2) (7.8s)
+  ✓  40 [firefox] › security.spec.js:63:1 › E2E-8: security-category request across roles (AC-FR-1.5, AC-NFR-4.4, FR-3.5, decision #10) (11.5s)
+  ✓  41 [firefox] › submit.spec.js:47:1 › E2E-3: Requester submits a request (AC-FR-2.1, AC-FR-2.2b, AC-FR-2.5, AC-FR-2.6, AC-FR-3.1, AC-FR-3.2, AC-NFR-4.3) (2.7s)
+  ✓  42 [firefox] › switch.spec.js:54:1 › E2E-10: a second person in the same tab sees nothing of the first (DEF-024, A9, FR-1.5, FR-3.5) (7.2s)
+  ✓  43 [firefox] › wrong-role.spec.js:49:1 › E2E-2a: a Technician cannot reject a request, and nothing is written (2.3s)
+  ✓  44 [firefox] › wrong-role.spec.js:68:1 › E2E-2b: the wrong-role refusal is 403 FORBIDDEN (DEC-015 §4) (2.0s)
+
+  44 passed (3.0m)
