@@ -10,11 +10,13 @@
  * count would include earlier runs.
  *
  * The cases write fixtures that cannot be removed, so they are opt-in: they run
- * only when the host in MONGODB_URI contains `civicconnecttest`. With no URI, or
- * a URI whose host does not name the test cluster, they are skipped with a
- * printed reason and nothing connects. A skipped case is not a verified one.
+ * only when the host in MONGODB_URI contains `civicconnecttest`, or, in CI only,
+ * when it is the runner's own loopback address (TD-008, below). With no URI, or
+ * any other host, they are skipped with a printed reason and nothing connects.
+ * A skipped case is not a verified one.
  *
  * Run:  npm run test:integration   (reads .env.test)
+ * CI:   the "Integration tests" job in .github/workflows/ci.yml (TD-008)
  */
 
 import { before, after } from 'node:test';
@@ -38,7 +40,15 @@ import { TEST_CLUSTER_MARKER } from '../../scripts/lib/clusterMarkers.js';
  * The host of the URI must name the test cluster. Only the host is examined, so a
  * user name, database name or option that happens to contain the marker does not
  * satisfy it. The URI itself is never printed: it holds a credential.
+ *
+ * TD-008: in CI the cases also run against a single-node replica set that the CI
+ * job starts on the runner's loopback address and throws away when the job ends.
+ * That host is accepted only when CI is set (GitHub Actions sets CI=true), so a
+ * developer's local URI still has to name the test cluster. No cluster credential
+ * is held in CI.
  */
+
+const CI_LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
 
 function skipReason(uri) {
   if (!uri) return 'MONGODB_URI is not set: integration cases were NOT run';
@@ -48,6 +58,7 @@ function skipReason(uri) {
   } catch {
     return 'MONGODB_URI could not be parsed to find its host: integration cases were NOT run';
   }
+  if (process.env.CI === 'true' && CI_LOOPBACK_HOSTS.has(host)) return false;
   if (!host.includes(TEST_CLUSTER_MARKER)) {
     return `the host in MONGODB_URI does not contain "${TEST_CLUSTER_MARKER}": refusing to run against a `
       + 'database that is not the test cluster, integration cases were NOT run';
