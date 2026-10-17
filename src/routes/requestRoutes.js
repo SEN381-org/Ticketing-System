@@ -98,5 +98,5 @@ export function createRequestRouter({ statusTransitionService, requestQueryServi
   return router;
 }
 
-export { readCommand };
+export { readCommand, fingerprint };
 export const API_BASE = '/api/v1/requests';

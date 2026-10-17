@@ -31,6 +31,12 @@ export function buildChangeUpdate($set, actor) {
 }
 
 export const requestRepository = {
+  /** FR-2.1 — the only insert path. The caller supplies version 1 and joins the transaction. */
+  create: async (doc, { session } = {}) => {
+    const [created] = await Request.create([doc], { session });
+    return created.toObject();
+  },
+
   findById: (id, { session } = {}) =>
     Request.findById(id).session(session ?? null).lean(),
 

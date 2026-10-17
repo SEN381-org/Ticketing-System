@@ -23,10 +23,14 @@ import { historyRepository } from './repositories/historyRepository.js';
 import { sessionRepository } from './repositories/sessionRepository.js';
 import { userRepository } from './repositories/userRepository.js';
 import { auditRepository } from './repositories/auditRepository.js';
+import { categoryRepository } from './repositories/categoryRepository.js';
+import { counterRepository } from './repositories/counterRepository.js';
 import { createStatusTransitionService } from './services/statusTransitionService.js';
 import { createRequestQueryService } from './services/requestQueryService.js';
 import { createAuthService } from './services/authService.js';
 import { createHealthService } from './services/healthService.js';
+import { createRequestSubmissionService } from './services/requestSubmissionService.js';
+import { createCategoryService } from './services/categoryService.js';
 import { createApp } from './app.js';
 
 export function composeApplication({ log = console, release = 'unknown' } = {}) {
@@ -41,5 +45,13 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
     }),
   };
-  return { app: createApp({ ...services, log }), services };
+  // M4 T1 — kept out of `services` so the key list asserted by tests/composition.test.js is unchanged.
+  const submission = {
+    requestSubmissionService: createRequestSubmissionService({
+      requests: requestRepository, history: historyRepository, categories: categoryRepository,
+      counters: counterRepository, users: userRepository, unitOfWork: createUnitOfWork(),
+    }),
+    categoryService: createCategoryService({ categories: categoryRepository, users: userRepository }),
+  };
+  return { app: createApp({ ...services, ...submission, log }), services };
 }
