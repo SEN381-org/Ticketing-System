@@ -31,6 +31,11 @@ export const OPERATION_RULES = Object.freeze({
   'request:accept':     [ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER],   // FR-5.2
   'request:comment':    [ROLE.TECHNICIAN, ROLE.COORDINATOR, ROLE.MANAGER, ROLE.SECURITY_OFFICER],
   'report:read':        [ROLE.MANAGER, ROLE.COORDINATOR, ROLE.SECURITY_OFFICER],
+  // DEC-015 Addendum A, A2 to A8.
+  'user:list':           [ROLE.COORDINATOR, ROLE.MANAGER, ROLE.ADMINISTRATOR],   // the request:assign roles, and FR-1.4
+  'user:administer':     [ROLE.ADMINISTRATOR],                                   // FR-1.4
+  'category:set-target': [ROLE.MANAGER],                                         // FR-8.4
+  'category:administer': [ROLE.ADMINISTRATOR],                                   // FR-9.1
 });
 
 /** Staff roles, i.e. everything that is not purely a requester. */

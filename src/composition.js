@@ -23,6 +23,12 @@ import { historyRepository } from './repositories/historyRepository.js';
 import { sessionRepository } from './repositories/sessionRepository.js';
 import { userRepository } from './repositories/userRepository.js';
 import { auditRepository } from './repositories/auditRepository.js';
+import { categoryRepository } from './repositories/categoryRepository.js';
+import { reportRepository } from './repositories/reportRepository.js';
+import { userAdminRepository, validateRoles } from './repositories/userAdminRepository.js';
+import { createReportService } from './services/reportService.js';
+import { createUserAdminService } from './services/userAdminService.js';
+import { createCategoryAdminService } from './services/categoryAdminService.js';
 import { createStatusTransitionService } from './services/statusTransitionService.js';
 import { createRequestQueryService } from './services/requestQueryService.js';
 import { createAuthService } from './services/authService.js';
@@ -35,10 +41,19 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
       users: userRepository, sessions: sessionRepository,
       audit: auditRepository, passwords: passwordHasher,
     }),
+    categoryAdminService: createCategoryAdminService({
+      categories: categoryRepository, users: userAdminRepository,
+    }),
     healthService: createHealthService({ pingDatabase, release }),
     requestQueryService: createRequestQueryService({ requests: requestRepository }),
+    reportService: createReportService({
+      reports: reportRepository, categories: categoryRepository, users: userAdminRepository,
+    }),
     statusTransitionService: createStatusTransitionService({
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
+    }),
+    userAdminService: createUserAdminService({
+      users: userAdminRepository, passwords: passwordHasher, validateRoles,
     }),
   };
   return { app: createApp({ ...services, log }), services };

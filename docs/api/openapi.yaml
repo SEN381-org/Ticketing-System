@@ -29,6 +29,12 @@ tags:
     description: Service request lifecycle
   - name: sessions
     description: Authentication (DEC-018)
+  - name: users
+    description: User administration (DEC-015 Addendum A)
+  - name: reports
+    description: Management view (DEC-015 Addendum A)
+  - name: categories
+    description: Category administration (DEC-015 Addendum A)
   - name: operations
     description: Health (NFR-1.6)
 security:
@@ -311,6 +317,346 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+  /users:
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: List active users
+      description: |
+        DEC-015 Addendum A, A2. Roles: Coordinator, Manager, Administrator
+        (`user:list`). Returns `id`, `displayName` and `roles`; the e-mail
+        address is returned to an Administrator only (CON-007). Only active
+        accounts are listed. Traces to: FR-5.1, FR-1.4.
+      parameters:
+        - name: role
+          in: query
+          required: false
+          description: Restrict to users holding this FR-1.2 role.
+          schema: { $ref: '#/components/schemas/Role' }
+        - name: categoryId
+          in: query
+          required: false
+          description: Restrict to users authorised for this category (FR-4.6).
+          schema: { type: string, pattern: '^[0-9a-fA-F]{24}$' }
+      responses:
+        '200':
+          description: The matching users.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UserSummary' }
+        '400':
+          description: role is not an FR-1.2 role, categoryId is malformed, or an unknown query parameter (INVALID_REQUEST).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not perform this operation (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Create a user account
+      description: |
+        DEC-015 Addendum A, A3. Administrator only (`user:administer`). The
+        Administrator supplies the initial password in the body; it is hashed
+        with the password hasher (DEC-018 §2) and is never logged or returned.
+        A body without a role is refused with the message "A role is required"
+        (AC-FR-1.2). Traces to: FR-1.2, FR-1.4, NFR-3.1.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserCommand' }
+      responses:
+        '201':
+          description: The account was created.
+          headers:
+            Location:
+              description: The new user, /api/v1/users/{id}.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreatedUser' }
+        '400':
+          description: A field is missing (the message names it), a role is missing or not an FR-1.2 role, Idempotency-Key is missing (IDEMPOTENCY_KEY_REQUIRED), or the body is not valid (INVALID_REQUEST).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not perform this operation (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: An account with that e-mail exists (CONFLICT).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /users/{id}/roles:
+    put:
+      tags: [users]
+      operationId: setUserRoles
+      summary: Replace a user's roles
+      description: |
+        DEC-015 Addendum A, A4. Administrator only (`user:administer`). The
+        list replaces the user's roles; it must hold at least one FR-1.2 role.
+        Takes effect at the user's next request (DEC-018 §3). Traces to: FR-1.4.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User identifier (MongoDB ObjectId).
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetRolesCommand' }
+      responses:
+        '200':
+          description: The roles now held.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserRoles' }
+        '400':
+          description: Malformed id, no role ("A role is required"), a value outside FR-1.2, or Idempotency-Key missing.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not perform this operation (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404':
+          description: No such user (NOT_FOUND).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /users/{id}/revocation:
+    post:
+      tags: [users]
+      operationId: revokeUser
+      summary: Revoke a user's access
+      description: |
+        DEC-015 Addendum A, A5. Administrator only (`user:administer`). Sets
+        status `revoked` and `revokedAt` and increments `sessionEpoch`, so the
+        account can no longer authenticate and every existing session ends at
+        the next request (AC-FR-1.4, DEC-018 §3). Idempotent: a repeat returns
+        200 with `replayed: true` and does not change the epoch again.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User identifier (MongoDB ObjectId).
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Access was revoked by this request.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Revocation' }
+        '200':
+          description: The account was already revoked (replay).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Revocation' }
+        '400':
+          description: Malformed id, or Idempotency-Key missing (IDEMPOTENCY_KEY_REQUIRED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not perform this operation (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404':
+          description: No such user (NOT_FOUND).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /reports/summary:
+    get:
+      tags: [reports]
+      operationId: getReportSummary
+      summary: Management view
+      description: |
+        DEC-015 Addendum A, A6. Operation `report:read`. Counts by status (all
+        seven FR-6.1 statuses, summing to `total`) and by category (deactivated
+        categories included), and the requests that are overdue (FR-8.3). The
+        filter is a submission date range and a category; counts include only
+        requests matching both (FR-8.5). Security-category requests are
+        counted; no element carries a description, comment or action (FR-8.6).
+        Aggregated on `requests`, not `reportingCounts` (OI-14).
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Earliest submission time, inclusive. ISO 8601 date or timestamp.
+          schema: { type: string }
+        - name: to
+          in: query
+          required: false
+          description: Latest submission time, inclusive. A date alone includes that whole day (UTC).
+          schema: { type: string }
+        - name: categoryId
+          in: query
+          required: false
+          schema: { type: string, pattern: '^[0-9a-fA-F]{24}$' }
+      responses:
+        '200':
+          description: The summary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportSummary' }
+        '400':
+          description: A bad date, from later than to, a malformed categoryId, or an unknown query parameter (INVALID_REQUEST).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not perform this operation (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /categories/{id}/target:
+    put:
+      tags: [categories]
+      operationId: setCategoryTarget
+      summary: Set a category's target resolution time
+      description: |
+        DEC-015 Addendum A, A7. Manager only (`category:set-target`). The value
+        is stored and read by the overdue calculation (AC-FR-8.4). FR-8.4 is
+        Proposed (OI-02).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Category identifier (MongoDB ObjectId).
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetTargetCommand' }
+      responses:
+        '200':
+          description: The stored target.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryTarget' }
+        '400':
+          description: Malformed id, targetResolutionHours missing or below 1, or Idempotency-Key missing.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not perform this operation (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404':
+          description: No such category (NOT_FOUND).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /categories/{id}/deactivation:
+    post:
+      tags: [categories]
+      operationId: deactivateCategory
+      summary: Deactivate a category
+      description: |
+        DEC-015 Addendum A, A8. Administrator only (`category:administer`).
+        Sets `active` to false; the category is no longer offered for
+        submission (AC-FR-9.1) and requests already recorded against it keep it
+        and stay in the category counts (FR-9.2). Idempotent: a repeat returns
+        200 with `replayed: true`. FR-9.1 is Proposed (OI-03).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Category identifier (MongoDB ObjectId).
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: The category was deactivated by this request.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryDeactivation' }
+        '200':
+          description: The category was already inactive (replay).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryDeactivation' }
+        '400':
+          description: Malformed id, or Idempotency-Key missing (IDEMPOTENCY_KEY_REQUIRED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: No authenticated actor (UNAUTHENTICATED).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The role may not perform this operation (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404':
+          description: No such category (NOT_FOUND).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 components:
   securitySchemes:
     session:
@@ -325,7 +671,122 @@ components:
         minutes have elapsed since its recorded last activity, which is refreshed
         at most once per 60 seconds, so it expires between 29 and 30 minutes
         after the last request (NFR-3.4).
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        A key generated per logical user action and reused unchanged on a retry
+        (DEC-015 §3). A missing or blank key returns 400. These administration
+        routes are idempotent by state, so a repeat is safe.
+      schema: { type: string }
   schemas:
+    Role:
+      type: string
+      description: The controlled role set (FR-1.2).
+      enum: [Requester, Technician, Coordinator, Manager, Security Officer, Administrator]
+    UserSummary:
+      type: object
+      required: [id, displayName, roles]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
+        email: { type: string, description: Returned to an Administrator only (CON-007). }
+    CreateUserCommand:
+      type: object
+      additionalProperties: false
+      required: [email, displayName, password, roles]
+      properties:
+        email: { type: string }
+        displayName: { type: string, maxLength: 100 }
+        password: { type: string, format: password, description: Hashed on receipt; never returned or logged. }
+        roles: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Role' } }
+        categoryAuthorisations: { type: array, items: { type: string, pattern: '^[0-9a-fA-F]{24}$' } }
+    CreatedUser:
+      type: object
+      required: [id, email, displayName, roles]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        displayName: { type: string }
+        roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
+    SetRolesCommand:
+      type: object
+      additionalProperties: false
+      required: [roles]
+      properties:
+        roles: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Role' } }
+    UserRoles:
+      type: object
+      required: [id, roles]
+      properties:
+        id: { type: string }
+        roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
+    Revocation:
+      type: object
+      required: [id, status, revokedAt, replayed]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [revoked] }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        replayed: { type: boolean }
+    ReportSummary:
+      type: object
+      required: [byStatus, byCategory, overdue, total]
+      properties:
+        byStatus:
+          type: object
+          description: A count for every FR-6.1 status; the counts sum to total.
+          additionalProperties: { type: integer, minimum: 0 }
+        byCategory:
+          type: array
+          items:
+            type: object
+            required: [categoryId, code, name, active, count]
+            properties:
+              categoryId: { type: string }
+              code: { type: [string, 'null'] }
+              name: { type: [string, 'null'] }
+              active: { type: boolean }
+              count: { type: integer, minimum: 0 }
+        overdue:
+          type: object
+          required: [count, requests]
+          properties:
+            count: { type: integer, minimum: 0 }
+            requests:
+              type: array
+              items:
+                type: object
+                required: [id, reference, categoryId, status, openHours]
+                properties:
+                  id: { type: string }
+                  reference: { type: string }
+                  categoryId: { type: string }
+                  status: { $ref: '#/components/schemas/Status' }
+                  openHours: { type: integer, minimum: 0 }
+        total: { type: integer, minimum: 0 }
+    SetTargetCommand:
+      type: object
+      additionalProperties: false
+      required: [targetResolutionHours]
+      properties:
+        targetResolutionHours: { type: number, minimum: 1 }
+    CategoryTarget:
+      type: object
+      required: [id, targetResolutionHours]
+      properties:
+        id: { type: string }
+        targetResolutionHours: { type: number, minimum: 1 }
+    CategoryDeactivation:
+      type: object
+      required: [id, active, replayed]
+      properties:
+        id: { type: string }
+        active: { type: boolean, enum: [false] }
+        replayed: { type: boolean }
     Health:
       type: object
       required: [application, database, release]
@@ -421,5 +882,5 @@ components:
           type: string
           enum: [IDEMPOTENCY_KEY_REQUIRED, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, PRECONDITION_FAILED,
                  INVALID_TRANSITION, IDEMPOTENCY_CONFLICT, PRECONDITION_REQUIRED, INVALID_REQUEST,
-                 UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE, INTERNAL_ERROR]
+                 UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE, CONFLICT, INTERNAL_ERROR]
         instance: { type: string }
