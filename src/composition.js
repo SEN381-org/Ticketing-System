@@ -25,6 +25,8 @@ import { userRepository } from './repositories/userRepository.js';
 import { auditRepository } from './repositories/auditRepository.js';
 import { createStatusTransitionService } from './services/statusTransitionService.js';
 import { createRequestQueryService } from './services/requestQueryService.js';
+import { createRequestListService } from './services/requestListService.js';
+import { requestListRepository } from './repositories/requestListRepository.js';
 import { createAuthService } from './services/authService.js';
 import { createHealthService } from './services/healthService.js';
 import { createApp } from './app.js';
@@ -36,6 +38,7 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
       audit: auditRepository, passwords: passwordHasher,
     }),
     healthService: createHealthService({ pingDatabase, release }),
+    requestListService: createRequestListService({ lists: requestListRepository }),
     requestQueryService: createRequestQueryService({ requests: requestRepository }),
     statusTransitionService: createStatusTransitionService({
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),

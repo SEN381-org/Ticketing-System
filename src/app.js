@@ -26,6 +26,7 @@ import { requireJsonOnWrites, parseJsonBody, mapBodyErrors } from './middleware/
 import { createHealthRouter, HEALTH_PATH } from './routes/healthRoutes.js';
 import { createSessionRouter, SESSIONS_BASE } from './routes/sessionRoutes.js';
 import { createRequestRouter, API_BASE as REQUESTS_BASE } from './routes/requestRoutes.js';
+import { createRequestListRouter } from './routes/requestListRoutes.js';
 import { RouteNotFoundError } from './errors.js';
 
 function mount(app, path, router) {
@@ -34,6 +35,7 @@ function mount(app, path, router) {
 }
 
 export function createApp({
+  requestListService,
   authService, healthService, statusTransitionService, requestQueryService, log = console,
 }) {
   const app = express();
@@ -49,6 +51,7 @@ export function createApp({
   app.use('/api', createSessionMiddleware({ authService }));
 
   mount(app, SESSIONS_BASE, createSessionRouter({ authService }));
+  mount(app, REQUESTS_BASE, createRequestListRouter({ requestListService }));   // before /:id
   mount(app, REQUESTS_BASE, createRequestRouter({ statusTransitionService, requestQueryService }));
 
   app.use((req, res, next) => next(new RouteNotFoundError()));
