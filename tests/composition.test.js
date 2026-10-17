@@ -33,5 +33,6 @@ test('composition performs no I/O: the graph builds with no database', () => {
   const { app, services } = composeApplication({ log: { error() {} } });
   assert.equal(typeof app, 'function');
   assert.deepEqual(Object.keys(services).sort(),
-    ['authService', 'healthService', 'requestListService', 'requestQueryService', 'statusTransitionService']);
+    ['authService', 'categoryAdminService', 'healthService', 'reportService', 'requestListService',
+     'requestQueryService', 'statusTransitionService', 'userAdminService']);
 });

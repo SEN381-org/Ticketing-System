@@ -29,6 +29,11 @@ import { registerSubscribers } from './events/subscribers/index.js';
 import { createRequestHistoryService } from './services/requestHistoryService.js';
 import { createWorkRecordService } from './services/workRecordService.js';
 import { createNotificationService } from './services/notificationService.js';
+import { reportRepository } from './repositories/reportRepository.js';
+import { userAdminRepository, validateRoles } from './repositories/userAdminRepository.js';
+import { createReportService } from './services/reportService.js';
+import { createUserAdminService } from './services/userAdminService.js';
+import { createCategoryAdminService } from './services/categoryAdminService.js';
 import { createStatusTransitionService } from './services/statusTransitionService.js';
 import { createAssignmentService } from './services/assignmentService.js';
 import { createAccessAuditService } from './services/accessAuditService.js';
@@ -49,11 +54,20 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
       users: userRepository, sessions: sessionRepository,
       audit: auditRepository, passwords: passwordHasher,
     }),
+    categoryAdminService: createCategoryAdminService({
+      categories: categoryRepository, users: userAdminRepository,
+    }),
     healthService: createHealthService({ pingDatabase, release }),
     requestListService: createRequestListService({ lists: requestListRepository }),
     requestQueryService: createRequestQueryService({ requests: requestRepository }),
+    reportService: createReportService({
+      reports: reportRepository, categories: categoryRepository, users: userAdminRepository,
+    }),
     statusTransitionService: createStatusTransitionService({
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
+    }),
+    userAdminService: createUserAdminService({
+      users: userAdminRepository, passwords: passwordHasher, validateRoles,
     }),
   };
   // M4 tracks T1 and T3: kept out of `services` so the key list asserted by

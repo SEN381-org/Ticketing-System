@@ -1,0 +1,36 @@
+NV-142  (track T7, management view and administration)
+
+Test        : A6: report:read is refused (403, no data) to Requester, Technician and Administrator, and allowed to the three roles it names — FR-1.3 (tests/managementView.test.js)
+Files run   : tests/managementView.test.js, tests/managementRoutes.test.js
+File broken : src/domain/accessRules.js
+Started     : 2026-10-17T12:30:59Z UTC
+Finished    : 2026-10-17T12:31:02Z UTC
+Node        : v24.16.0
+
+THE BREAK (reverted afterwards)
+  - 'report:read':        [ROLE.MANAGER, ROLE.COORDINATOR, ROLE.SECURITY_OFFICER],
+  + 'report:read':        Object.values(ROLE),
+
+EXPECTED RESULT (written before the run)
+  Opening report:read to every role makes Requester, Technician and Administrator receive 200 with summary data. The 403 test must FAIL (and the unchanged-roles assertion in managementRoutes must FAIL).
+
+RUN OUTPUT
+  Before the break : tests 14, pass 14, fail 0
+  With the break   : tests 14, pass 12, fail 2
+  Failing tests with the break:
+    - the new operations allow exactly the roles the Addendum names — DEC-015 Addendum A, FR-1.3
+    - A6: report:read is refused (403, no data) to Requester, Technician and Administrator, and allowed to the three roles it names — FR-1.3
+  After restoring  : tests 14, pass 14, fail 0
+
+RESTORED
+  SHA-256 before : 73859ed656ac7a2647f8c0e9ab80c01897e76586b168c76f3d772e5261777064
+  SHA-256 after  : 73859ed656ac7a2647f8c0e9ab80c01897e76586b168c76f3d772e5261777064
+  Byte-identical : yes
+
+RESULT: the test failed with the break and passed after restoring
+
+WHAT THIS DOES SHOW
+  The 403 for the three non-permitted roles on GET /reports/summary depends on the report:read rule in OPERATION_RULES and is detected if that rule widens.
+
+WHAT THIS DOES NOT SHOW
+  That the rule set itself matches FR-1.3 (it is an existing rule, unchanged); that a Manager sees only Manager-relevant data.

@@ -126,6 +126,17 @@ export class WriteConflictError extends AppError {
 }
 
 /**
+ * DEC-015 Addendum A, A3 — the request conflicts with existing state (an account
+ * with that e-mail exists). RFC 9110 section 15.5.10.
+ */
+export class ConflictError extends AppError {
+  constructor(message = 'The request conflicts with existing state') {
+    super(message,
+      { status: 409, type: 'https://civicconnect.example/problems/conflict', code: 'CONFLICT' });
+  }
+}
+
+/**
  * DEC-015 §3 — same idempotency key, different request (method, path or body).
  * The problem type is the one DEC-015 §3 names, idempotency-key-reused (DEF-010).
  */

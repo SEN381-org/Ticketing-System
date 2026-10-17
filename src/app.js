@@ -33,6 +33,9 @@ import { createRequestListRouter } from './routes/requestListRoutes.js';
 import { createAssignmentRouter } from './routes/assignmentRoutes.js';
 import { createHistoryRouter } from './routes/historyRoutes.js';
 import { createNotificationRouter, NOTIFICATIONS_BASE } from './routes/notificationRoutes.js';
+import { createReportRouter, REPORTS_BASE } from './routes/reportRoutes.js';
+import { createUserRouter, USERS_BASE } from './routes/userRoutes.js';
+import { createCategoryAdminRouter, CATEGORIES_ADMIN_BASE } from './routes/categoryAdminRoutes.js';
 import { RouteNotFoundError } from './errors.js';
 
 function mount(app, path, router) {
@@ -44,7 +47,8 @@ export function createApp({
   authService, healthService, statusTransitionService, requestQueryService,
   requestSubmissionService, categoryService, requestListService,
   assignmentService, recordRefusal,
-  requestHistoryService, workRecordService, notificationService, log = console,
+  requestHistoryService, workRecordService, notificationService,
+  reportService, userAdminService, categoryAdminService, log = console,
 }) {
   const app = express();
   app.locals.mounts = [];
@@ -71,6 +75,10 @@ export function createApp({
   mount(app, REQUESTS_BASE, createAssignmentRouter({ assignmentService }));
   mount(app, REQUESTS_BASE, createHistoryRouter({ requestHistoryService, workRecordService }));
   mount(app, NOTIFICATIONS_BASE, createNotificationRouter({ notificationService }));
+
+  mount(app, REPORTS_BASE, createReportRouter({ reportService }));
+  mount(app, USERS_BASE, createUserRouter({ userAdminService }));
+  mount(app, CATEGORIES_ADMIN_BASE, createCategoryAdminRouter({ categoryAdminService }));
 
   app.use((req, res, next) => next(new RouteNotFoundError()));
   app.use(createErrorHandler({ log }));

@@ -1,0 +1,37 @@
+NV-146  (track T7, management view and administration)
+
+Test        : A3 / AC-FR-1.2: a body with no role, or an empty role list, is rejected 400 "A role is required" and nothing is saved (tests/userAdmin.test.js)
+Files run   : tests/userAdmin.test.js
+File broken : src/repositories/userAdminRepository.js
+Started     : 2026-10-17T12:31:20Z UTC
+Finished    : 2026-10-17T12:31:24Z UTC
+Node        : v24.16.0
+
+THE BREAK (reverted afterwards)
+  - throw new ValidationError(messages[0]);
+  + throw new ValidationError('invalid roles');
+
+EXPECTED RESULT (written before the run)
+  If the rejection no longer reports that a role is required, the 400 detail differs from "A role is required". The AC-FR-1.2 tests (route and validateRoles) must FAIL.
+
+RUN OUTPUT
+  Before the break : tests 23, pass 23, fail 0
+  With the break   : tests 23, pass 20, fail 3
+  Failing tests with the break:
+    - A3 / AC-FR-1.2: a body with no role, or an empty role list, is rejected 400 "A role is required" and nothing is saved
+    - A4 / AC-FR-1.2: no role, an empty list, or a value outside FR-1.2 is 400 and roles are unchanged
+    - AC-FR-1.2: validateRoles uses the User model's own message, and accepts every FR-1.2 role
+  After restoring  : tests 23, pass 23, fail 0
+
+RESTORED
+  SHA-256 before : fd5ca1529ba95067744671d6c26da29a3b09d6cf4978d026e4a4e930cda2b6ed
+  SHA-256 after  : fd5ca1529ba95067744671d6c26da29a3b09d6cf4978d026e4a4e930cda2b6ed
+  Byte-identical : yes
+
+RESULT: the test failed with the break and passed after restoring
+
+WHAT THIS DOES SHOW
+  The "role is required" report required by AC-FR-1.2 reaches the client from the model validator.
+
+WHAT THIS DOES NOT SHOW
+  The model validator itself (covered in tests/models.test.js).
