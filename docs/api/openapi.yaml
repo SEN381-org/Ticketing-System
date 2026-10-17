@@ -31,6 +31,8 @@ tags:
     description: Authentication (DEC-018)
   - name: operations
     description: Health (NFR-1.6)
+  - name: notifications
+    description: In-application notifications (FR-3.4)
 security:
   - session: []
 paths:
@@ -681,6 +683,156 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+  /requests/{id}/history:
+    get:
+      tags: [requests]
+      operationId: getRequestHistory
+      summary: List a request's history, oldest first
+      description: |
+        The immutable record of a request (DB-01): created, status, assignment,
+        comment, action, detail and resolution entries, in ascending
+        `requestVersion` (FR-3.3, FR-7.4). Each entry carries the acting user,
+        the role and the date-time (FR-7.3, NFR-3.6). A status entry carries its
+        `reason` (FR-6.6); the status entry that resolved the request carries the
+        `resolution` recorded with it (FR-6.5, FR-7.5); an assignment entry
+        carries `fromAssigneeId` and `toAssigneeId` (FR-5.4).
+
+        Authorised exactly as GET /requests/{id}: staff see every entry; a
+        Requester sees created, status and detail entries of their own request,
+        with the staff user's identifier withheld. On a security-category request
+        a Requester receives no body or reason at all and only the statuses
+        FR-3.5 permits (FR-1.5). Staff without the Security Officer role receive
+        403 for a security-category request (AC-NFR-4.4). Which entry types a
+        Requester may see is not stated in DB-01 or DEC-012; the narrower reading
+        is implemented and recorded as an open question.
+
+        There is no operation that alters or deletes an entry (FR-6.7).
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: The history this caller may see.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestHistory' }
+        '400':
+          description: The identifier is malformed (INVALID_REQUEST).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403':
+          description: The role may not read requests, or the staff member may not view this request (FORBIDDEN).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404':
+          description: No such request, or a Requester asking for another user's request (NOT_FOUND).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /requests/{id}/comments:
+    post:
+      tags: [requests]
+      operationId: addComment
+      summary: Add a comment to a request
+      description: |
+        FR-7.1. Operation `request:comment` (Technician, Coordinator, Manager,
+        Security Officer), and the actor must be authorised for the request's
+        category; only a Security Officer may act on a security-category request.
+        The comment is a history entry that produces the next request version
+        (DB-01), written in one unit of work with that version change (DEC-016).
+        `If-Match` is not required (DEC-015 §1); `Idempotency-Key` is. The
+        `ETag` of the response is the new version.
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EntryCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/EntryCreated' }
+        '200': { $ref: '#/components/responses/EntryReplayed' }
+        '400': { $ref: '#/components/responses/EntryInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/EntryForbidden' }
+        '404': { $ref: '#/components/responses/EntryNotFound' }
+        '409': { $ref: '#/components/responses/EntryConflict' }
+        '422': { $ref: '#/components/responses/EntryKeyReused' }
+  /requests/{id}/actions:
+    post:
+      tags: [requests]
+      operationId: addAction
+      summary: Record an action taken on a request
+      description: |
+        FR-7.2. Same operation, authorisation, versioning and idempotency as
+        `POST /requests/{id}/comments`.
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EntryCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/EntryCreated' }
+        '200': { $ref: '#/components/responses/EntryReplayed' }
+        '400': { $ref: '#/components/responses/EntryInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/EntryForbidden' }
+        '404': { $ref: '#/components/responses/EntryNotFound' }
+        '409': { $ref: '#/components/responses/EntryConflict' }
+        '422': { $ref: '#/components/responses/EntryKeyReused' }
+  /requests/{id}/details:
+    post:
+      tags: [requests]
+      operationId: addDetail
+      summary: Add optional detail to a request
+      description: |
+        FR-2.4. Operation `request:add-detail` (Requester). Only the requester who
+        owns the request may add detail; another Requester receives the 404 of a
+        missing identifier (FR-3.6). The detail is stored with the date, time and
+        acting user. Versioning and idempotency are as for comments.
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EntryCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/EntryCreated' }
+        '200': { $ref: '#/components/responses/EntryReplayed' }
+        '400': { $ref: '#/components/responses/EntryInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/EntryForbidden' }
+        '404': { $ref: '#/components/responses/EntryNotFound' }
+        '409': { $ref: '#/components/responses/EntryConflict' }
+        '422': { $ref: '#/components/responses/EntryKeyReused' }
+  /me/notifications:
+    get:
+      tags: [notifications]
+      operationId: listMyNotifications
+      summary: The caller's own in-application notifications, newest first
+      description: |
+        FR-3.4. Written after a status change commits (DEC-011), read from the
+        store, so a notification is available on the requester's next session.
+        The recipient is always the authenticated user. A notification identifies
+        the request by reference and the kind of change; `displayStatus` is the
+        status the recipient may be shown (FR-3.5), and no description, comment,
+        action or reason is carried (FR-1.5). At most 50 are returned; they are
+        deleted 30 days after creation (DEC-017).
+      responses:
+        '200':
+          description: The caller's notifications.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationList' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
 components:
   securitySchemes:
     session:
@@ -872,7 +1024,167 @@ components:
         detail: { type: string }
         code:
           type: string
-          enum: [IDEMPOTENCY_KEY_REQUIRED, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, PRECONDITION_FAILED,
-                 INVALID_TRANSITION, IDEMPOTENCY_CONFLICT, PRECONDITION_REQUIRED, INVALID_REQUEST,
-                 UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE, INTERNAL_ERROR, ASSIGNMENT_REFUSED]
+          enum: [IDEMPOTENCY_KEY_REQUIRED, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND,
+                 PRECONDITION_FAILED, INVALID_TRANSITION, IDEMPOTENCY_CONFLICT,
+                 PRECONDITION_REQUIRED, INVALID_REQUEST, UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE,
+                 INTERNAL_ERROR, ASSIGNMENT_REFUSED, WRITE_CONFLICT]
         instance: { type: string }
+    TransitionReplay:
+      type: object
+      required: [requestId, fromStatus, toStatus, occurredAt, version, historyId, replayed]
+      properties:
+        requestId: { type: string }
+        fromStatus: { $ref: '#/components/schemas/Status' }
+        toStatus: { $ref: '#/components/schemas/Status' }
+        occurredAt: { type: string, format: date-time }
+        version: { type: integer }
+        historyId: { type: string }
+        replayed: { type: boolean, const: true }
+    EntryCommand:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000, description: The comment, action or detail text. }
+    EntryResult:
+      type: object
+      required: [requestId, historyId, changeType, requestVersion, occurredAt, version]
+      properties:
+        requestId: { type: string }
+        historyId: { type: string }
+        changeType: { type: string, enum: [comment, action, detail] }
+        requestVersion: { type: integer, minimum: 1, description: The request version this entry produced (DB-01). }
+        occurredAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1, description: The new request version; also returned as the ETag. }
+    EntryReplay:
+      allOf:
+        - $ref: '#/components/schemas/EntryResult'
+        - type: object
+          required: [replayed]
+          properties:
+            replayed: { type: boolean, const: true }
+    HistoryEntry:
+      type: object
+      required: [id, requestVersion, changeType, occurredAt, actorRole, actorId]
+      properties:
+        id: { type: string }
+        requestVersion: { type: integer, minimum: 1 }
+        changeType: { type: string, enum: [created, status, assignment, comment, action, detail, resolution] }
+        occurredAt: { type: string, format: date-time }
+        actorId: { type: [string, 'null'], description: The acting user; withheld (null) from a Requester for entries made by staff. }
+        actorRole: { type: string, description: The role the actor held when acting (FR-1.2). }
+        fromStatus: { type: [string, 'null'], description: Present on created and status entries. A Requester sees FR-3.5 mapped values on a security-category request. }
+        toStatus: { type: [string, 'null'] }
+        reason: { type: [string, 'null'], description: On a status entry (FR-6.6). Never sent to a Requester for a security-category request. }
+        resolution: { type: [string, 'null'], description: On the status entry that resolved the request (FR-6.5, FR-7.5). Staff only. }
+        fromAssigneeId: { type: [string, 'null'], description: On an assignment entry (FR-5.4). Staff only. }
+        toAssigneeId: { type: [string, 'null'] }
+        body: { type: [string, 'null'], description: On comment, action, detail and resolution entries. Comment, action and resolution entries are staff only; a detail body is never sent to a Requester for a security-category request. }
+    RequestHistory:
+      type: object
+      required: [requestId, entries]
+      properties:
+        requestId: { type: string }
+        entries:
+          type: array
+          description: Ascending requestVersion.
+          items: { $ref: '#/components/schemas/HistoryEntry' }
+    Notification:
+      type: object
+      additionalProperties: false
+      required: [id, requestId, requestReference, kind, displayStatus, read, createdAt]
+      properties:
+        id: { type: string }
+        requestId: { type: string }
+        requestReference: { type: string, pattern: '^CC-\d{4}-\d{6}$' }
+        kind: { type: string, enum: [accepted, rejected, updated, completed] }
+        displayStatus: { $ref: '#/components/schemas/Status' }
+        read: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    NotificationList:
+      type: object
+      required: [notifications]
+      properties:
+        notifications:
+          type: array
+          items: { $ref: '#/components/schemas/Notification' }
+
+  parameters:
+    RequestId:
+      name: id
+      in: path
+      required: true
+      description: Request identifier (MongoDB ObjectId).
+      schema:
+        type: string
+        pattern: '^[0-9a-fA-F]{24}$'
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        A key generated per logical user action and reused unchanged on every
+        retry (UUID v4 recommended, at most 64 characters). Missing or blank
+        returns 400. Reused with a different body returns 422. Reused with the
+        same body returns the original result with 200, header
+        `Idempotent-Replayed: true`, and writes nothing (DEC-015 §3).
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+  responses:
+    Unauthenticated:
+      description: No authenticated actor (UNAUTHENTICATED).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    EntryCreated:
+      description: The entry was appended; the request is at the new version.
+      headers:
+        ETag:
+          description: The new version, e.g. "v4".
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/EntryResult' }
+    EntryReplayed:
+      description: Idempotent replay of an entry already appended. Nothing is written.
+      headers:
+        Idempotent-Replayed:
+          schema: { type: string, enum: ['true'] }
+        ETag:
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/EntryReplay' }
+    EntryInvalid:
+      description: |
+        Idempotency-Key missing (IDEMPOTENCY_KEY_REQUIRED); or the identifier,
+        the key length or the body is invalid: `body` missing, blank, over 5000
+        characters, or an unknown field (INVALID_REQUEST).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    EntryForbidden:
+      description: |
+        The role may not perform the operation (route guard), or the actor may
+        not act on this request: not authorised for its category, or a
+        security-category request without the Security Officer role (FORBIDDEN).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    EntryNotFound:
+      description: No such request, or a Requester naming another user's request (NOT_FOUND).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    EntryConflict:
+      description: Another write kept changing the request; retries were exhausted (WRITE_CONFLICT). Retry the action.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    EntryKeyReused:
+      description: The Idempotency-Key was used with a different body (IDEMPOTENCY_CONFLICT).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }

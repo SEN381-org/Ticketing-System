@@ -1,0 +1,31 @@
+NV-132  Track T4 (history, work record and notifications)
+
+Test:       exactly the NotificationSubscriber is registered in the composed application — TD-001, FR-3.4, OI-14
+File:       src/composition.js
+Run command: node --test tests/requestHistory.test.js tests/composition.test.js
+Node:       v24.16.0 (project target is Node 22; run on the installed version)
+Started:    2026-10-17T12:30:39.012Z (UTC)
+Finished:   2026-10-17T12:30:43.667Z (UTC)
+
+Expected result (written before the run):
+  The composition test fails (registry empty). The HTTP notification tests register the subscriber themselves, so they pass; only the composition test pins the registration.
+
+The break (replacement in the file above):
+  -   registerSubscribers({ notifications: notificationRepository });   // DEC-011, TD-001
+    
+  + (removed)
+
+Run with the break:
+  tests 39, pass 38, fail 1, skipped 0
+  failing: exactly the NotificationSubscriber is registered in the composed application — TD-001, FR-3.4, OI-14
+  the named test failed: YES
+
+Restored:
+  SHA-256 before the break: c389d5455ca7cbc1b966939efbaf6064b5948083e3c6a32005651a940a63812b
+  SHA-256 after restoring:  c389d5455ca7cbc1b966939efbaf6064b5948083e3c6a32005651a940a63812b
+  byte-identical: YES
+  run after restoring: tests 39, pass 39, fail 0, skipped 0
+
+What this does show: the named assertion detects the removal of the protection it is written for.
+What this does not show: that the protection is complete, behaviour against a real database or
+cluster, or that the rule being protected is baselined where the record is silent.

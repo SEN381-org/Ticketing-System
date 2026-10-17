@@ -1,0 +1,30 @@
+NV-127  Track T4 (history, work record and notifications)
+
+Test:       AC-FR-7.4: the service lists entries in ascending order even when the repository returns them out of order
+File:       src/services/requestHistoryService.js
+Run command: node --test tests/requestHistory.test.js tests/composition.test.js
+Node:       v24.16.0 (project target is Node 22; run on the installed version)
+Started:    2026-10-17T12:30:27.346Z (UTC)
+Finished:   2026-10-17T12:30:29.501Z (UTC)
+
+Expected result (written before the run):
+  The out-of-order service test fails (entries returned 3,1,2); the HTTP ordering test still passes because the fake repository sorts, which shows the service guarantee is what the failing test pins.
+
+The break (replacement in the file above):
+  -       .sort((a, b) => a.requestVersion - b.requestVersion);
+  + ;
+
+Run with the break:
+  tests 39, pass 38, fail 1, skipped 0
+  failing: AC-FR-7.4: the service lists entries in ascending order even when the repository returns them out of order
+  the named test failed: YES
+
+Restored:
+  SHA-256 before the break: 2959f4c94d4aca64ca25150e21b3154b5fba7cd5e7c4bd9a979948a2b4eb6399
+  SHA-256 after restoring:  2959f4c94d4aca64ca25150e21b3154b5fba7cd5e7c4bd9a979948a2b4eb6399
+  byte-identical: YES
+  run after restoring: tests 39, pass 39, fail 0, skipped 0
+
+What this does show: the named assertion detects the removal of the protection it is written for.
+What this does not show: that the protection is complete, behaviour against a real database or
+cluster, or that the rule being protected is baselined where the record is silent.

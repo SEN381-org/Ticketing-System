@@ -117,6 +117,14 @@ export class PayloadTooLargeError extends AppError {
   }
 }
 
+/** DEC-015 §4 / DEC-016 — transaction write-conflict retries exhausted. */
+export class WriteConflictError extends AppError {
+  constructor() {
+    super('The request changed while the entry was being written; retry the action',
+      { status: 409, type: 'https://civicconnect.example/problems/write-conflict', code: 'WRITE_CONFLICT' });
+  }
+}
+
 /**
  * DEC-015 §3 — same idempotency key, different request (method, path or body).
  * The problem type is the one DEC-015 §3 names, idempotency-key-reused (DEF-010).

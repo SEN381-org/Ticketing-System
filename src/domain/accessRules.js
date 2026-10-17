@@ -32,6 +32,8 @@ export const OPERATION_RULES = Object.freeze({
   'request:accept':     [ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER],   // FR-5.2
   'request:comment':    [ROLE.TECHNICIAN, ROLE.COORDINATOR, ROLE.MANAGER, ROLE.SECURITY_OFFICER],
   'report:read':        [ROLE.MANAGER, ROLE.COORDINATOR, ROLE.SECURITY_OFFICER],
+  'request:add-detail': [ROLE.REQUESTER],                                   // FR-2.4
+  'notification:list':  Object.values(ROLE),                                // FR-3.4, own notifications only
 });
 
 /** Staff roles, i.e. everything that is not purely a requester. */

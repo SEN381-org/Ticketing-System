@@ -1,0 +1,37 @@
+NV-128  Track T4 (history, work record and notifications)
+
+Test:       AC-FR-6.7: the composed route table has no PUT, PATCH or DELETE on history, comments, actions or details
+File:       src/routes/historyRoutes.js
+Run command: node --test tests/requestHistory.test.js tests/composition.test.js
+Node:       v24.16.0 (project target is Node 22; run on the installed version)
+Started:    2026-10-17T12:30:29.503Z (UTC)
+Finished:   2026-10-17T12:30:31.697Z (UTC)
+
+Expected result (written before the run):
+  The route-table test fails (a DELETE route is listed) and the over-HTTP test fails (the delete route answers 204, not 404).
+
+The break (replacement in the file above):
+  -   return router;
+    }
+    
+    export { readAppendCommand };
+  +   router.delete('/:id/comments/:entryId', requireOperation('request:comment'), (req, res) => res.status(204).end());
+      return router;
+    }
+    
+    export { readAppendCommand };
+
+Run with the break:
+  tests 39, pass 37, fail 2, skipped 0
+  failing: AC-FR-6.7: the composed route table has no PUT, PATCH or DELETE on history, comments, actions or details | AC-FR-6.7: PUT, PATCH and DELETE on a history entry or the history itself are not available (404 over HTTP), the entry unchanged
+  the named test failed: YES
+
+Restored:
+  SHA-256 before the break: dca3044e732b2e3223d2583feac35508540aea1cd3ede7173a3a2cf6b362ccbd
+  SHA-256 after restoring:  dca3044e732b2e3223d2583feac35508540aea1cd3ede7173a3a2cf6b362ccbd
+  byte-identical: YES
+  run after restoring: tests 39, pass 39, fail 0, skipped 0
+
+What this does show: the named assertion detects the removal of the protection it is written for.
+What this does not show: that the protection is complete, behaviour against a real database or
+cluster, or that the rule being protected is baselined where the record is silent.

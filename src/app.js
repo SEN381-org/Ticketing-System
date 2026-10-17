@@ -31,6 +31,8 @@ import { createRequestRouter, API_BASE as REQUESTS_BASE } from './routes/request
 import { createSubmissionRouter, createCategoryRouter, CATEGORIES_BASE } from './routes/submissionRoutes.js';
 import { createRequestListRouter } from './routes/requestListRoutes.js';
 import { createAssignmentRouter } from './routes/assignmentRoutes.js';
+import { createHistoryRouter } from './routes/historyRoutes.js';
+import { createNotificationRouter, NOTIFICATIONS_BASE } from './routes/notificationRoutes.js';
 import { RouteNotFoundError } from './errors.js';
 
 function mount(app, path, router) {
@@ -41,7 +43,8 @@ function mount(app, path, router) {
 export function createApp({
   authService, healthService, statusTransitionService, requestQueryService,
   requestSubmissionService, categoryService, requestListService,
-  assignmentService, recordRefusal, log = console,
+  assignmentService, recordRefusal,
+  requestHistoryService, workRecordService, notificationService, log = console,
 }) {
   const app = express();
   app.locals.mounts = [];
@@ -66,6 +69,8 @@ export function createApp({
   mount(app, REQUESTS_BASE, createSubmissionRouter({ requestSubmissionService }));
   mount(app, CATEGORIES_BASE, createCategoryRouter({ categoryService }));
   mount(app, REQUESTS_BASE, createAssignmentRouter({ assignmentService }));
+  mount(app, REQUESTS_BASE, createHistoryRouter({ requestHistoryService, workRecordService }));
+  mount(app, NOTIFICATIONS_BASE, createNotificationRouter({ notificationService }));
 
   app.use((req, res, next) => next(new RouteNotFoundError()));
   app.use(createErrorHandler({ log }));
