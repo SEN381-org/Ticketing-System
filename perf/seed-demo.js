@@ -31,6 +31,9 @@
  * Usage (on the VM):
  *   sudo node --env-file=/etc/civicconnect/staging.env seed-demo.js \
  *     --app-dir /opt/civicconnect --out /tmp/seed-demo.json
+ * Against the test cluster (for a local look at the screens), from a checkout:
+ *   node --env-file=<test env file> perf/seed-demo.js --target test --app-dir . --out <file>
+ * --target selects which host marker is required (staging is the default); nothing else changes.
  *
  * Exit code: 0 seeded; 2 refused or failed.
  */
@@ -64,6 +67,7 @@ async function main() {
     args = parseArgs({ options: {
       'app-dir': { type: 'string', default: '/opt/civicconnect' },
       out: { type: 'string' },
+      target: { type: 'string', default: 'staging' },
     } }).values;
   } catch (e) {
     refuse(`usage: ${e.message}`);
@@ -74,13 +78,15 @@ async function main() {
   const appDir = path.resolve(args['app-dir']);
   const load = (rel) => import(pathToFileURL(path.join(appDir, rel)).href);
 
-  const { STAGING_CLUSTER_MARKER } = await load('scripts/lib/clusterMarkers.js');
-  if (!STAGING_CLUSTER_MARKER) refuse('the deployed checkout records no staging host marker');
+  const { CLUSTER_MARKERS } = await load('scripts/lib/clusterMarkers.js');
+  if (!['staging', 'test'].includes(args.target)) refuse('--target must be staging or test');
+  const MARKER = CLUSTER_MARKERS?.[args.target];
+  if (!MARKER) refuse(`the checkout records no ${args.target} host marker`);
   const uri = process.env.MONGODB_URI;
-  if (!uri) refuse('MONGODB_URI is not set (run with --env-file=/etc/civicconnect/staging.env)');
+  if (!uri) refuse('MONGODB_URI is not set (run with --env-file=<environment file>)');
   let parsed;
   try { parsed = new URL(uri); } catch { refuse('MONGODB_URI could not be parsed'); }
-  if (!parsed.hostname.includes(STAGING_CLUSTER_MARKER)) refuse('the host in MONGODB_URI is not the staging cluster; refusing');
+  if (!parsed.hostname.includes(MARKER)) refuse(`the host in MONGODB_URI is not the ${args.target} cluster; refusing`);
   if (decodeURIComponent(parsed.pathname.replace(/^\//, '')) !== 'civicconnect') refuse('MONGODB_URI does not name the civicconnect database; refusing');
 
   const { default: mongoose } = await import(pathToFileURL(path.join(appDir, 'node_modules', 'mongoose', 'index.js')).href);
@@ -96,9 +102,9 @@ async function main() {
 
   const startedAt = new Date();
   const run = randomBytes(4).toString('hex');
-  console.log('M4 demonstration seed (staging)');
+  console.log(`M4 demonstration seed (${args.target})`);
   console.log(`Started (UTC)   : ${startedAt.toISOString()}`);
-  console.log(`Host check      : passed (host contains "${STAGING_CLUSTER_MARKER}"; host not printed)`);
+  console.log(`Host check      : passed (host contains "${MARKER}"; host not printed)`);
   console.log(`Database user   : ${databaseUserOf(uri)}`);
   console.log(`Node            : ${process.version}`);
   console.log(`Run id          : ${run}`);
