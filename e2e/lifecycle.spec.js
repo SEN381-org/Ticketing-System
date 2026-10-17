@@ -212,6 +212,9 @@ test('E2E-4: lifecycle across roles (AC-FR-5.1, AC-FR-5.4, AC-FR-6.5, AC-FR-6.6,
       const { history } = await snapshot(requestId);
       const changes = history.filter((e) => e.changeType === 'status');
       const items = req.page.getByRole('list', { name: 'Changes' }).getByRole('listitem');
+      // The history loads after the request, so the titles are read only once the Closed
+      // entry is on screen (allTextContents does not wait).
+      await expect(items.filter({ has: req.page.locator('.timeline__title', { hasText: new RegExp(`^${STATUS.CLOSED}$`) }) })).toHaveCount(1);
       const titles = await items.locator('.timeline__title').allTextContents();
       if (!titles.includes(STATUS.ASSIGNED)) {
         test.info().annotations.push({

@@ -108,6 +108,9 @@ test('E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page', asyn
         page.getByRole('button', { name: 'Post comment' }).click(),
       ]);
       expect(c.status()).toBe(201);
+      // The page reloads its history after a post, and the new entry pushes the Notes panel
+      // down: wait for it before the next click, or the click can land where the button was.
+      await expect(page.getByRole('list', { name: 'Changes' }).getByRole('listitem').filter({ hasText: comment })).toHaveCount(1);
       await page.getByLabel('Record an action').fill(action);
       const [a] = await Promise.all([
         page.waitForResponse(isPost(`/api/v1/requests/${requestId}/actions`)),

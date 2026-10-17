@@ -248,6 +248,8 @@ test('E2E-13: 360 px, measured after each Requester and Technician interaction (
       ]);
       expect(moved.status()).toBe(201);
       await expect(page.getByTestId('status')).toHaveText(STATUS.RESOLVED);
+      // The history reloads after the move and pushes the Notes panel down: wait for the entry.
+      await expect(page.getByRole('list', { name: 'Changes' }).locator('.timeline__title', { hasText: new RegExp(`^${STATUS.RESOLVED}$`) })).toHaveCount(1);
       await checkAfter(page, 'T5 Technician: transition submitted', problems);
 
       await page.getByLabel('Add a comment').fill(`E2E ${campus.runId} checked twice`);
