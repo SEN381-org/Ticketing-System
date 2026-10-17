@@ -25,7 +25,9 @@
  *   after it resolves: record a refusal, or publish the status change
  *
  * Received -> Assigned is made here and nowhere else (requestStatus.js, N-1). A
- * request already past Assigned keeps its status when it is reassigned.
+ * request already past Assigned keeps its status when it is reassigned. Assignment is
+ * permitted only in Received, Assigned, In Progress and On Hold (OI-15, 17/10/2026).
+ *
  *
  * A refusal is recorded OUTSIDE the unit of work. `withTransaction` can re-run
  * its callback, and the audit write is not part of the transaction, so recording
@@ -34,8 +36,9 @@
  */
 
 import { mayActOnRequest, mayBeAssigned, mayPerformOperation, primaryRole } from '../domain/accessRules.js';
+import { assignmentRefusal } from '../domain/permittedAssignment.js';
 import { EVENTS, publish } from '../events/requestEvents.js';
-import { STATUS, TERMINAL_STATUSES } from '../models/_shared.js';
+import { STATUS } from '../models/_shared.js';
 import {
   AssignmentRefusedError, AuthorisationError, IdempotencyConflictError,
   NotFoundError, PreconditionFailedError,
@@ -94,18 +97,12 @@ export function createAssignmentService({
 
         const owner = request.assigneeId ?? null;
 
-        if (TERMINAL_STATUSES.includes(request.status)) {
-          throw new AssignmentRefusedError(`A request that is ${request.status} cannot be assigned`);
-        }
-        // FR-5.3 - the owner stays the owner; an accept never replaces one.
-        if (accepting && owner !== null) {
-          throw new AssignmentRefusedError('This request already has an owner');
-        }
+        // OI-15 (17/10/2026): the status and ownership rule, stated once in
+        // permittedAssignment.js and advertised to the client from the same function.
+        const refusal = assignmentRefusal(request, accepting);
+        if (refusal) throw new AssignmentRefusedError(refusal);
         if (owner !== null && String(owner) === String(assigneeId)) {
           throw new AssignmentRefusedError('The named user already owns this request');
-        }
-        if (owner === null && request.status !== STATUS.RECEIVED) {
-          throw new AssignmentRefusedError(`An unassigned request in status ${request.status} cannot be assigned`);
         }
 
         // FR-5.1 / FR-5.5: the new owner is a Technician or Security Officer the request may be given to.

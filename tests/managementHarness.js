@@ -15,6 +15,7 @@ import { createHealthService } from '../src/services/healthService.js';
 import { createReportService } from '../src/services/reportService.js';
 import { createUserAdminService } from '../src/services/userAdminService.js';
 import { createCategoryAdminService } from '../src/services/categoryAdminService.js';
+import { createCategoryService } from '../src/services/categoryService.js';
 import { validateRoles } from '../src/repositories/userAdminRepository.js';
 import { ConflictError } from '../src/errors.js';
 import { ROLE } from '../src/models/_shared.js';
@@ -130,6 +131,7 @@ export function harness({
   };
 
   const categoriesRepo = {
+    listActive: async () => [...store.categories.values()].filter((c) => c.active).map((c) => ({ ...c })),
     listAll: async () => [...store.categories.values()].map((c) => ({ ...c })),
     findById: async (id) => (store.categories.has(id) ? { ...store.categories.get(id) } : null),
     setTarget: async (id, campusId, hours) => {
@@ -147,8 +149,8 @@ export function harness({
 
   const campusScoped = (u) => u && u.campusId === CAMPUS;
   const usersRepo = {
-    list: async ({ role, categoryId }) => [...users.values()].filter((u) =>
-      u.status === 'active' && (!role || u.roles.includes(role))
+    list: async ({ role, categoryId, includeRevoked = false }) => [...users.values()].filter((u) =>
+      (includeRevoked || u.status === 'active') && (!role || u.roles.includes(role))
       && (!categoryId || u.categoryAuthorisations.includes(categoryId))),
     findById: async (id) => (campusScoped(users.get(id)) ? { ...users.get(id) } : null),
     findByEmail: async (email) => [...users.values()].find((u) => u.email === email.toLowerCase()) ?? null,
@@ -182,6 +184,7 @@ export function harness({
     }),
     userAdminService: createUserAdminService({ users: usersRepo, passwords: adminPasswords ?? passwords, validateRoles }),
     categoryAdminService: createCategoryAdminService({ categories: categoriesRepo }),
+    categoryService: createCategoryService({ categories: categoriesRepo }),
     log,
   });
   return { app, store, calls, sessions };

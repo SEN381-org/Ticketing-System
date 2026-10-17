@@ -37,7 +37,8 @@ const baseRequest = {
 const SENTINELS = ['DESC-SENTINEL', 'RES-SENTINEL', 'CLOSE-SENTINEL'];   // the FR-1.5 fields' values
 
 // Allow-lists: the exact key set each kind of viewer receives (AC-FR-4.2, FR-1.5).
-const COMMON     = ['assigneeId', 'categoryId', 'id', 'location', 'permittedTransitions',
+// permittedAssignment added by the decision of 17/10/2026 (OI-15, S6): assign/accept for this actor.
+const COMMON     = ['assigneeId', 'categoryId', 'id', 'location', 'permittedAssignment', 'permittedTransitions',
                     'reference', 'status', 'submittedAt', 'version'];
 const RESTRICTED = ['closureReason', 'description', 'resolution'];   // FR-1.5
 const PEOPLE     = ['requesterId', 'submittedById'];                 // staff only
@@ -153,6 +154,27 @@ test('permittedTransitionsFor: worked cases from FR-6.5 and FR-6.6, and a Reques
   ]));
   assert.deepEqual(permittedTransitionsFor(inProgress, actorOf([ROLE.REQUESTER], [], 'u2')), []);
   assert.deepEqual(permittedTransitionsFor({ ...baseRequest, status: STATUS.CLOSED }, actorOf([ROLE.MANAGER])), []);
+});
+
+// ---------- permittedAssignment (S6, OI-15) ----------
+
+// Basis: the OI-15 team decision of 17/10/2026 and TD-003. Technique: service level, one
+// request per case. Expected, derived from the decision: a Coordinator on an owned Assigned
+// request may assign (reassign) and not accept; on a Received unassigned request the same;
+// a Technician on a Received unassigned non-security request may accept and not assign; on
+// a Resolved request nobody may; a Requester never. Shows: the flag reaches the detail view.
+// Does NOT show: every combination (tests/permittedAssignment.test.js sweeps those).
+test('service: the read carries permittedAssignment for this actor - FR-5.1, FR-5.2, FR-5.5, OI-15', async () => {
+  const received = { ...baseRequest, status: STATUS.RECEIVED, assigneeId: null };
+  const read = (doc, actor) => serviceFor(doc).getRequest('r1', actor).then((v) => v.permittedAssignment);
+  assert.deepEqual(await read(baseRequest, actorOf([ROLE.COORDINATOR])), { assign: true, accept: false });
+  assert.deepEqual(await read(received, actorOf([ROLE.COORDINATOR])), { assign: true, accept: false });
+  assert.deepEqual(await read(received, actorOf([ROLE.TECHNICIAN])), { assign: false, accept: true });
+  assert.deepEqual(await read({ ...baseRequest, status: STATUS.RESOLVED }, actorOf([ROLE.COORDINATOR])),
+    { assign: false, accept: false });
+  assert.deepEqual(await read(received, actorOf([ROLE.REQUESTER], [], 'u2')), { assign: false, accept: false });
+  assert.deepEqual(await read({ ...received, securityCategory: true }, actorOf([ROLE.REQUESTER], [], 'u2')),
+    { assign: false, accept: false });
 });
 
 test('service: missing request is NotFoundError — DEC-015 §4', async () => {
@@ -316,6 +338,7 @@ test('GET 200 for a Coordinator: ETag "v<version>" and exactly the staff allow-l
     assert.equal(body.status, STATUS.ASSIGNED);
     assert.equal(body.version, 3);
     assert.equal(body.description, 'DESC-SENTINEL');
+    assert.deepEqual(body.permittedAssignment, { assign: true, accept: false }, 'OI-15: reassign is open in Assigned');
     assert.deepEqual(body.permittedTransitions.map((t) => t.toStatus).sort(),
       [STATUS.IN_PROGRESS, STATUS.ON_HOLD, STATUS.REJECTED].sort());
   });

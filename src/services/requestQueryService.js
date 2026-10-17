@@ -9,7 +9,8 @@
  * Who may read at all is unchanged (mayViewRequest). What a permitted viewer
  * receives is additive (DEC-015 §6):
  *   always        id, reference, status, version, categoryId, submittedAt,
- *                 assigneeId, location, permittedTransitions
+ *                 assigneeId, location, permittedTransitions, permittedAssignment
+ *                 (assign/accept for this actor, OI-15)
  *   FR-1.5        description, resolution, closureReason: on a security-category
  *                 request only a Security Officer (a requester on their own
  *                 security request does not, OI-16 open); otherwise every viewer
@@ -23,6 +24,7 @@ import {
   mayViewRequest, mayViewRestrictedDetail, mayViewPeople, visibleStatusFor, STAFF_ROLES,
 } from '../domain/accessRules.js';
 import { permittedTransitionsFor } from '../domain/permittedTransitions.js';
+import { permittedAssignmentFor } from '../domain/permittedAssignment.js';
 import { AuthorisationError, NotFoundError } from '../errors.js';
 import { ROLE } from '../models/_shared.js';
 
@@ -54,6 +56,7 @@ export function createRequestQueryService({ requests }) {
       assigneeId:  request.assigneeId == null ? null : String(request.assigneeId),
       location:    request.location ?? null,
       permittedTransitions: permittedTransitionsFor(request, actor),
+      permittedAssignment:  permittedAssignmentFor(request, actor),
     };
 
     // FR-1.5: withheld, not blanked, so the key is absent for a viewer who may not see it.
