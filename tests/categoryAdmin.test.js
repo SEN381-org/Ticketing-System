@@ -86,7 +86,7 @@ test('A8 / AC-FR-9.1: an Administrator deactivates an active category — 201, a
   await serve(app, async (base) => {
     const res = await send(base, 'POST', DEACT(), { cookie: await login(base, 'admin@example.test') });
     assert.equal(res.status, 201);
-    assert.deepEqual(await res.json(), { id: CAT.lights, active: false, replayed: false });
+    assert.deepEqual(await res.json(), { id: CAT.lights, active: false });
     assert.equal(store.categories.get(CAT.lights).active, false);
     const selectable = [...store.categories.values()].filter((c) => c.active).map((c) => c._id);
     assert.ok(!selectable.includes(CAT.lights), 'not selectable');
@@ -94,17 +94,22 @@ test('A8 / AC-FR-9.1: an Administrator deactivates an active category — 201, a
   });
 });
 
-test('A8: a repeated deactivation replays (200) and changes nothing — idempotent', async () => {
+test('A8 / DEC-015 §3: a repeated deactivation returns the original 201 and body with Idempotent-Replayed and changes nothing — idempotent', async () => {
   const { app, store } = harness();
   await serve(app, async (base) => {
     const cookie = await login(base, 'admin@example.test');
-    assert.equal((await send(base, 'POST', DEACT(), { cookie })).status, 201);
+    const first = await send(base, 'POST', DEACT(), { cookie });
+    assert.equal(first.status, 201);
+    assert.equal(first.headers.get('idempotent-replayed'), null);
     const again = await send(base, 'POST', DEACT(), { cookie });
-    assert.equal(again.status, 200);
-    assert.deepEqual(await again.json(), { id: CAT.lights, active: false, replayed: true });
+    assert.equal(again.status, 201);
+    assert.equal(again.headers.get('idempotent-replayed'), 'true');
+    assert.deepEqual(await again.json(), { id: CAT.lights, active: false });
     assert.equal(store.categories.get(CAT.lights).active, false);
     // An already-inactive seed category replays too.
-    assert.equal((await send(base, 'POST', DEACT(CAT.old), { cookie })).status, 200);
+    const old = await send(base, 'POST', DEACT(CAT.old), { cookie });
+    assert.equal(old.status, 201);
+    assert.equal(old.headers.get('idempotent-replayed'), 'true');
   });
 });
 
@@ -137,7 +142,7 @@ test('A8: category:administer is 403 for every role except Administrator, and th
 test('service layer refuses a wrong role without reaching the repository — DEC-012 point 2', async () => {
   let touched = false;
   const repo = new Proxy({}, { get: () => async () => { touched = true; return null; } });
-  const service = createCategoryAdminService({ categories: repo, users: repo });
+  const service = createCategoryAdminService({ categories: repo });
   const requester = { id: USER.req, roles: [ROLE.REQUESTER], campusId: CAMPUS };
   await assert.rejects(service.setTarget(CAT.roads, { targetResolutionHours: 5 }, requester), AuthorisationError);
   await assert.rejects(service.deactivate(CAT.roads, requester), AuthorisationError);
@@ -146,7 +151,7 @@ test('service layer refuses a wrong role without reaching the repository — DEC
 
 test('service: a missing category is NotFoundError and a bad target is ValidationError', async () => {
   const repo = { setTarget: async () => false, findById: async () => null };
-  const service = createCategoryAdminService({ categories: repo, users: {} });
+  const service = createCategoryAdminService({ categories: repo });
   const manager = { id: USER.mgr, roles: [ROLE.MANAGER], campusId: CAMPUS };
   await assert.rejects(service.setTarget(CAT.roads, { targetResolutionHours: 5 }, manager), NotFoundError);
   await assert.rejects(service.setTarget(CAT.roads, { targetResolutionHours: 0.5 }, manager), ValidationError);

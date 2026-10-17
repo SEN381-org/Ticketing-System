@@ -231,15 +231,18 @@ test('DEC-015 §3: a missing Idempotency-Key is 400; a missing If-Match is 428; 
   });
 });
 
-test('DEC-015 §3: replaying the same key and body returns 200 and writes one history entry only', async () => {
+test('DEC-015 §3: replaying the same key and body returns the original 201 and body, with Idempotent-Replayed, and writes one history entry only', async () => {
   const { app, historyRows } = harness();
   await serve(app, async (base) => {
     const cookie = await login(base, 'coord');
     const args = { assigneeId: String(USERS.tech1._id), key: 'same-key' };
-    assert.equal((await post(base, cookie, args)).status, 201);
+    const first = await post(base, cookie, args);
+    assert.equal(first.status, 201);
+    assert.equal(first.headers.get('idempotent-replayed'), null);
     const again = await post(base, cookie, args);
-    assert.equal(again.status, 200);
-    assert.equal((await again.json()).replayed, true);
+    assert.equal(again.status, 201);
+    assert.equal(again.headers.get('idempotent-replayed'), 'true');
+    assert.deepEqual(await again.json(), await first.json());
     assert.equal(historyRows.length, 1);
   });
 });

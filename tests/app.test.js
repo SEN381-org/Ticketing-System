@@ -211,7 +211,7 @@ test('with a session the transition reaches the service with the session actor â
   });
   assert.equal(h.transitions.length, 1);
   assert.deepEqual(h.transitions[0].actor,
-    { id: 'u1', roles: [ROLE.COORDINATOR], categoryAuthorisations: ['cat1'], groupIds: [] });
+    { id: 'u1', roles: [ROLE.COORDINATOR], categoryAuthorisations: ['cat1'], groupIds: [], campusId: 'c1' });
 });
 
 test('an identity header is refused with 403 even with a valid session â€” R-06, CON-019', async () => {

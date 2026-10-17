@@ -155,10 +155,11 @@ test('if the success event cannot be recorded, no session is created — NFR-1.4
 
 // ---------- resolve ----------
 
-test('a valid session resolves to the DEC-018 actor shape, read from the user', async () => {
+test('a valid session resolves to the DEC-018 actor shape, read from the user, with the user campusId (DEC-018 §4)', async () => {
   const { auth, token } = await loggedIn();
   assert.deepEqual(await auth.resolve(token), {
     id: 'u1', roles: [ROLE.TECHNICIAN], categoryAuthorisations: ['cat1'], groupIds: ['g1'],
+    campusId: 'c1',
   });
 });
 

@@ -29,8 +29,10 @@ export const TB = oid(0x2002);
 
 const day = (d, h = 9) => new Date(Date.UTC(2026, 0, d, h));
 
+export const CAMPUS = 'c1';
+
 const doc = (n, over) => ({
-  _id: oid(0x3000 + n), reference: `CC-2026-${String(n).padStart(6, '0')}`,
+  campusId: CAMPUS, _id: oid(0x3000 + n), reference: `CC-2026-${String(n).padStart(6, '0')}`,
   categoryId: CAT1, securityCategory: false, status: STATUS.RECEIVED,
   requesterId: R1, assigneeId: null, location: `Block ${n}`,
   description: `private detail ${n}`, submittedAt: day(n),
@@ -51,7 +53,8 @@ export const REQUESTS = Object.freeze([
   doc(10, { submittedAt: day(8) }),             // same instant as #8: exercises the _id tie-break
 ]);
 
-export const actor = (id, roles, categoryAuthorisations = []) => ({ id, roles, categoryAuthorisations });
+export const actor = (id, roles, categoryAuthorisations = [], campusId = CAMPUS) =>
+  ({ id, roles, categoryAuthorisations, campusId });
 
 /** Every FR-1.2 role, and the combinations that decide the branches of mayViewRequest. */
 export const ACTORS = Object.freeze({

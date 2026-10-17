@@ -11,16 +11,18 @@
  *               `total`, which is the number of requests inside the filter.
  *   byCategory  a count for every category, deactivated ones included (FR-9.2).
  *   overdue     FR-8.3: an open request whose elapsed time since submission
- *               exceeds its category's targetResolutionHours.
+ *               exceeds its category's current targetResolutionHours (AC-FR-8.4).
  *
  * FR-8.6: security-category requests are counted like any other. The repository
  * returns identifiers, a reference, a category, a status and a time only, so no
  * description, comment or action can appear in the result.
  *
- * "Open" is not defined in the project record. This reading treats a request as
- * open until it reaches a terminal status (Closed, Rejected: TERMINAL_STATUSES),
- * so Resolved and On Hold count as open. It is one constant and is raised as a
- * question for the project lead.
+ * "Open" is not defined in the project record. FR-8.3 compares elapsed open time
+ * with the target RESOLUTION time of the category, so a request stops being open
+ * when it is Resolved (project lead's decision): Resolved, Closed and Rejected are
+ * not open; Received, Assigned, In Progress and On Hold are. It is one constant.
+ * The target used is the category's current value, measured from submittedAt; RTM
+ * v0.10 designed a dueAt fixed at submission, and the build differs.
  */
 
 import { mayPerformOperation } from '../domain/accessRules.js';
@@ -33,8 +35,8 @@ const QUERY_FIELDS = Object.freeze(['from', 'to', 'categoryId']);
 const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
-/** FR-8.3 — the statuses in which a request is no longer open. */
-export const CLOSED_FOR_OVERDUE = TERMINAL_STATUSES;
+/** FR-8.3 — the statuses in which a request is no longer open: resolution ends the clock. */
+export const CLOSED_FOR_OVERDUE = Object.freeze([STATUS.RESOLVED, ...TERMINAL_STATUSES]);
 
 /**
  * FR-8.5. A date-only `to` includes that whole day (UTC); a full timestamp is exact.
@@ -71,14 +73,14 @@ function parseQuery(query = {}) {
   return filter;
 }
 
-export function createReportService({ reports, categories, users, clock = () => new Date() }) {
+export function createReportService({ reports, categories, clock = () => new Date() }) {
   /**
    * @param {object} query  { from?, to?, categoryId? } as received
    * @param {object} actor
    */
   async function summary(query, actor) {
     if (!mayPerformOperation('report:read', actor)) throw new AuthorisationError();   // DEC-012 point 2
-    const filter = { ...parseQuery(query), campusId: await campusOf(actor, users) };
+    const filter = { ...parseQuery(query), campusId: campusOf(actor) };
 
     const [rows, open, allCategories] = await Promise.all([
       reports.countByStatusAndCategory(filter),

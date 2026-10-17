@@ -54,14 +54,12 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
       users: userRepository, sessions: sessionRepository,
       audit: auditRepository, passwords: passwordHasher,
     }),
-    categoryAdminService: createCategoryAdminService({
-      categories: categoryRepository, users: userAdminRepository,
-    }),
+    categoryAdminService: createCategoryAdminService({ categories: categoryRepository }),
     healthService: createHealthService({ pingDatabase, release }),
     requestListService: createRequestListService({ lists: requestListRepository }),
     requestQueryService: createRequestQueryService({ requests: requestRepository }),
     reportService: createReportService({
-      reports: reportRepository, categories: categoryRepository, users: userAdminRepository,
+      reports: reportRepository, categories: categoryRepository,
     }),
     statusTransitionService: createStatusTransitionService({
       requests: requestRepository, history: historyRepository, unitOfWork: createUnitOfWork(),
@@ -75,9 +73,9 @@ export function composeApplication({ log = console, release = 'unknown' } = {}) 
   const submission = {
     requestSubmissionService: createRequestSubmissionService({
       requests: requestRepository, history: historyRepository, categories: categoryRepository,
-      counters: counterRepository, users: userRepository, unitOfWork: createUnitOfWork(),
+      counters: counterRepository, unitOfWork: createUnitOfWork(),
     }),
-    categoryService: createCategoryService({ categories: categoryRepository, users: userRepository }),
+    categoryService: createCategoryService({ categories: categoryRepository }),
   };
   const { recordRefusal } = createAccessAuditService({ audit: auditRepository, log });
   const assignmentService = createAssignmentService({

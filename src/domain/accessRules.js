@@ -87,6 +87,18 @@ export function mayActOnRequest(request, actor) {
 }
 
 /**
+ * FR-5.1, FR-5.5: who can be named as owner. Only the roles that do the work -
+ * Technician and Security Officer. A Coordinator or Manager assigns; neither can
+ * be the owner, whatever categories they are authorised for. A security-category
+ * request still needs a Security Officer, through mayActOnRequest.
+ */
+export const ASSIGNABLE_ROLES = Object.freeze([ROLE.TECHNICIAN, ROLE.SECURITY_OFFICER]);
+
+export function mayBeAssigned(request, user) {
+  return held(user).some((r) => ASSIGNABLE_ROLES.includes(r)) && mayActOnRequest(request, user);
+}
+
+/**
  * Enforcement point 2, read path — FR-3.6 (a requester sees only their own) and
  * FR-4.1 (staff see what their category authorisation permits).
  */

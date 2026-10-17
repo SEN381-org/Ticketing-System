@@ -32,9 +32,6 @@ export function buildRevocationUpdate(revokedAt) {
 const isDuplicateKey = (error) => error?.code === DUPLICATE_KEY;
 
 export const userAdminRepository = {
-  findCampusId: async (actorId) =>
-    (await User.findById(actorId).select('campusId').lean())?.campusId ?? null,
-
   /** FR-5.1, FR-1.4: active accounts only. `categoryId` filters on FR-4.6 authorisations. */
   list: ({ campusId, role, categoryId }) => {
     const query = { campusId, status: 'active' };

@@ -34,9 +34,10 @@ const T2 = { id: 'tech-2', roles: [ROLE.TECHNICIAN], categoryAuthorisations: [CA
 const T_OTHER = { id: 'tech-x', roles: [ROLE.TECHNICIAN], categoryAuthorisations: ['cat-2'] };
 const COORD = { id: 'coord-1', roles: [ROLE.COORDINATOR], categoryAuthorisations: [CAT] };
 const SO = { id: 'so-1', roles: [ROLE.SECURITY_OFFICER], categoryAuthorisations: [CAT] };
+const MGR = { id: 'mgr-1', roles: [ROLE.MANAGER], categoryAuthorisations: [CAT] };
 const REQUESTER = { id: 'req-1', roles: [ROLE.REQUESTER], categoryAuthorisations: [] };
 
-const userRecords = new Map([T1, T2, T_OTHER, COORD, SO, REQUESTER].map((u) => [u.id, { ...u, _id: u.id, status: 'active' }]));
+const userRecords = new Map([T1, T2, T_OTHER, COORD, MGR, SO, REQUESTER].map((u) => [u.id, { ...u, _id: u.id, status: 'active' }]));
 
 function harness({ doc = {}, failAppend = false, prior = null, recordRefusal } = {}) {
   const store = {
@@ -125,6 +126,25 @@ test('AC-FR-5.1: a requester-only user cannot be named as owner (FR-5.1 "staff u
   const { service, store, command } = harness();
   await assert.rejects(service.assign('r1', REQUESTER.id, COORD, command()), AssignmentRefusedError);
   assert.equal(store.doc.assigneeId, null);
+});
+
+// Basis: FR-5.1 and FR-5.5 (D10): the assignable pool is Technician and Security Officer only.
+// Expected: naming a Coordinator or a Manager - authorised for the category, active, same
+// campus - as owner (first assignment or reassignment) is refused 422 ASSIGNMENT_REFUSED, and
+// nothing is written: the owner, version and status are unchanged, no history entry is appended.
+test('FR-5.1, FR-5.5: a Coordinator or a Manager cannot be named as owner, on assign or reassign; nothing is written', async () => {
+  for (const named of [COORD, MGR]) {
+    for (const doc of [{}, { assigneeId: T1.id, status: STATUS.ASSIGNED, version: 2 }]) {
+      const h = harness({ doc });
+      const before = { ...h.store.doc };
+      const actor = named === COORD ? MGR : COORD;
+      await assert.rejects(h.service.assign('r1', named.id, actor, h.command()), AssignmentRefusedError,
+        `${named.roles[0]} named on ${doc.assigneeId ? 'reassign' : 'assign'}`);
+      assert.deepEqual(h.store.doc, before, 'the request is unchanged');
+      assert.equal(h.state.writes.length, 0, 'no owner update');
+      assert.equal(h.state.appended.length, 0, 'no history entry');
+    }
+  }
 });
 
 test('AC-FR-5.1, FR-1.5: on a security-category request only a Security Officer can be named', async () => {

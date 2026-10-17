@@ -28,7 +28,8 @@
  */
 
 import { primaryRole } from '../domain/accessRules.js';
-import { AppError, AuthorisationError, IdempotencyConflictError, ValidationError } from '../errors.js';
+import { AppError, IdempotencyConflictError, ValidationError } from '../errors.js';
+import { campusOf } from './campusOf.js';
 import { STATUS } from '../models/_shared.js';
 
 /** FR-2.2 — exactly these three are mandatory, and nothing else is accepted. */
@@ -82,7 +83,7 @@ export function submissionResult({ id, reference, status, version, submittedAt }
 }
 
 export function createRequestSubmissionService({
-  requests, history, categories, counters, users, unitOfWork, clock = () => new Date(),
+  requests, history, categories, counters, unitOfWork, clock = () => new Date(),
 }) {
   /**
    * @param {{id: string, roles: string[]}} actor
@@ -109,10 +110,7 @@ export function createRequestSubmissionService({
       };
     }
 
-    // The session carries no campus, so it is read from the user (SCP-019).
-    const user = await users.findById(actor.id);
-    if (!user) throw new AuthorisationError('Actor may not submit a request');
-    const campusId = user.campusId;
+    const campusId = campusOf(actor);                    // from the session actor (SCP-019)
 
     let result;
     await unitOfWork.run(async (session) => {
@@ -121,7 +119,7 @@ export function createRequestSubmissionService({
 
       const submittedAt = clock();
       const year = submittedAt.getUTCFullYear();
-      const seq = await counters.next(campusId, year, { session });
+      const seq = await counters.next(year, { session });
       const reference = `CC-${year}-${String(seq).padStart(6, '0')}`;
       const role = primaryRole(actor);
 

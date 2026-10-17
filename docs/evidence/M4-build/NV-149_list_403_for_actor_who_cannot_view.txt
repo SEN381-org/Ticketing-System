@@ -1,0 +1,34 @@
+Negative verification NV-149 - List and search no longer refuse an actor who can view nothing
+Integration decisions D11; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-17 13:54 UTC (sabotage) / 2026-10-17 13:54 UTC (restore check)
+Node   : v24.16.0
+
+CLAIM
+  GET /api/v1/requests and POST /api/v1/requests/search return 403 FORBIDDEN with no data for an Administrator-only actor or an actor with no role (FR-3.1, FR-4.1).
+
+EXPECTED (written before the run; the tests that protect the claim must fail):
+  - D11 test: an Administrator-only actor gets 403 FORBIDDEN and no data from the list and the search
+  - the list for every actor equals the fixtures filtered by mayViewRequest (administrator and noRole are refused)
+
+1. The protected behaviour was broken in src/services/requestListService.js:
+     src/services/requestListService.js
+     - if (scope.kind === 'none') throw new AuthorisationError('Actor may not view requests');
+     + 
+
+2. Result of the full suite (node --test) with the sabotage applied:
+     tests 412  pass 402  fail 2
+     not ok - the list for every actor equals the fixtures filtered by mayViewRequest — AC-FR-4.1, FR-3.6, FR-1.5, DEC-012
+     not ok - an Administrator-only actor gets 403 FORBIDDEN and no data from the list and the search (and an actor with no role from the list service); a Requester and staff keep their scoped list — D11, FR-3.1, FR-4.1
+   Outcome: CAUGHT - the suite failed with the protection broken
+
+3. Each file was restored by writing back its original bytes.
+   src/services/requestListService.js
+     SHA-256 before : 555224e39da47a6a3c89a3e54e7fb7d161559e965179902083185c99729a52be
+     SHA-256 after  : 555224e39da47a6a3c89a3e54e7fb7d161559e965179902083185c99729a52be
+   Identical.
+   Suite re-run after restore: tests 412  pass 404  fail 0
+
+INTERPRETATION
+  The assertions listed under EXPECTED detect the condition they protect: with it broken the suite fails, with it restored it passes.
+  What this does NOT show: behaviour against a real cluster, or that no other path reaches the same state; the fakes are the repository's own contract, not Atlas.

@@ -16,7 +16,7 @@ import { campusOf } from './campusOf.js';
 const notFound = (id) =>
   Object.assign(new NotFoundError(id), { message: `Category '${id}' does not exist` });
 
-export function createCategoryAdminService({ categories, users }) {
+export function createCategoryAdminService({ categories }) {
   /** FR-8.4 — stores the value the overdue calculation reads (AC-FR-8.4). */
   async function setTarget(categoryId, body, actor) {
     if (!mayPerformOperation('category:set-target', actor)) throw new AuthorisationError();
@@ -30,7 +30,7 @@ export function createCategoryAdminService({ categories, users }) {
       throw new ValidationError('targetResolutionHours must be a number of at least 1');
     }
 
-    const campusId = await campusOf(actor, users);
+    const campusId = campusOf(actor);
     if (!(await categories.setTarget(categoryId, campusId, hours))) throw notFound(categoryId);
     return { id: String(categoryId), targetResolutionHours: hours };
   }
@@ -38,7 +38,7 @@ export function createCategoryAdminService({ categories, users }) {
   /** FR-9.1 — @returns {{id: string, active: false, replayed: boolean}} */
   async function deactivate(categoryId, actor) {
     if (!mayPerformOperation('category:administer', actor)) throw new AuthorisationError();
-    const campusId = await campusOf(actor, users);
+    const campusId = campusOf(actor);
     const category = await categories.findById(categoryId, campusId);
     if (!category) throw notFound(categoryId);
 

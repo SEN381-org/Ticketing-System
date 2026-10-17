@@ -257,7 +257,8 @@ test('A5: revocation sets status and revokedAt and advances the session epoch �
     assert.equal(res.status, 201);
     const body = await res.json();
     assert.equal(body.status, 'revoked');
-    assert.equal(body.replayed, false);
+    assert.equal(body.replayed, undefined);
+    assert.equal(res.headers.get('idempotent-replayed'), null);
     const u = store.users.get(USER.tech);
     assert.equal(u.status, 'revoked');
     assert.ok(u.revokedAt instanceof Date);
@@ -304,16 +305,19 @@ test('A5: the revocation update sets status, revokedAt and increments sessionEpo
   });
 });
 
-test('A5: a repeated revocation replays (200), and the epoch advances once only — idempotent', async () => {
+test('A5 / DEC-015 §3: a repeated revocation returns the original 201 and body with Idempotent-Replayed, and the epoch advances once only — idempotent', async () => {
   const { app, store } = harness();
   await serve(app, async (base) => {
     const cookie = await login(base, 'admin@example.test');
-    assert.equal((await send(base, 'POST', `/users/${USER.tech}/revocation`, { cookie })).status, 201);
+    const original = await send(base, 'POST', `/users/${USER.tech}/revocation`, { cookie });
+    assert.equal(original.status, 201);
+    const originalBody = await original.json();
     const first = { ...store.users.get(USER.tech) };
     const again = await send(base, 'POST', `/users/${USER.tech}/revocation`, { cookie });
-    assert.equal(again.status, 200);
+    assert.equal(again.status, 201);
+    assert.equal(again.headers.get('idempotent-replayed'), 'true');
     const body = await again.json();
-    assert.equal(body.replayed, true);
+    assert.deepEqual(body, originalBody);
     assert.equal(body.status, 'revoked');
     assert.equal(store.users.get(USER.tech).sessionEpoch, 1);
     assert.deepEqual(store.users.get(USER.tech).revokedAt, first.revokedAt);

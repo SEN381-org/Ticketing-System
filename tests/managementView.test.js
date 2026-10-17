@@ -99,6 +99,23 @@ test('AC-FR-8.3: the request open longer than T is overdue and the one open less
   });
 });
 
+test('AC-FR-8.3: a Resolved request past its target is NOT overdue; an On Hold one past its target IS (open ends at Resolved)', async () => {
+  // Both on ROADS (T=48), 100h old, so each is past the target; only the status differs.
+  const extra = [
+    { categoryId: CAT.roads, status: STATUS.RESOLVED, hoursAgo: 100 },
+    { categoryId: CAT.roads, status: STATUS.ON_HOLD, hoursAgo: 100 },
+  ].map((spec, i) => makeRequest(spec, 100 + i));
+  const { app } = harness({ requests: [...SEED, ...extra].map((r) => ({ ...r })) });
+  await serve(app, async (base) => {
+    const body = await (await getJson(base, SUMMARY, await login(base, 'mgr@example.test'))).json();
+    const refs = body.overdue.requests.map((r) => r.reference);
+    assert.ok(!refs.includes(extra[0].reference), 'Resolved 100h > 48h is not overdue');
+    assert.ok(refs.includes(extra[1].reference), 'On Hold 100h > 48h is overdue');
+    assert.ok(body.overdue.requests.every((r) => ![STATUS.RESOLVED, ...TERMINAL_STATUSES].includes(r.status)));
+    assert.equal(body.overdue.count, 3, 'r1, r5 and the On Hold request');
+  });
+});
+
 test('AC-FR-8.4: a Manager sets the target and the overdue calculation then uses it', async () => {
   const { app, store } = seeded();
   await serve(app, async (base) => {

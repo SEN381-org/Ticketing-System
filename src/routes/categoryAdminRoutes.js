@@ -4,7 +4,7 @@
  * Traces to: FR-8.4, AC-FR-8.4, FR-9.1, AC-FR-9.1, FR-9.2, NFR-3.3, DEC-012, DEC-015.
  *
  *   PUT  /api/v1/categories/:id/target         set target resolution hours  200
- *   POST /api/v1/categories/:id/deactivation   deactivate  201, a repeat 200
+ *   POST /api/v1/categories/:id/deactivation   deactivate  201, a repeat 201 + Idempotent-Replayed
  *
  * Mounted on the same base path as the category list (A1), which is another
  * track's router; the two share no route.
@@ -41,7 +41,10 @@ export function createCategoryAdminRouter({ categoryAdminService }) {
         requireIdempotencyKey(req);
         const id = parseObjectId(req.params.id);
         const result = await categoryAdminService.deactivate(id, req.actor);
-        res.status(result.replayed ? 200 : 201).json(result);
+        // DEC-015 §3: a repeat has the original's status code and body, plus the header.
+        const { replayed, ...body } = result;
+        if (replayed) res.set('Idempotent-Replayed', 'true');
+        res.status(201).json(body);
       } catch (error) {
         next(error);
       }
