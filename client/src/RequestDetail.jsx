@@ -9,7 +9,7 @@
 // signed-in user. The client checks no rule: a submission is sent as typed and
 // the server's refusal is shown.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ApiError, addAction, addComment, addDetail, assign, getHistory, getRequest, itemsOf, listUsers, signIn, transition,
 } from './api.js';
@@ -26,7 +26,7 @@ const present = (v) => v !== undefined && v !== null && v !== '';
 const EMPTY_HISTORY = { entries: [], unavailable: false };
 const textOf = (v) => (v && typeof v === 'object' ? (v.summary ?? v.body ?? '') : v);
 
-function NoteForm({ id, label, button, done, send, onDone }) {
+function NoteForm({ id, label, button, done, send, onDone, locked = false, reference = null }) {
   const toast = useToast();
   const [text, setText] = useState('');
   const [error, setError] = useState(null);
@@ -36,7 +36,7 @@ function NoteForm({ id, label, button, done, send, onDone }) {
   const submit = async (e) => {
     e.preventDefault();
     setError(null); setBusy(true);
-    try { await send(id, text, key.current()); key.renew(); setText(''); toast(done); await onDone(); } catch (err) { setError(asError(err)); }
+    try { await send(id, text, key.current()); key.renew(); setText(''); toast(done, { reference }); await onDone(); } catch (err) { setError(asError(err)); }
     setBusy(false);
   };
   return (
@@ -44,7 +44,7 @@ function NoteForm({ id, label, button, done, send, onDone }) {
       <Field id={field} label={label}>
         <textarea className="textarea" id={field} value={text} onChange={(e) => setText(e.target.value)} />
       </Field>
-      <button className="btn btn--quiet" type="submit" disabled={busy || !text.trim()}>{button}</button>
+      <button className="btn btn--quiet" type="submit" disabled={busy || locked || !text.trim()}>{button}</button>
       <Problem error={error} />
     </form>
   );
@@ -66,6 +66,13 @@ export default function RequestDetail({ id }) {
   const [reason, setReason] = useState('');
   const [resolution, setResolution] = useState('');
   const transitionKey = useActionKey();
+  // After a note is posted the page reads the request and its history again, and the new
+  // history entry appears above the Notes panel. Until that reload is over the note buttons
+  // are disabled, and the page is scrolled by the height the panel moved, so the controls stay
+  // where they were on screen and a click cannot land where a button used to be.
+  const [refreshing, setRefreshing] = useState(false);
+  const notesRef = useRef(null);
+  const notesTop = useRef(null);
   const assignKey = useActionKey();
 
   // A 401 from GET or a write shows the prompt. A failed sign-in (the prompt's
@@ -101,11 +108,23 @@ export default function RequestDetail({ id }) {
       const r = await getRequest(id);
       setRequest(r.data); setEtag(r.etag); setNeedSignIn(false);
       auth.markAuthed();
-      loadHistory();
+      await loadHistory();
     } catch (e) { handle(e); }
   }, [id, handle, loadHistory, auth]);
 
   useEffect(() => { load(); }, [load]);
+
+  const reloadAfterNote = async () => {
+    notesTop.current = notesRef.current?.getBoundingClientRect().top ?? null;
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
+  };
+  useLayoutEffect(() => {
+    if (notesTop.current === null || !notesRef.current) return;
+    const moved = notesRef.current.getBoundingClientRect().top - notesTop.current;
+    if (Math.abs(moved) > 0.5) window.scrollBy(0, moved);
+    if (!refreshing) notesTop.current = null;
+  }, [request, history, refreshing]);
 
   // The people a request can be given to (FR-5.1): only the roles the server lists for this
   // request in permittedAssignment.assigneeRoles (decision #10: Security Officers for a
@@ -151,7 +170,7 @@ export default function RequestDetail({ id }) {
     try {
       await transition(id, etag, selected.toStatus, reason, extra, transitionKey.current());
       transitionKey.renew(); setReason(''); setResolution(''); setChosen('');
-      toast('Status updated.');
+      toast('Status updated.', { reference: request.reference });
       await load();
     } catch (err) { await failed(err); }
   };
@@ -160,7 +179,7 @@ export default function RequestDetail({ id }) {
     setError(null); setStale(false);
     try {
       await assign(id, etag, assigneeId, assignKey.current());
-      assignKey.renew(); setAssignee(''); toast(done);
+      assignKey.renew(); setAssignee(''); toast(done, { reference: request.reference });
       await load();
     } catch (err) { await failed(err); }
   };
@@ -261,16 +280,16 @@ export default function RequestDetail({ id }) {
       </section>
 
       {shows(auth.user, 'comment') || shows(auth.user, 'detail') ? (
-        <section className="panel" aria-label="Notes">
+        <section className="panel" aria-label="Notes" ref={notesRef}>
           <h2 className="label">Notes</h2>
           {shows(auth.user, 'comment') ? (
             <>
-              <NoteForm id={id} label="Add a comment" button="Post comment" done="Comment posted." send={addComment} onDone={load} />
-              <NoteForm id={id} label="Record an action" button="Record action" done="Action recorded." send={addAction} onDone={load} />
+              <NoteForm id={id} label="Add a comment" button="Post comment" done="Comment posted." send={addComment} onDone={reloadAfterNote} locked={refreshing} reference={request.reference} />
+              <NoteForm id={id} label="Record an action" button="Record action" done="Action recorded." send={addAction} onDone={reloadAfterNote} locked={refreshing} reference={request.reference} />
             </>
           ) : null}
           {shows(auth.user, 'detail') ? (
-            <NoteForm id={id} label="Add more detail" button="Add detail" done="Detail added." send={addDetail} onDone={load} />
+            <NoteForm id={id} label="Add more detail" button="Add detail" done="Detail added." send={addDetail} onDone={reloadAfterNote} locked={refreshing} reference={request.reference} />
           ) : null}
         </section>
       ) : null}

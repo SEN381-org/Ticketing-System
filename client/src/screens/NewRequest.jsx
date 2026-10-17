@@ -72,7 +72,7 @@ export default function NewRequest() {
         reference: r.data?.reference, id: r.data?.id, status: r.data?.status, submittedAt: r.data?.submittedAt,
         category: categories.nameOf(form.categoryId), location: form.location.trim(),
       });
-      toast('Request submitted.');
+      toast('Request submitted.', { reference: r.data?.reference ?? null });
       setForm({ categoryId: '', location: '', description: '' });
     } catch (err) { setError(err instanceof ApiError ? err : asError(err)); }
     setBusy(false);

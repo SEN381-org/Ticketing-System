@@ -71,7 +71,7 @@ function RowAction({ item, onDone }) {
     try {
       const current = await getRequest(item.id);          // the ETag to present
       await assign(item.id, current.etag, assigneeId, key.current());
-      key.renew(); setOpen(false); toast(assigneeId === auth.user?.id ? 'Request accepted.' : 'Request assigned.'); await onDone();
+      key.renew(); setOpen(false); toast(assigneeId === auth.user?.id ? 'Request accepted.' : 'Request assigned.', { reference: item.reference }); await onDone();
     } catch (e) { setError(asError(e)); }
     setBusy(false);
   };

@@ -805,35 +805,69 @@ fieldset.field > legend { padding: 0; margin-bottom: var(--space-2); }
   .fab { display: none; }
 }
 
-/* ---- detail pages hold a readable width ---- */
-.view--detail { max-width: 60rem; }
+/* ---- detail pages hold a readable width, centred in the content area ---- */
+/* overflow-anchor: none, because RequestDetail keeps the Notes panel in place itself. */
+.view--detail { max-width: 60rem; width: 100%; margin-inline: auto; overflow-anchor: none; }
 
-/* ---- toasts: quiet, top centre, never take focus or clicks ---- */
+/* ---- toasts: a Surface card bottom right (bottom centre on phones), never take focus ---- */
 .toasts {
   position: fixed;
-  top: var(--space-3);
-  left: 50%;
-  transform: translateX(-50%);
+  right: var(--space-5);
+  bottom: var(--space-5);
   z-index: 20;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-2);
   width: max-content;
-  max-width: calc(100vw - 2rem);
+  max-width: min(26rem, calc(100vw - 2rem));
   pointer-events: none;
 }
 .toast {
-  padding: 10px var(--space-4);
-  border-radius: var(--radius-control);
-  border-left: 4px solid var(--color-signal);
-  background: var(--color-ink);
-  color: var(--color-on-dark);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  box-shadow: var(--shadow-fab);
-  animation: rise var(--motion) var(--ease);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 6px 4px 6px var(--space-4);
+  border: 1px solid var(--color-line);
+  border-left: 4px solid var(--color-harbour);
+  border-radius: var(--radius-ticket);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 6px 20px rgba(19, 33, 43, 0.12);
+  pointer-events: auto;
+  animation: toast-in 160ms var(--ease);
 }
+.toast--danger { border-left-color: var(--color-danger); }
+.toast__mark {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-harbour);
+  color: var(--color-on-dark);
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+.toast--danger .toast__mark { background: var(--color-danger); }
+.toast__text { margin: 0; font-size: 0.9375rem; line-height: 1.4; }
+.toast__text .mono { font-size: var(--text-sm); white-space: nowrap; }
+.toast__close {
+  flex: 0 0 auto;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.toast__close:hover { color: var(--color-ink); background: var(--color-surface-soft); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
 /* ---- inline confirmation ---- */
 .confirm {
@@ -980,9 +1014,9 @@ fieldset.field > legend { padding: 0; margin-bottom: var(--space-2); }
 .table th { white-space: nowrap; }
 .table td.mono, .table a.mono { white-space: nowrap; }
 
-/* Phones: the toast sits above the floating button's row, clear of the header. */
+/* Phones: the toasts sit bottom centre, above the floating button's row. */
 @media (max-width: 39.99rem) {
-  .toasts { top: auto; bottom: 5.5rem; }
+  .toasts { right: 50%; transform: translateX(50%); bottom: 5.5rem; align-items: center; }
 }
 
 .crow__action > .btn { width: 100%; }

@@ -26,6 +26,8 @@
  *     "Assignment" history item with "To: <Technician's name>";
  *   - comment history: a "Comment" item with the comment text;
  *   - action history: an "Action taken" item with the action text.
+ *  Also (the 17/10 layout-shift fix): after the comment is posted and its history entry has
+ *  appeared, the Record action button is where it was on screen (within 1 px).
  *  E2E-12. In one campus, request A's description contains a term made for this run
  *  (a single word, so the text index tokenises it as one word); request B's does
  *  not. A second campus holds request C, which also contains the term. The
@@ -103,6 +105,9 @@ test('E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page', asyn
       const { page } = tech;
       await goAs(page, `/requests/${requestId}`, technician);
       await page.getByLabel('Add a comment').fill(comment);
+      // Scrolled into view first, so the click itself does not scroll: any later movement is the reload's.
+      await page.getByRole('button', { name: 'Post comment' }).scrollIntoViewIfNeeded();
+      const before = await page.getByRole('button', { name: 'Record action' }).boundingBox();
       const [c] = await Promise.all([
         page.waitForResponse(isPost(`/api/v1/requests/${requestId}/comments`)),
         page.getByRole('button', { name: 'Post comment' }).click(),
@@ -111,6 +116,8 @@ test('E2E-11: a Coordinator sees every AC-FR-4.2 item on the request page', asyn
       // The page reloads its history after a post, and the new entry pushes the Notes panel
       // down: wait for it before the next click, or the click can land where the button was.
       await expect(page.getByRole('list', { name: 'Changes' }).getByRole('listitem').filter({ hasText: comment })).toHaveCount(1);
+      const after = await page.getByRole('button', { name: 'Record action' }).boundingBox();
+      expect(Math.abs(after.y - before.y), 'the Notes controls moved on screen during the reload').toBeLessThan(1);
       await page.getByLabel('Record an action').fill(action);
       const [a] = await Promise.all([
         page.waitForResponse(isPost(`/api/v1/requests/${requestId}/actions`)),
