@@ -26,6 +26,8 @@ WorkingDirectory=/opt/civicconnect
 # Recorded (section 7): mode 600, owned by root. systemd reads it as root before
 # starting the process, so the service user never needs to read it itself.
 EnvironmentFile=/etc/civicconnect/staging.env
+# Recorded from the live VM (diff of 17/10/2026 22:57 UTC); staging.env does not set NODE_ENV.
+Environment=NODE_ENV=staging
 # Recorded (section 5): the process tree is npm start -> node src/server.js.
 # NOT RECORDED: the path to npm. /usr/bin/npm is where a system-wide Node 22
 # install puts it; check with "command -v npm" on the VM.
