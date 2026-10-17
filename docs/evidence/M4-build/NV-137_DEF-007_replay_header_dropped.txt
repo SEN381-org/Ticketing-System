@@ -1,0 +1,33 @@
+Negative verification NV-137 — DEF-007: the Idempotent-Replayed header not sent on a replay
+Track T5. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T13:10:30Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/dec015Conformance.test.js
+File broken : src/routes/requestRoutes.js (never a test)
+
+CLAIM
+  A replay without the Idempotent-Replayed header is detected.
+
+BREAK
+  -         if (replayed) res.set('Idempotent-Replayed', 'true');
+  - 
+  + 
+
+EXPECTED (written before the run)
+  'over HTTP a replay has the original status, the same body and Idempotent-Replayed: true' fails; the others pass.
+
+RESULT WITH THE BREAK
+  tests 14, pass 13, fail 1, exit 1
+  failing: over HTTP a replay has the original status, the same body and Idempotent-Replayed: true — DEF-007, DEC-015 §3
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 7c9697341fc90acb31c7f2f9d6b93a30d612d146ec9cfeea838a4559d4a5e1e2
+  SHA-256 after  : 7c9697341fc90acb31c7f2f9d6b93a30d612d146ec9cfeea838a4559d4a5e1e2
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 14, pass 14, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the replay header is asserted over HTTP.
+  Does NOT show: integration case 2b against a cluster.

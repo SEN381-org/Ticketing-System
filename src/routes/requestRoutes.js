@@ -1,7 +1,7 @@
 /**
  * Request routes. Every non-public route carries the composed guard. DEC-012.
  *
- * Traces to: FR-6.2, FR-6.4, NFR-3.3, CON-019, DEC-015, DEC-016.
+ * Traces to: FR-6.2, FR-6.4, NFR-3.3, CON-019, DEC-015, DEC-016, DEF-007, DEF-009.
  *
  * Review comment R-03. The transition was previously modelled as a field update,
  * `PATCH /:id/status`. DEC-015 records it as a resource in its own right:
@@ -31,9 +31,31 @@ function versionFromIfMatch(header) {
   return Number(match[1]);
 }
 
-/** Fingerprint of the command, so a replayed key with a different body is refused. */
-const fingerprint = (body) =>
-  crypto.createHash('sha256').update(JSON.stringify(body ?? {})).digest('hex');
+/**
+ * Canonical JSON: object members sorted by name at every depth, so the same body
+ * with its members in another order has the same fingerprint (DEC-015 §3, DEF-009).
+ */
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort()
+      .map((name) => `${JSON.stringify(name)}:${canonicalJson(value[name])}`).join(',')}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+/**
+ * DEC-015 §3 — the fingerprint is SHA-256 of method + normalised path + canonical
+ * JSON body. Method and path are part of it so a key used on one request is
+ * refused on another, rather than replaying the first request's result (DEF-009).
+ */
+function fingerprint(req) {
+  const method = String(req.method ?? '').toUpperCase();
+  const path = String(req.originalUrl ?? req.url ?? '').split('?')[0].replace(/\/+$/, '').toLowerCase();
+  return crypto.createHash('sha256')
+    .update(`${method} ${path}\n${canonicalJson(req.body ?? {})}`)
+    .digest('hex');
+}
 
 /**
  * DEC-015 §3 — Idempotency-Key is REQUIRED on every state-changing POST.
@@ -54,7 +76,7 @@ function readCommand(req) {
     reason:            req.body?.reason ?? null,          // FR-6.6 — DEC-015 field name
     resolutionSummary: req.body?.resolution ?? null,      // FR-6.5 — DEC-015 field name
     idempotencyKey:    String(key).trim(),
-    fingerprint:       fingerprint(req.body),
+    fingerprint:       fingerprint(req),
   };
 }
 
@@ -87,8 +109,12 @@ export function createRequestRouter({ statusTransitionService, requestQueryServi
           req.actor,
           readCommand(req),
         );
-        res.set('ETag', etagFor(result.version));
-        res.status(result.replayed ? 200 : 201).json(result);
+        // DEC-015 §3: a replay has the original's status code and body, plus the
+        // Idempotent-Replayed header (DEF-007).
+        const { replayed, ...body } = result;
+        res.set('ETag', etagFor(body.version));
+        if (replayed) res.set('Idempotent-Replayed', 'true');
+        res.status(201).json(body);
       } catch (error) {
         next(error);                                  // RFC 9457 handler, DEC-015
       }

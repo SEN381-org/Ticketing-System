@@ -153,6 +153,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RequestView' }
+        '400':
+          description: The id is not a valid identifier (INVALID_REQUEST, DEF-012).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '401':
           description: No authenticated actor (UNAUTHENTICATED).
           content:
@@ -212,8 +217,10 @@ paths:
             A key generated per logical user action and reused unchanged on every
             retry of that action (UUID v4 recommended). A missing or blank key
             returns 400. A key reused with a different request body returns 422.
-            A replayed key with the same body returns the original result with
-            200 and writes nothing (DEC-015 §3).
+            A replayed key with the same request returns the original status code
+            and body, with the header Idempotent-Replayed: true, and writes nothing
+            (DEC-015 §3, DEF-007). The fingerprint covers the method, the path and the
+            canonical JSON body, so a key reused on another request is refused (DEF-009).
           schema:
             type: string
             minLength: 1
@@ -233,26 +240,23 @@ paths:
                 value: { toStatus: Closed, reason: Confirmed fixed with the requester }
       responses:
         '201':
-          description: Transition committed; one history entry written.
+          description: |
+            Transition committed; one history entry written. An idempotent replay of a
+            committed transition returns the same status and body, writes nothing, and
+            carries Idempotent-Replayed: true (DEC-015 §3, DEF-007).
           headers:
             ETag:
               description: The new version, e.g. "v4".
               schema: { type: string }
+            Idempotent-Replayed:
+              description: Present, with the value true, only on a replay.
+              schema: { type: string, enum: ['true'] }
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransitionResult'
-        '200':
-          description: Idempotent replay of a previously committed transition. Nothing is written.
-          headers:
-            ETag:
-              schema: { type: string }
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransitionReplay'
         '400':
-          description: Idempotency-Key missing or blank (IDEMPOTENCY_KEY_REQUIRED), or the body is not valid JSON (INVALID_REQUEST).
+          description: Idempotency-Key missing or blank (IDEMPOTENCY_KEY_REQUIRED), the body is not valid JSON, or the id is not a valid identifier (INVALID_REQUEST, DEF-012).
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -263,9 +267,10 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '403':
           description: |
-            The role may not perform the operation (route guard), or the actor may
-            not act on this request (category authorisation, or a security-category
-            request without the Security Officer role) (FORBIDDEN).
+            The role may not perform the operation (route guard), the actor may not
+            act on this request (category authorisation, or a security-category
+            request without the Security Officer role), or no held role may make this
+            move (DEF-011) (FORBIDDEN).
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -275,7 +280,10 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '412':
-          description: If-Match does not match the current version (PRECONDITION_FAILED). Re-read and retry deliberately.
+          description: |
+            If-Match does not match the current version (PRECONDITION_FAILED). The body
+            carries the current ETag as currentEtag where it is known (DEC-015 §2, DEF-008).
+            Re-read and retry deliberately.
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -283,11 +291,12 @@ paths:
           description: |
             One of the following:
             - a transition the model does not allow;
-            - a role that may not make this move;
             - no resolution before Resolved (FR-6.5);
             - no reason for Closed or Rejected (FR-6.6).
-            These return INVALID_TRANSITION. An Idempotency-Key reused with a
-            different body returns IDEMPOTENCY_CONFLICT.
+            These return INVALID_TRANSITION. A role that may not make this move is
+            403 FORBIDDEN, not 422 (DEC-015 §4, DEF-011). An Idempotency-Key reused
+            with a different request returns IDEMPOTENCY_CONFLICT, problem type
+            idempotency-key-reused (DEF-010).
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -392,22 +401,6 @@ components:
         occurredAt: { type: string, format: date-time }
         version: { type: integer, minimum: 1, description: The new version; also returned as the ETag. }
         historyId: { type: string, description: The requestHistory entry written (FR-6.3). }
-        reporterId: { type: string }
-        categoryId: { type: string }
-        campusId: { type: string }
-        reference: { type: string, pattern: '^CC-\d{4}-\d{6}$' }
-        securityCategory: { type: boolean }
-    TransitionReplay:
-      type: object
-      required: [requestId, fromStatus, toStatus, occurredAt, version, historyId, replayed]
-      properties:
-        requestId: { type: string }
-        fromStatus: { $ref: '#/components/schemas/Status' }
-        toStatus: { $ref: '#/components/schemas/Status' }
-        occurredAt: { type: string, format: date-time }
-        version: { type: integer }
-        historyId: { type: string }
-        replayed: { type: boolean, const: true }
     Problem:
       type: object
       description: RFC 9457 problem details.

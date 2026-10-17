@@ -6,6 +6,7 @@
  * under test are the ones production runs.
  *
  * Order is load-bearing:
+ *   0. perf log    one structured entry per operation (NFR-1.11), first so all are timed
  *   1. health        before the session middleware, so a database outage cannot
  *                    turn the health check into a 500 via a cookie lookup
  *   2. body          JSON-only on writes (415), strict parse, 32 kB, mapped errors
@@ -21,6 +22,7 @@
 
 import express from 'express';
 import { createErrorHandler } from './middleware/errorHandler.js';
+import { createPerformanceLog } from './middleware/performanceLog.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { requireJsonOnWrites, parseJsonBody, mapBodyErrors } from './middleware/requestBody.js';
 import { createHealthRouter, HEALTH_PATH } from './routes/healthRoutes.js';
@@ -42,6 +44,9 @@ export function createApp({
   app.disable('x-powered-by');
   // DEC-003 v0.2: Nginx on the same host terminates TLS. Trust only it.
   app.set('trust proxy', 'loopback');
+
+  // NFR-1.11: one structured entry per operation, first so every response is timed.
+  app.use(createPerformanceLog({ log }));
 
   mount(app, HEALTH_PATH, createHealthRouter({ healthService }));
 
