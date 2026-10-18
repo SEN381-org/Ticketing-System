@@ -1,0 +1,22 @@
+NFR-2.1 submission run (staging)
+Started (UTC)        : 2026-10-18T01:28:10.417Z
+Target               : https://158.158.115.[redacted] (staging VM, Azure Spain Central)
+Client location      : Stellenbosch, South Africa
+Node                 : v24.16.0
+NODE_EXTRA_CA_CERTS  : set (SHA-256: 74:2D:A5:C0:DF:68:F6:29:A7:61:41:33:5D:0B:53:F8:6D:5E:DD:2C:53:90:50:46:74:A4:DC:19:72:86:68:B2)
+NODE_TLS_REJECT_UNAUTHORIZED: unset
+Fixture run          : 7a5e8e2f
+Workload             : 100 Requesters log in (ramp 30 s), settle 3 s, then each submits one request at the same moment; timeout 60 s
+
+Authenticated        : 100 of 100
+
+Submissions sent     : 100; all started within 15 ms of the first (within the same second)
+Submission window (UTC): [2026-10-18T01:28:43.547Z, 2026-10-18T01:29:43.572Z]
+For journalctl       : --since "2026-10-18 01:28:43 UTC" --until "2026-10-18 01:29:45 UTC"
+Confirmed (201)      : 27 of 100; statuses {"201":27,"error":73}
+Client-side latency (network included; NOT the AC measure): p50 60010 ms  p95 60012 ms  max 60012 ms
+  73 x timeout after 60 s
+Ended (UTC)          : 2026-10-18T01:29:43.572Z
+
+CLIENT-SIDE INCOMPLETE: 27 of 100 confirmations received (100 authenticated).
+AC-NFR-2.1 is judged server-side: run server-timings.js on the VM over the window above.
