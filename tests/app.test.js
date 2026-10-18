@@ -178,6 +178,24 @@ test('a failed login is one identical 401 whatever the cause — DEC-018 §5', a
   });
 });
 
+// Basis: DEC-018 §5 (one identical 401 whatever the cause); FR-1.2 (every user holds at least
+// one role). Found at M4 integration, 17/10/2026: an account with no role reached
+// primaryRole() and answered 500. Expected (written before the run): 401, no cookie, and the
+// same body as an unknown e-mail.
+test('an account holding no role is refused with the same 401, not a 500 — DEC-018 §5, FR-1.2', async () => {
+  const h = harness();
+  h.users.get('u2').roles = [];
+  await serve(h.app, async (base) => {
+    const unknown = await login(base, 'nobody@example.test', 'right');
+    const noRole = await login(base, 'req@example.test', 'right');
+    assert.equal(noRole.res.status, 401);
+    assert.equal(noRole.setCookie.length, 0);
+    const a = await unknown.res.json(); const b = await noRole.res.json();
+    delete a.instance; delete b.instance;
+    assert.deepEqual(b, a);
+  });
+});
+
 test('a write that is not JSON is 415, including login — DEC-015 §5 (CSRF)', async () => {
   await serve(harness().app, async (base) => {
     const res = await fetch(`${base}/api/v1/sessions`, {
@@ -211,7 +229,7 @@ test('with a session the transition reaches the service with the session actor �
   });
   assert.equal(h.transitions.length, 1);
   assert.deepEqual(h.transitions[0].actor,
-    { id: 'u1', roles: [ROLE.COORDINATOR], categoryAuthorisations: ['cat1'], groupIds: [] });
+    { id: 'u1', roles: [ROLE.COORDINATOR], categoryAuthorisations: ['cat1'], groupIds: [], campusId: 'c1' });
 });
 
 test('an identity header is refused with 403 even with a valid session — R-06, CON-019', async () => {

@@ -1,0 +1,33 @@
+Negative verification NV-138 — DEF-008: the current version not passed to the 412
+Track T5. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T13:10:31Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/dec015Conformance.test.js
+File broken : src/services/statusTransitionService.js (never a test)
+
+CLAIM
+  A 412 without the current ETag in its body is detected.
+
+BREAK
+  - throw new PreconditionFailedError(requestId, expectedVersion, request.version);
+  + throw new PreconditionFailedError(requestId, expectedVersion);
+
+EXPECTED (written before the run)
+  'a stale version is refused with the current ETag in the problem body' and 'over HTTP a stale If-Match is 412 with the current ETag…' fail.
+
+RESULT WITH THE BREAK
+  tests 14, pass 12, fail 2, exit 1
+  failing: a stale version is refused with the current ETag in the problem body — DEF-008, DEC-015 §2
+  failing: over HTTP a stale If-Match is 412 with the current ETag as a member of the body — DEF-008, DEC-015 §2
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 0bd44cee6261236dd5134194cf2b0683329304f2f8fb5d3fb6e9ed5467f49bc2
+  SHA-256 after  : 0bd44cee6261236dd5134194cf2b0683329304f2f8fb5d3fb6e9ed5467f49bc2
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 14, pass 14, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the current ETag reaches the 412 problem body.
+  Does NOT show: the race path, where the conditional write finds the version moved; there the member is omitted (documented in src/errors.js).

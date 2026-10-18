@@ -1,0 +1,35 @@
+Negative verification NV-140 — NFR-1.11: the concrete URL added to the performance entry
+Track T5. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T13:10:34Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/dec015Conformance.test.js
+File broken : src/middleware/performanceLog.js (never a test)
+
+CLAIM
+  A performance entry carrying anything beyond its four members, here the concrete URL with its request id, is detected.
+
+BREAK
+  -         outcome:    res.statusCode,
+  - 
+  +         outcome:    res.statusCode,
+  +         url:        req.originalUrl,
+  + 
+
+EXPECTED (written before the run)
+  'each operation writes one structured performance entry with no personal information' fails.
+
+RESULT WITH THE BREAK
+  tests 14, pass 13, fail 1, exit 1
+  failing: each operation writes one structured performance entry with no personal information — NFR-1.11, AC-NFR-1.11
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : f0dc38abaf01087d7d95947bdde92212c47e23c529c370233c22a23228c5af6b
+  SHA-256 after  : f0dc38abaf01087d7d95947bdde92212c47e23c529c370233c22a23228c5af6b
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 14, pass 14, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the entry shape is exactly four members and no concrete id appears.
+  Does NOT show: the log store on staging, or 100 operations under load (AC-NFR-1.11's Given).

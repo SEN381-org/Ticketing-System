@@ -1,0 +1,36 @@
+Negative verification NV-162 - assignment pool list offered revoked users to Coordinator and Manager
+Track fixA-server (Section A server fixes). Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T16:23:20Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/userListRevoked.test.js
+File broken : src/services/userAdminService.js (never a test)
+
+CLAIM
+  Only an Administrator's GET /users includes revoked accounts; the Coordinator and Manager pool excludes them (FR-5.1, FR-1.4).
+
+BREAK
+  - includeRevoked: isAdministrator
+  + includeRevoked: true
+
+EXPECTED (written before the run)
+  'Coordinator and Manager lists exclude a revoked user and keep the A2 shape' fails (the revoked Technician is listed, length 6 not 5); the Administrator tests still pass.
+
+RESULT BEFORE THE BREAK (control)
+  tests 5, pass 5, fail 0, exit 0
+
+RESULT WITH THE BREAK
+  tests 5, pass 4, fail 1, exit 1
+  failing:
+    FR-5.1, FR-1.4, NV-162: Coordinator and Manager lists exclude a revoked user and keep the A2 shape
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 776b398dbd8219ddf2d8594d322c3b9ecc8586783cfab29f4dd19b9deb01ed67
+  SHA-256 after  : 776b398dbd8219ddf2d8594d322c3b9ecc8586783cfab29f4dd19b9deb01ed67
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 5, pass 5, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the exclusion of revoked accounts from the assignment pool is asserted over real HTTP after a real revocation call.
+  Does NOT show: the MongoDB query (asserted separately against a stubbed model) or that the client never offers a revoked user from a stale list.

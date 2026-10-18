@@ -1,0 +1,32 @@
+Negative verification NV-158 — Integration case 2b: the transition result built by spreading the repository's document
+Track integration fix (case 2b). Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T14:02:33Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/dec015Conformance.test.js
+File broken : src/services/statusTransitionService.js (never a test)
+
+CLAIM
+  When the history repository returns a Mongoose document (the real repository does; `_id` is a getter, not an own property), a result built by spreading it loses historyId, so the original body differs from the replay's (integration case 2b, 14:01 UTC 17/10/2026). The new unit test detects that without a database.
+
+BREAK
+  -       result = { ...resultOf({ _id: entry._id, requestId: request._id ?? requestId,
+  +       result = { ...resultOf({ ...entry, requestId: request._id ?? requestId,
+
+EXPECTED (written before the run)
+  'the original result carries historyId when the repository returns a document' fails; the other 14 tests pass.
+
+RESULT WITH THE BREAK
+  tests 15, pass 14, fail 1, exit 1
+  failing: the original result carries historyId when the repository returns a document — DEF-007, DEC-015 §3
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 63a824876e3b0236a604cb6ca036c64f943399910085067b9b4b032c27154715
+  SHA-256 after  : 63a824876e3b0236a604cb6ca036c64f943399910085067b9b4b032c27154715
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 15, pass 15, fail 0, exit 0
+
+INTERPRETATION
+  Shows: the unit suite now catches the fault the integration case found.
+  Does NOT show: the integration case itself; it is re-run once on the fixed build and recorded separately.

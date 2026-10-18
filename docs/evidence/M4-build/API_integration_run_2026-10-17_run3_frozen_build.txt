@@ -1,0 +1,80 @@
+M4 API/integration run on the integrated build (before the release candidate)
+
+Run (UTC)    : 2026-10-17T19:04:49.701Z to 2026-10-17T19:04:53.690Z
+Node         : v24.16.0
+Commit       : 0b9ea556e85db408151316b4099efe4228e3e56c (task/M4-final-product), working tree clean
+Environment  : Atlas test cluster; the connection string is never recorded
+DNS override : NODE_OPTIONS --import data: URL setting resolvers 8.8.8.8 and 1.1.1.1 (SRV lookups fail on this laptop otherwise)
+Command      : NODE_OPTIONS=<DNS override> node --env-file=<test-cluster env file> --test tests/integration/*.integration.test.js
+
+EXPECTED (written before the run)
+  Third run, on the frozen build 6408ab7 (written 17/10/2026 before the run; the file's own save
+  time is the authority). Run 2 (e973a9d, 14:04:17Z) passed 40 of 40; since then 16 files in src/
+  changed (section A server fixes, assigneeRoles, section B server polish), none in tests/integration/.
+  This is a run of a changed build, not a re-run.
+  Basis: tests/integration/ (8 cases, 40 checks), DEC-015 §2-4, DEC-016, AC-NFR-1.10 v0.3 (CR-001,
+  approved 17/10/2026; the two auditLog clauses are not in these cases).
+  Expected: all 8 cases pass, 40 of 40 checks, 0 fail, 0 skipped, exit code 0.
+  Risk named in advance (not a prediction): case assertions on exact response bodies could meet the
+  read's new fields (assigneeRoles in permittedAssignment, assigneeName for request:assign holders);
+  if one fails it is recorded as it happened, with its name.
+
+RESULT: exit code 0
+
+OUTPUT (unedited except that the local worktree path is written as <worktree>, at generation)
+▶ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3
+  ✔ the request is refused with 400 (1.6981ms)
+  ✔ nothing is written (1.7101ms)
+✔ 2a a transition without an Idempotency-Key is refused with 400 — DEC-015 §3 (889.1087ms)
+▶ 2b a replayed key returns the original result and writes nothing — DEC-015 §3
+  ✔ the original commits (0.2448ms)
+  ✔ the replay writes nothing (0.2451ms)
+  ✔ the replay has the same status code (0.1215ms)
+  ✔ the replay has the same body (0.0993ms)
+  ✔ the replay is marked Idempotent-Replayed: true (0.1741ms)
+✔ 2b a replayed key returns the original result and writes nothing — DEC-015 §3 (594.2436ms)
+▶ 2c a key reused with a different body is refused with 422 — DEC-015 §3
+  ✔ the request is refused with 422 (0.3724ms)
+  ✔ the problem type is idempotency-key-reused (0.3162ms)
+  ✔ no second history entry is written (0.0902ms)
+✔ 2c a key reused with a different body is refused with 422 — DEC-015 §3 (491.4143ms)
+▶ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint
+  ✔ the request is refused with 422 (0.168ms)
+  ✔ the response is not the first request's result (0.125ms)
+  ✔ neither request gains a history entry (7.5674ms)
+✔ 2d a key used on one request is refused on a different request — DEC-015 §3 fingerprint (517.2372ms)
+▶ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON
+  ✔ it is not refused as a different payload (0.1753ms)
+  ✔ no second history entry is written (0.0717ms)
+✔ 2e the same body with its members in another order is a replay — DEC-015 §3 canonical JSON (524.1888ms)
+▶ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016
+  ✔ the first change commits (0.6404ms)
+  ✔ the stale request is refused with 412 (0.2646ms)
+  ✔ the request is unchanged (0.7194ms)
+  ✔ no history entry is written (0.1589ms)
+  ✔ the problem body carries the current ETag (0.1582ms)
+  ✔ nothing internal is returned (0.191ms)
+✔ a stale If-Match is refused with 412 and changes nothing — DEC-015 §2, DEC-016 (1058.3925ms)
+▶ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016
+  ✔ the fault fires after the first write (0.5567ms)
+  ✔ the failure is a generic 500 (0.145ms)
+  ✔ the status change is rolled back (0.6918ms)
+  ✔ the history entry is rolled back (0.1317ms)
+  ✔ no event is published (0.1211ms)
+  ✔ the same key then succeeds (0.179ms)
+✔ a failure after both writes and before commit persists neither — AC-NFR-1.10 v0.3, DEC-016 (1106.3233ms)
+▶ a role not permitted for the transition is refused with 403 — DEC-015 §4
+  ✔ the request is refused with 403 (1.1322ms)
+  ✔ the refusal is problem details (0.5599ms)
+  ✔ the request is unchanged (1.1472ms)
+  ✔ no history entry is written (0.1848ms)
+  ✔ nothing internal is returned (0.2772ms)
+✔ a role not permitted for the transition is refused with 403 — DEC-015 §4 (902.9826ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3928.9836

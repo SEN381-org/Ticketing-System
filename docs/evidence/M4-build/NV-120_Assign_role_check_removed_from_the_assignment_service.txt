@@ -1,0 +1,33 @@
+Negative verification NV-120 - Assign-role check removed from the assignment service
+Track T3 (assignment and refused-attempt recording); method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-17 12:31 UTC (sabotage) / 2026-10-17 12:31 UTC (restore check)
+Node   : v24.16.0
+
+CLAIM
+  An actor who passes the guard only through request:accept (a Technician) and names someone else is refused: assign is reserved to Coordinator and Manager (FR-1.3, FR-5.1, AC-FR-1.3).
+
+EXPECTED (written before the run; the tests that protect the claim must fail):
+  - AC-FR-1.3: a Technician assigning another user (service)
+  - AC-FR-1.3: a Technician assigning another user is 403 (HTTP)
+
+1. The protected behaviour was broken in src/services/assignmentService.js:
+     - if (!mayPerformOperation(operation, actor)) {
+     + if (false && !mayPerformOperation(operation, actor)) {
+
+2. Result of the full suite (node --test) with the sabotage applied:
+     tests 244  pass 233  fail 3
+     not ok - AC-FR-1.3: a Technician assigning another user is 403, changes nothing, and the attempt is in the audit log
+     not ok - AC-FR-1.3: a Technician assigning another user (an operation reserved to the Coordinator) is rejected, changes nothing, and is recorded
+     not ok - AC-FR-1.3: a failure to record leaves the refusal the same error, not a new one (TD-005 choice)
+   Outcome: CAUGHT - the suite failed with the protection broken
+
+3. src/services/assignmentService.js was restored by writing back its original bytes.
+   SHA-256 before : 66a0679bb83385f3c9c4f35a792aeae7fe6feba0ec7bda199ccd83c599ae3628
+   SHA-256 after  : 66a0679bb83385f3c9c4f35a792aeae7fe6feba0ec7bda199ccd83c599ae3628
+   Identical.
+   Suite re-run after restore: tests 244  pass 236  fail 0
+
+INTERPRETATION
+  The assertions listed under EXPECTED detect the condition they protect: with it broken the suite fails, with it restored it passes.
+  What this does NOT show: that the protection holds against a real cluster, or that no other path reaches the same state; the fakes are the repository's own contract, not Atlas.

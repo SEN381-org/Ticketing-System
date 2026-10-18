@@ -1,0 +1,30 @@
+Negative verification NV-117 - Owner condition removed from the repository assignment filter
+Track T3 (assignment and refused-attempt recording); method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-17 12:30 UTC (sabotage) / 2026-10-17 12:30 UTC (restore check)
+Node   : v24.16.0
+
+CLAIM
+  The conditional update names the owner the service read (null for an accept), so an accept cannot overwrite an owner at the write itself (FR-5.3).
+
+EXPECTED (written before the run; the tests that protect the claim must fail):
+  - AC-FR-5.3: the repository update is conditional on the owner the service read
+
+1. The protected behaviour was broken in src/repositories/requestRepository.js:
+     - anonymisedAt: null, assigneeId: expectedAssigneeId ?? null };
+     + anonymisedAt: null };
+
+2. Result of the full suite (node --test) with the sabotage applied:
+     tests 244  pass 235  fail 1
+     not ok - AC-FR-5.3: the repository update is conditional on the owner the service read (null for an accept)
+   Outcome: CAUGHT - the suite failed with the protection broken
+
+3. src/repositories/requestRepository.js was restored by writing back its original bytes.
+   SHA-256 before : db6f4196a204ff511494fa9e0e44af7005ffc98c4cc7e14a79ccfbb7a4bcc20c
+   SHA-256 after  : db6f4196a204ff511494fa9e0e44af7005ffc98c4cc7e14a79ccfbb7a4bcc20c
+   Identical.
+   Suite re-run after restore: tests 244  pass 236  fail 0
+
+INTERPRETATION
+  The assertions listed under EXPECTED detect the condition they protect: with it broken the suite fails, with it restored it passes.
+  What this does NOT show: that the protection holds against a real cluster, or that no other path reaches the same state; the fakes are the repository's own contract, not Atlas.

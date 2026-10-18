@@ -1,7 +1,8 @@
 /**
  * GET /api/v1/requests/:id — provisional (FR-4.2 is Proposed, OI-01).
  *
- * Traces to: FR-3.5, FR-3.6, FR-1.5, DEC-012, DEC-014, DEC-015 §1 and §4.
+ * Traces to: FR-4.2, AC-FR-4.2, AC-FR-7.5, FR-3.5, FR-3.6, FR-1.5, TD-003, DEC-012,
+ *            DEC-014, DEC-015 §1, §4 and §6.
  *
  * Service tests use a fake repository. HTTP tests use the real createApp, session
  * middleware and auth service over real HTTP; only persistence is faked.
@@ -18,7 +19,9 @@ import { createAuthService } from '../src/services/authService.js';
 import { createHealthService } from '../src/services/healthService.js';
 import { createRequestQueryService } from '../src/services/requestQueryService.js';
 import { createStatusTransitionService } from '../src/services/statusTransitionService.js';
-import { visibleStatusFor } from '../src/domain/accessRules.js';
+import { visibleStatusFor, mayActOnRequest } from '../src/domain/accessRules.js';
+import { checkTransition } from '../src/domain/requestStatus.js';
+import { permittedTransitionsFor } from '../src/domain/permittedTransitions.js';
 import { AuthorisationError, NotFoundError, PreconditionFailedError } from '../src/errors.js';
 import { ROLE, STATUS } from '../src/models/_shared.js';
 
@@ -26,7 +29,23 @@ const CAT = 'cat1';
 const baseRequest = {
   reference: 'CC-2026-000001', status: STATUS.ASSIGNED, version: 3,
   categoryId: CAT, securityCategory: false, requesterId: 'u2',
+  submittedById: 'u2', submittedAt: new Date('2026-10-01T08:00:00Z'), assigneeId: 'u9',
+  location: 'LOC-SENTINEL', description: 'DESC-SENTINEL',
+  resolution: { summary: 'RES-SENTINEL', recordedAt: new Date('2026-10-02T08:00:00Z') },
+  closure: { reason: 'CLOSE-SENTINEL' },
 };
+const SENTINELS = ['DESC-SENTINEL', 'RES-SENTINEL', 'CLOSE-SENTINEL'];   // the FR-1.5 fields' values
+
+// Allow-lists: the exact key set each kind of viewer receives (AC-FR-4.2, FR-1.5).
+// permittedAssignment added by the decision of 17/10/2026 (OI-15, S6): assign/accept for this actor,
+// and assigneeRoles, the pool to offer (decision #10; added 17/10/2026).
+const COMMON     = ['assigneeId', 'categoryId', 'id', 'location', 'permittedAssignment', 'permittedTransitions',
+                    'reference', 'status', 'submittedAt', 'version'];
+const RESTRICTED = ['closureReason', 'description', 'resolution'];   // FR-1.5
+const PEOPLE     = ['requesterId', 'submittedById'];                 // staff only
+const ASSIGNER   = ['assigneeName'];                             // request:assign holders only (Coordinator, Manager)
+const sortedKeys = (o) => Object.keys(o).sort();
+const allowList = (...groups) => groups.flat().sort();
 // ASSIGNED is shown to a requester as RECEIVED on a security request (FR-3.5).
 const SECURITY_INTERNAL = STATUS.ASSIGNED;
 
@@ -36,10 +55,128 @@ const actorOf = (roles, categoryAuthorisations = [CAT], id = 'u1') => ({ id, rol
 
 const serviceFor = (doc) => createRequestQueryService({ requests: { findById: async () => doc } });
 
-test('service returns exactly reference, status, version — DEC-015 §1', async () => {
-  const result = await serviceFor({ ...baseRequest, description: 'x', location: 'y' })
-    .getRequest('r1', actorOf([ROLE.COORDINATOR]));
-  assert.deepEqual(result, { reference: 'CC-2026-000001', status: STATUS.ASSIGNED, version: 3 });
+// Basis: AC-FR-4.2 Then clause (category, location, description, status, submission details,
+// assignment ... displayed), AC-FR-7.5 (resolution visible in the request detail), FR-1.5,
+// DEC-015 §6. Technique: service level, one fixture, four viewer kinds. Expected key sets are
+// the allow-lists above, written from FR-1.5 and the decision of 17/10/2026 before running.
+// Shows: each viewer kind receives exactly its set. Does NOT show: the HTTP serialisation.
+const viewers = {
+  'a requester on their own non-security request': [baseRequest, actorOf([ROLE.REQUESTER], [], 'u2'),
+    allowList(COMMON, RESTRICTED)],
+  'a requester on their own security request': [{ ...baseRequest, securityCategory: true },
+    actorOf([ROLE.REQUESTER], [], 'u2'), allowList(COMMON)],
+  'staff on a non-security request': [baseRequest, actorOf([ROLE.COORDINATOR]),
+    allowList(COMMON, RESTRICTED, PEOPLE, ASSIGNER)],
+  'a Security Officer on a security request': [{ ...baseRequest, securityCategory: true },
+    actorOf([ROLE.SECURITY_OFFICER]), allowList(COMMON, RESTRICTED, PEOPLE)],
+};
+for (const [who, [doc, actor, expected]] of Object.entries(viewers)) {
+  test(`service: ${who} receives exactly their allow-list of keys — AC-FR-4.2, FR-1.5, DEC-015 §6`, async () => {
+    assert.deepEqual(sortedKeys(await serviceFor(doc).getRequest('r1', actor)), expected);
+  });
+}
+
+test('service: the allowed viewer receives the stored values — AC-FR-4.2, AC-FR-7.5', async () => {
+  const r = await serviceFor(baseRequest).getRequest('r1', actorOf([ROLE.COORDINATOR]));
+  assert.equal(r.reference, 'CC-2026-000001');
+  assert.equal(r.status, STATUS.ASSIGNED);
+  assert.equal(r.version, 3);
+  assert.equal(r.categoryId, CAT);
+  assert.equal(r.location, 'LOC-SENTINEL');
+  assert.equal(r.description, 'DESC-SENTINEL');
+  assert.equal(r.assigneeId, 'u9');
+  assert.deepEqual(r.resolution, { summary: 'RES-SENTINEL', recordedAt: baseRequest.resolution.recordedAt });
+  assert.equal(r.closureReason, 'CLOSE-SENTINEL');
+  assert.equal(r.submittedAt, baseRequest.submittedAt);
+  assert.equal(r.requesterId, 'u2');
+  assert.equal(r.submittedById, 'u2');
+});
+
+// NV-152. Basis: FR-1.5 (restricts description, comment history and action history of a
+// security-category request to the Security Officer), read literally; OI-16 open.
+// Why: a requester on their own security request is not the Security Officer. Technique:
+// negative, service level, sentinel values in every restricted field. Expected (before
+// running): no restricted key, no sentinel anywhere in the serialised result, no key
+// naming a comment, action or history. Shows: the restriction holds for that viewer.
+// Does NOT show: that FR-1.5 is meant to exclude the requester (OI-16 is open).
+test('service: a requester on their own security request never receives description, resolution, closure reason, comments or actions — FR-1.5, NV-152', async () => {
+  const doc = { ...baseRequest, securityCategory: true };
+  const result = await serviceFor(doc).getRequest('r1', actorOf([ROLE.REQUESTER], [], 'u2'));
+  for (const key of [...RESTRICTED, ...PEOPLE]) assert.equal(key in result, false, `${key} present`);
+  assert.deepEqual(Object.keys(result).filter((k) => /comment|action|history/i.test(k)), []);
+  const text = JSON.stringify(result);
+  for (const sentinel of SENTINELS) assert.doesNotMatch(text, new RegExp(sentinel));
+});
+
+// ---------- permittedTransitions (TD-003) ----------
+
+// Basis: TD-003, FR-6.2, FR-6.4, FR-6.5, FR-6.6. Why: the detail view tells the client which
+// moves to offer; it must never disagree with the transition route. Technique: exhaustive,
+// every status x role x security flag x authorised or not. The expectation asks
+// checkTransition about EVERY target status (not only the table's edges) with hasResolution
+// and hasReason true, plus mayActOnRequest; the two flags are derived by withholding the
+// reason or the resolution. Expected: permittedTransitionsFor equals it. Shows: agreement
+// for all 7 x 6 x 2 x 2 combinations. Does NOT show: the version and idempotency checks,
+// which belong to the route and are not part of the list.
+const ALL_STATUSES = Object.values(STATUS);
+const ALL_ROLES = Object.values(ROLE);
+function expectedTransitions(doc, actor) {
+  if (!mayActOnRequest(doc, actor)) return [];
+  const context = { securityCategory: doc.securityCategory };
+  return ALL_STATUSES
+    .filter((to) => checkTransition(doc.status, to, actor.roles, { ...context, hasResolution: true, hasReason: true }).allowed)
+    .map((to) => ({
+      toStatus: to,
+      requiresReason:     !checkTransition(doc.status, to, actor.roles, { ...context, hasResolution: true, hasReason: false }).allowed,
+      requiresResolution: !checkTransition(doc.status, to, actor.roles, { ...context, hasResolution: false, hasReason: true }).allowed,
+    }));
+}
+const byTarget = (list) => [...list].sort((x, y) => (x.toStatus < y.toStatus ? -1 : 1));
+
+test('permittedTransitionsFor agrees with checkTransition and mayActOnRequest for every status, role, security flag and authorisation — TD-003, FR-6.2, FR-6.4, NV-153', () => {
+  let nonEmpty = 0;
+  for (const status of ALL_STATUSES) for (const role of ALL_ROLES)
+    for (const securityCategory of [false, true]) for (const authorised of [true, false]) {
+      const doc = { ...baseRequest, status, securityCategory };
+      const actor = actorOf([role], authorised ? [CAT] : ['other-cat']);
+      const got = permittedTransitionsFor(doc, actor);
+      assert.deepEqual(byTarget(got), byTarget(expectedTransitions(doc, actor)),
+        `${status} / ${role} / security=${securityCategory} / authorised=${authorised}`);
+      if (got.length) nonEmpty += 1;
+    }
+  assert.ok(nonEmpty > 10, 'the sweep must include permitted moves or it proves nothing');
+});
+
+test('permittedTransitionsFor: worked cases from FR-6.5 and FR-6.6, and a Requester gets none — TD-003', () => {
+  const inProgress = { ...baseRequest, status: STATUS.IN_PROGRESS };
+  assert.deepEqual(byTarget(permittedTransitionsFor(inProgress, actorOf([ROLE.COORDINATOR]))), byTarget([
+    { toStatus: STATUS.ON_HOLD,  requiresReason: false, requiresResolution: false },
+    { toStatus: STATUS.RESOLVED, requiresReason: false, requiresResolution: true },   // FR-6.5
+    { toStatus: STATUS.REJECTED, requiresReason: true,  requiresResolution: false },  // FR-6.6
+  ]));
+  assert.deepEqual(permittedTransitionsFor(inProgress, actorOf([ROLE.REQUESTER], [], 'u2')), []);
+  assert.deepEqual(permittedTransitionsFor({ ...baseRequest, status: STATUS.CLOSED }, actorOf([ROLE.MANAGER])), []);
+});
+
+// ---------- permittedAssignment (S6, OI-15) ----------
+
+// Basis: the OI-15 team decision of 17/10/2026 and TD-003. Technique: service level, one
+// request per case. Expected, derived from the decision: a Coordinator on an owned Assigned
+// request may assign (reassign) and not accept; on a Received unassigned request the same;
+// a Technician on a Received unassigned non-security request may accept and not assign; on
+// a Resolved request nobody may; a Requester never. Shows: the flag reaches the detail view.
+// Does NOT show: every combination (tests/permittedAssignment.test.js sweeps those).
+test('service: the read carries permittedAssignment for this actor - FR-5.1, FR-5.2, FR-5.5, OI-15', async () => {
+  const received = { ...baseRequest, status: STATUS.RECEIVED, assigneeId: null };
+  const read = (doc, actor) => serviceFor(doc).getRequest('r1', actor).then((v) => v.permittedAssignment);
+  assert.deepEqual(await read(baseRequest, actorOf([ROLE.COORDINATOR])), { assign: true, accept: false, assigneeRoles: [ROLE.TECHNICIAN] });
+  assert.deepEqual(await read(received, actorOf([ROLE.COORDINATOR])), { assign: true, accept: false, assigneeRoles: [ROLE.TECHNICIAN] });
+  assert.deepEqual(await read(received, actorOf([ROLE.TECHNICIAN])), { assign: false, accept: true, assigneeRoles: [] });
+  assert.deepEqual(await read({ ...baseRequest, status: STATUS.RESOLVED }, actorOf([ROLE.COORDINATOR])),
+    { assign: false, accept: false, assigneeRoles: [] });
+  assert.deepEqual(await read(received, actorOf([ROLE.REQUESTER], [], 'u2')), { assign: false, accept: false, assigneeRoles: [] });
+  assert.deepEqual(await read({ ...received, securityCategory: true }, actorOf([ROLE.REQUESTER], [], 'u2')),
+    { assign: false, accept: false, assigneeRoles: [] });
 });
 
 test('service: missing request is NotFoundError — DEC-015 §4', async () => {
@@ -109,6 +246,9 @@ function harness(initial) {
              groupIds: [], status: 'active', sessionEpoch: 0 }],
     ['u7', { _id: 'u7', campusId: 'c1', email: 'both@example.test', displayName: 'Both',
              passwordHash: 'fake$right', roles: [ROLE.REQUESTER, ROLE.TECHNICIAN], categoryAuthorisations: ['other-cat'],
+             groupIds: [], status: 'active', sessionEpoch: 0 }],
+    ['u8', { _id: 'u8', campusId: 'c1', email: 'so@example.test', displayName: 'SO',
+             passwordHash: 'fake$right', roles: [ROLE.SECURITY_OFFICER], categoryAuthorisations: [CAT],
              groupIds: [], status: 'active', sessionEpoch: 0 }],
     ['u5', { _id: 'u5', campusId: 'c1', email: 'mgr@example.test', displayName: 'Mgr',
              passwordHash: 'fake$right', roles: [ROLE.MANAGER], categoryAuthorisations: [CAT],
@@ -188,15 +328,67 @@ test('GET with no session is 401 and carries no request data — AC-FR-1.1, DEC-
   });
 });
 
-test('GET 200 body has exactly the three keys and ETag "v<version>" — DEC-015 §1', async () => {
+test('GET 200 for a Coordinator: ETag "v<version>" and exactly the staff allow-list for a non-security request — AC-FR-4.2, DEC-015 §1 and §6', async () => {
   const { app } = harness(baseRequest);
   await serve(app, async (base) => {
     const res = await get(base, await login(base, 'coord@example.test'));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('etag'), '"v3"');
     const body = await res.json();
-    assert.deepEqual(Object.keys(body).sort(), ['reference', 'status', 'version']);
-    assert.deepEqual(body, { reference: 'CC-2026-000001', status: STATUS.ASSIGNED, version: 3 });
+    assert.deepEqual(sortedKeys(body), allowList(COMMON, RESTRICTED, PEOPLE, ASSIGNER));
+    assert.equal(body.reference, 'CC-2026-000001');
+    assert.equal(body.status, STATUS.ASSIGNED);
+    assert.equal(body.version, 3);
+    assert.equal(body.description, 'DESC-SENTINEL');
+    assert.deepEqual(body.permittedAssignment, { assign: true, accept: false, assigneeRoles: [ROLE.TECHNICIAN] }, 'OI-15: reassign is open in Assigned');
+    assert.deepEqual(body.permittedTransitions.map((t) => t.toStatus).sort(),
+      [STATUS.IN_PROGRESS, STATUS.ON_HOLD, STATUS.REJECTED].sort());
+  });
+});
+
+const httpKeys = {
+  'a requester on their own non-security request': ['req@example.test', {}, allowList(COMMON, RESTRICTED)],
+  'a requester on their own security request': ['req@example.test', { securityCategory: true }, allowList(COMMON)],
+  'a Security Officer on a security request': ['so@example.test', { securityCategory: true }, allowList(COMMON, RESTRICTED, PEOPLE)],
+};
+for (const [who, [email, patch, expected]] of Object.entries(httpKeys)) {
+  test(`GET 200 for ${who} has exactly their allow-list — AC-FR-4.2, FR-1.5, DEC-015 §6`, async () => {
+    const { app } = harness({ ...baseRequest, ...patch });
+    await serve(app, async (base) => {
+      const res = await get(base, await login(base, email));
+      assert.equal(res.status, 200);
+      assert.deepEqual(sortedKeys(await res.json()), expected);
+    });
+  });
+}
+
+// NV-152 over HTTP: as the service test of the same name; the wire text is searched, not
+// only the parsed keys.
+test('over HTTP, a requester on their own security request receives no description, resolution, closure reason, comment or action, and no transitions — FR-1.5, TD-003, NV-152', async () => {
+  const { app } = harness({ ...baseRequest, securityCategory: true });
+  await serve(app, async (base) => {
+    const res = await get(base, await login(base, 'req@example.test'));
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    for (const sentinel of SENTINELS) assert.doesNotMatch(text, new RegExp(sentinel));
+    const body = JSON.parse(text);
+    for (const key of RESTRICTED) assert.equal(key in body, false, `${key} present`);
+    assert.deepEqual(Object.keys(body).filter((k) => /comment|action|history/i.test(k)), []);
+    assert.deepEqual(body.permittedTransitions, []);
+  });
+});
+
+test('a refused viewer still gets 403 or 404 and none of the detail — FR-1.5, FR-3.6, DEC-012', async () => {
+  const { app } = harness({ ...baseRequest, securityCategory: true });
+  await serve(app, async (base) => {
+    const staff = await get(base, await login(base, 'mgr@example.test'));
+    assert.equal(staff.status, 403);
+    const other = await get(base, await login(base, 'req2@example.test'));
+    assert.equal(other.status, 404);
+    for (const res of [staff, other]) {
+      const text = await res.text();
+      for (const sentinel of [...SENTINELS, 'LOC-SENTINEL', 'CC-2026-000001']) assert.doesNotMatch(text, new RegExp(sentinel));
+    }
   });
 });
 

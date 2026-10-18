@@ -1,0 +1,32 @@
+Negative verification NV-148 - Role restriction removed from the assignable pool
+Integration decisions D10; method as docs/evidence/R-01_negative_verification.txt
+
+Run on : 2026-10-17 13:54 UTC (sabotage) / 2026-10-17 13:54 UTC (restore check)
+Node   : v24.16.0
+
+CLAIM
+  Only a Technician or Security Officer can be named as owner; a Coordinator or Manager cannot, and nothing is written when one is named (FR-5.1, FR-5.5).
+
+EXPECTED (written before the run; the tests that protect the claim must fail):
+  - FR-5.1, FR-5.5: a Coordinator or a Manager cannot be named as owner, on assign or reassign; nothing is written
+
+1. The protected behaviour was broken in src/domain/accessRules.js:
+     src/domain/accessRules.js
+     - return held(user).some((r) => ASSIGNABLE_ROLES.includes(r)) && mayActOnRequest(request, user);
+     + return mayActOnRequest(request, user);
+
+2. Result of the full suite (node --test) with the sabotage applied:
+     tests 412  pass 403  fail 1
+     not ok - FR-5.1, FR-5.5: a Coordinator or a Manager cannot be named as owner, on assign or reassign; nothing is written
+   Outcome: CAUGHT - the suite failed with the protection broken
+
+3. Each file was restored by writing back its original bytes.
+   src/domain/accessRules.js
+     SHA-256 before : 2c1b894819c326494ed616df70c4dfc5d03b3a119dd1799bfa81f695343a53e7
+     SHA-256 after  : 2c1b894819c326494ed616df70c4dfc5d03b3a119dd1799bfa81f695343a53e7
+   Identical.
+   Suite re-run after restore: tests 412  pass 404  fail 0
+
+INTERPRETATION
+  The assertions listed under EXPECTED detect the condition they protect: with it broken the suite fails, with it restored it passes.
+  What this does NOT show: behaviour against a real cluster, or that no other path reaches the same state; the fakes are the repository's own contract, not Atlas.

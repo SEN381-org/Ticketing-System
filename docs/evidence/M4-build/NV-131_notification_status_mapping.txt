@@ -1,0 +1,30 @@
+NV-131  Track T4 (history, work record and notifications)
+
+Test:       FR-3.5, FR-1.5: a notification for a security request shows the mapped status and no restricted detail
+File:       src/events/subscribers/notificationSubscriber.js
+Run command: node --test tests/requestHistory.test.js tests/composition.test.js
+Node:       v24.16.0 (project target is Node 22; run on the installed version)
+Started:    2026-10-17T12:30:36.541Z (UTC)
+Finished:   2026-10-17T12:30:39.011Z (UTC)
+
+Expected result (written before the run):
+  The security-request notification test fails (displayStatus is On Hold, the internal value).
+
+The break (replacement in the file above):
+  - const displayStatus = visibleStatusFor(payload.toStatus, payload.securityCategory, recipient);
+  + const displayStatus = payload.toStatus;
+
+Run with the break:
+  tests 39, pass 38, fail 1, skipped 0
+  failing: FR-3.5, FR-1.5: a notification for a security request shows the mapped status and no restricted detail
+  the named test failed: YES
+
+Restored:
+  SHA-256 before the break: 6908d80ce9d2cb489f2d86d87bbcee33a5634e1a56f0ac3947b151450f950339
+  SHA-256 after restoring:  6908d80ce9d2cb489f2d86d87bbcee33a5634e1a56f0ac3947b151450f950339
+  byte-identical: YES
+  run after restoring: tests 39, pass 39, fail 0, skipped 0
+
+What this does show: the named assertion detects the removal of the protection it is written for.
+What this does not show: that the protection is complete, behaviour against a real database or
+cluster, or that the rule being protected is baselined where the record is silent.

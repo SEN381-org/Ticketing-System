@@ -1,0 +1,34 @@
+Negative verification NV-139 — DEF-012: the request-id check removed from the repository
+Track T5. Method as docs/evidence/R-01_negative_verification.txt.
+
+Run (UTC)   : 2026-10-17T13:10:32Z
+Node        : v24.16.0 (local; the CI target is Node 22)
+Test file   : tests/dec015Conformance.test.js
+File broken : src/repositories/requestRepository.js (never a test)
+
+CLAIM
+  A malformed id reaching Mongoose (and becoming a 500) is detected.
+
+BREAK
+  -     assertObjectId(String(id ?? ''), 'id');
+  - 
+  + 
+
+EXPECTED (written before the run)
+  'a malformed request id is refused before any read' and 'over HTTP a malformed request id is 400, not 500' fail.
+
+RESULT WITH THE BREAK
+  tests 14, pass 12, fail 2, exit 1
+  failing: a malformed request id is refused before any read — DEF-012, DEC-015 §4
+  failing: over HTTP a malformed request id is 400, not 500 — DEF-012, DEC-015 §4
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : f314559c846d95ab940a3c6f1ed19d86ce962cdf139b34f8ec02d7b439fdfd32
+  SHA-256 after  : f314559c846d95ab940a3c6f1ed19d86ce962cdf139b34f8ec02d7b439fdfd32
+  Identical: the file was restored byte for byte.
+  Re-run after restore: tests 14, pass 14, fail 0, exit 0
+
+INTERPRETATION
+  Shows: a malformed id is refused before any read, at the layer the cast happens.
+  Does NOT show: behaviour against a real cluster.

@@ -67,7 +67,7 @@ test('a permitted transition writes exactly one history entry', async () => {
   assert.equal(appended.length, 1);
 });
 
-test('the entry records the acting user, both statuses and the version it produced — AC-FR-6.7', async () => {
+test('the entry records the acting user, both statuses and the version it produced — AC-FR-6.3', async () => {
   const { service, appended } = harness();
   await service.transition('req-1', STATUS.IN_PROGRESS, ACTOR, { expectedVersion: 3, reason: 'starting' });
 

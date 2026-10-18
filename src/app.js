@@ -6,6 +6,8 @@
  * under test are the ones production runs.
  *
  * Order is load-bearing:
+ *   0. perf log    one structured entry per operation (NFR-1.11), first so all are timed
+ *   0b. caching    Cache-Control: no-store on /api, conditional-GET headers dropped (S1)
  *   1. health        before the session middleware, so a database outage cannot
  *                    turn the health check into a 500 via a cookie lookup
  *   2. body          JSON-only on writes (415), strict parse, 32 kB, mapped errors
@@ -20,28 +22,54 @@
  */
 
 import express from 'express';
+import { apiCaching } from './middleware/apiCaching.js';
 import { createErrorHandler } from './middleware/errorHandler.js';
+import { createPerformanceLog } from './middleware/performanceLog.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { requireJsonOnWrites, parseJsonBody, mapBodyErrors } from './middleware/requestBody.js';
 import { createHealthRouter, HEALTH_PATH } from './routes/healthRoutes.js';
 import { createSessionRouter, SESSIONS_BASE } from './routes/sessionRoutes.js';
 import { createRequestRouter, API_BASE as REQUESTS_BASE } from './routes/requestRoutes.js';
+import { createSubmissionRouter, createCategoryRouter, CATEGORIES_BASE } from './routes/submissionRoutes.js';
+import { createRequestListRouter } from './routes/requestListRoutes.js';
+import { createAssignmentRouter } from './routes/assignmentRoutes.js';
+import { createHistoryRouter } from './routes/historyRoutes.js';
+import { createNotificationRouter, NOTIFICATIONS_BASE } from './routes/notificationRoutes.js';
+import { createReportRouter, REPORTS_BASE } from './routes/reportRoutes.js';
+import { createUserRouter, USERS_BASE } from './routes/userRoutes.js';
+import { createCategoryAdminRouter, CATEGORIES_ADMIN_BASE } from './routes/categoryAdminRoutes.js';
 import { RouteNotFoundError } from './errors.js';
 
 function mount(app, path, router) {
   app.locals.mounts.push({ path, router });
+  // NFR-1.11: Express resets req.baseUrl when an error leaves a router, so the perf log
+  // reads the mount path recorded here, which survives to the response's 'finish'.
+  app.use(path, (req, res, next) => { res.locals.mountPath = path; next(); });
   app.use(path, router);
 }
 
 export function createApp({
-  authService, healthService, statusTransitionService, requestQueryService, log = console,
+  authService, healthService, statusTransitionService, requestQueryService,
+  requestSubmissionService, categoryService, requestListService,
+  assignmentService, recordRefusal,
+  requestHistoryService, workRecordService, notificationService,
+  reportService, userAdminService, categoryAdminService, log = console,
 }) {
   const app = express();
   app.locals.mounts = [];
+  // AC-FR-1.3, TD-005: the guard reads this to record a refused operation.
+  app.locals.recordRefusal = recordRefusal;
 
   app.disable('x-powered-by');
   // DEC-003 v0.2: Nginx on the same host terminates TLS. Trust only it.
   app.set('trust proxy', 'loopback');
+
+  // NFR-1.11: one structured entry per operation, first so every response is timed.
+  app.use(createPerformanceLog({ log }));
+
+  // S1: per-viewer bodies are never cached or revalidated. Before every router and the body
+  // parser, so health, body errors and problem responses carry it too.
+  app.use('/api', apiCaching);
 
   mount(app, HEALTH_PATH, createHealthRouter({ healthService }));
 
@@ -49,7 +77,17 @@ export function createApp({
   app.use('/api', createSessionMiddleware({ authService }));
 
   mount(app, SESSIONS_BASE, createSessionRouter({ authService }));
+  mount(app, REQUESTS_BASE, createRequestListRouter({ requestListService }));   // before /:id
   mount(app, REQUESTS_BASE, createRequestRouter({ statusTransitionService, requestQueryService }));
+  mount(app, REQUESTS_BASE, createSubmissionRouter({ requestSubmissionService }));
+  mount(app, CATEGORIES_BASE, createCategoryRouter({ categoryService }));
+  mount(app, REQUESTS_BASE, createAssignmentRouter({ assignmentService }));
+  mount(app, REQUESTS_BASE, createHistoryRouter({ requestHistoryService, workRecordService }));
+  mount(app, NOTIFICATIONS_BASE, createNotificationRouter({ notificationService }));
+
+  mount(app, REPORTS_BASE, createReportRouter({ reportService }));
+  mount(app, USERS_BASE, createUserRouter({ userAdminService }));
+  mount(app, CATEGORIES_ADMIN_BASE, createCategoryAdminRouter({ categoryAdminService }));
 
   app.use((req, res, next) => next(new RouteNotFoundError()));
   app.use(createErrorHandler({ log }));

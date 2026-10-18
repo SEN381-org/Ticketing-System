@@ -1,0 +1,45 @@
+Negative verification NV-173 — the Notes controls move on screen when the history reloads after a post
+Method as docs/evidence/R-01_negative_verification.txt, with an E2E case in place of a unit test.
+
+Node        : v24.16.0 (local); Playwright 1.64.0, Chromium project only; Atlas test cluster
+Test        : e2e/detail-search.spec.js, E2E-11 (the Record action button's on-screen position
+              before posting a comment and after the comment's history entry has appeared)
+File broken : client/src/RequestDetail.jsx (never a test); the client was rebuilt after each change
+
+CLAIM
+  After a comment is posted, the request and its history are read again and the new entry
+  appears above the Notes panel. The page scrolls by the distance the panel moved, so the
+  Notes controls stay where they were on screen (and the note buttons are disabled until the
+  reload is over). This removes the layout shift behind E2E-11's Firefox failure in run 1.
+
+BREAK
+  -     if (Math.abs(moved) > 0.5) window.scrollBy(0, moved);
+  +     if (false && Math.abs(moved) > 0.5) window.scrollBy(0, moved);
+
+EXPECTED (written before the run)
+  With the break, E2E-11 fails on "the Notes controls moved on screen during the reload",
+  by about the height of one history entry. Restored, E2E-11 passes.
+
+FIRST ATTEMPT (18:50:30-18:50:42 UTC broken, 18:50:51-18:51:11 UTC restored), recorded because it
+happened: the break failed (moved 57.8 px) but so did the restored code (moved 89.1 px). A probe
+showed the baseline was wrong, not the fix: Playwright's click on Post comment scrolled the page
+by 85 px before the post, which the test counted as movement; across the reload itself the Notes
+panel stayed at the same position. The test now scrolls Post comment into view before taking the
+baseline, so the click does not scroll.
+
+RESULT WITH THE BREAK (18:52:08-18:52:19 UTC)
+  E2E-11 failed: "the Notes controls moved on screen during the reload", received 92 (px), exit 1
+  Outcome: CAUGHT, as expected
+
+RESTORE
+  SHA-256 before : 93d2c7c1ea35b540f5e707f1fed03b974b2ba0962ef23d239ef7adf23c291166
+  SHA-256 after  : 93d2c7c1ea35b540f5e707f1fed03b974b2ba0962ef23d239ef7adf23c291166
+  Identical: the file was restored byte for byte; the client was rebuilt.
+  Re-run after restore (18:52:20-18:52:31 UTC): E2E-11 passed, exit 0
+
+INTERPRETATION
+  Shows: in Chromium at 1280 x 720, the scroll compensation keeps the Notes controls in place
+  across the reload that follows a comment.
+  Does NOT show: the other browsers (the four-browser run covers E2E-11 with this assertion);
+  the action and detail forms (same code path, not measured); that the note buttons are disabled
+  during the reload (implemented, not asserted: the window is too short to observe reliably).

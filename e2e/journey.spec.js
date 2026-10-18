@@ -9,14 +9,16 @@
  * Expected results were taken from those sources before the first run, not from observed output.
  *
  * Shows: the cookie round trip through the composed entry point (src/server.js) and a fresh
- * client build; the sign-in prompt shown in place; the read path returning exactly
- * {reference, status, version} from the requests collection (the NV-43 check); If-Match taken
+ * client build; the sign-in prompt shown in place; the read path returning the Coordinator
+ * allow-list for a non-security request from the requests collection (the NV-43 check, widened
+ * for the FR-4.2 expansion, decision 17/10/2026) and no key outside it; If-Match taken
  * from the server's ETag; the server, not the client, refusing a missing reason; the history
  * entry checked field by field.
  *
  * Does NOT show: that the history is displayed (AC-FR-6.6 "displays it in the history"); any
  * list address; atomicity; replay or indexes; the audit trigger, idle expiry or refusal of
- * plain HTTP; non-Chromium browsers; FR-4.2 (the endpoint returns three fields only).
+ * plain HTTP; non-Chromium browsers; FR-4.2 beyond the keys and the reference, status and version
+ * values (field values and the FR-1.5 restriction are covered in tests/requestRead.test.js).
  * Assertions are scoped to this fixture's requestId and actorId (DEF-006): no counts.
  */
 import { test, expect } from '@playwright/test';
@@ -64,13 +66,27 @@ test('E2E-1: Coordinator rejects a Received request', async ({ page, playwright,
   });
 
   let etag;
-  await test.step('2. sign in: the read returns exactly {reference, status, version} (NV-43)', async () => {
+  // FR-4.2 expansion (decision 17/10/2026): the read now returns the detail, not only
+  // {reference, status, version} as NV-43 first pinned. A Coordinator on a non-security request is
+  // staff, so every member below is allowed (AC-FR-4.2, FR-1.5, DEC-015 §6); a key outside this
+  // list, such as a comment or action, must not appear. Same keys as tests/requestRead.test.js.
+  // `permittedAssignment` joined the read by the decision of 17/10/2026 (A10: the assignment the
+  // actor may make or accept, OI-15), so it is a member of the allow-list from that date.
+  const COORDINATOR_ALLOW_LIST = [
+    'assigneeId', 'assigneeName', 'categoryId', 'closureReason', 'description', 'id', 'location', 'permittedAssignment',
+    'permittedTransitions', 'reference', 'requesterId', 'resolution', 'status', 'submittedAt', 'submittedById', 'version',
+  ];
+  await test.step('2. sign in: the read returns the Coordinator allow-list and nothing outside it (NV-43, FR-4.2)', async () => {
     const { signIn, get } = await signInViaForm(page, requestId, fixture);
     expect(signIn.status()).toBe(201);                 // DEC-018 §5
     expect(get.status()).toBe(200);
     etag = get.headers().etag;
     expect(etag).toBe('"v0"');                         // DEC-015 §2: ETag "v<version>"
-    expect(await get.json()).toEqual({ reference, status: STATUS.RECEIVED, version: 0 });
+    const detail = await get.json();
+    expect(Object.keys(detail).sort()).toEqual(COORDINATOR_ALLOW_LIST); // no key outside the allow-list
+    expect(detail.reference).toBe(reference);
+    expect(detail.status).toBe(STATUS.RECEIVED);
+    expect(detail.version).toBe(0);
     await expect(page.getByTestId('reference')).toHaveText(reference);
     await expect(page.getByTestId('status')).toHaveText(STATUS.RECEIVED);
   });

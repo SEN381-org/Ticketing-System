@@ -1,8 +1,9 @@
 # CivicConnect — continuous integration (issue #52)
 #
 # Runs on every pull request into dev or main, and on every push to dev.
-# Five jobs, all set as required status checks on dev and main ("dev rule"
-# ruleset, 2026-10-13), so any one failing blocks the merge:
+# Six jobs. Jobs 1-5 are required status checks on dev and main ("dev rule"
+# ruleset, 2026-10-13), so any one failing blocks the merge; job 6 is not yet
+# required (see below):
 #   1. build-and-test — installs from the lockfile and runs the test suite on
 #      the runtime in package.json "engines" (Node 22). Makes the
 #      authorisation-guard route-table test (NFR-3.3, CON-019, DEC-012) a
@@ -23,10 +24,16 @@
 #      The required check is this job, which fails only if the analysis
 #      itself fails. Alerts appear under Security > Code scanning and do
 #      not block a merge: the separate "CodeQL" result is not required.
+#   6. integration-tests — the eight API/integration cases (tests/integration)
+#      against a throwaway single-node MongoDB 8.0 replica set started inside
+#      the job, so transactions work and no cluster credential is held in CI
+#      (TD-008). Not a required check when added, because it still fails on the
+#      documented DEC-015 differences (DEF-007 to DEF-011). It is made required
+#      once those are fixed and it passes.
 # The build-and-test job also installs and builds the client (DEC-019).
 # A mature CI/CD pipeline is not an M2 requirement; jobs 1-2 were stage 1 of
-# the staged adoption recorded in the team's Assignment 2 research, and jobs
-# 3-5 are the M3 stage.
+# the staged adoption recorded in the team's Assignment 2 research, jobs 3-5
+# are the M3 stage, and job 6 repays TD-008 at M4.
 
 name: CI
 
@@ -201,3 +208,66 @@ jobs:
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
+
+  # TD-008. The eight API/integration cases need a real MongoDB with
+  # transactions, so they skip in build-and-test, which has no database. Here
+  # they run against a single-node replica set started on the runner and thrown
+  # away with it: no Atlas cluster, no IP allow-list, no secret. The harness
+  # accepts this loopback host only when CI=true (tests/integration/_harness.js).
+  integration-tests:
+    name: Integration tests (MongoDB 8.0 replica set)
+    runs-on: ubuntu-latest
+    env:
+      # directConnection: the single member is reached on the published port,
+      # not by the address the replica set records for itself.
+      MONGODB_URI: mongodb://127.0.0.1:27017/civicconnect?replicaSet=rs0&directConnection=true
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 (matches package.json engines)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies from the lockfile
+        run: npm ci
+
+      # A replica set is required: the unit of work uses a transaction
+      # (DEC-016), and a standalone mongod refuses transactions.
+      - name: Start a single-node MongoDB 8.0 replica set
+        run: |
+          docker run -d --name mongo -p 127.0.0.1:27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do
+            if docker exec mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          docker exec mongo mongosh --quiet --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })'
+          for i in $(seq 1 30); do
+            if [ "$(docker exec mongo mongosh --quiet --eval 'db.hello().isWritablePrimary')" = "true" ]; then
+              echo "Replica set rs0 has a primary."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::The replica set did not elect a primary within 60 s."
+          exit 1
+
+      # Fail closed: if the harness skipped the cases (no URI, or a host it does
+      # not accept), node --test would exit 0 having verified nothing. The TAP
+      # summary is checked so a skipped run fails the job.
+      - name: Run the integration cases
+        run: |
+          set +e
+          node --test \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=tap --test-reporter-destination="$RUNNER_TEMP/integration.tap" \
+            "tests/integration/*.test.js"
+          status=$?
+          set -e
+          if ! grep -qx '# skipped 0' "$RUNNER_TEMP/integration.tap" || grep -qx '# tests 0' "$RUNNER_TEMP/integration.tap"; then
+            echo "::error::Integration cases were skipped or none ran, so nothing was verified."
+            exit 1
+          fi
+          exit $status
