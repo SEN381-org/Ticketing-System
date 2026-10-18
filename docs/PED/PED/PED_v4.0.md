@@ -3195,10 +3195,11 @@ Paths are relative to the repository root at the final baseline.
 | Technical Debt Register | v0.4 (PR #139) | `docs/quality/Technical Debt Register` |
 | Risk Register | V0.9 (PR #139) | `docs/risk/Risk Register` |
 | Open Items | v0.8 (PR #135) | `docs/Requirements/Open Items` |
+| Stakeholder Register | v0.3 (PR #141) | `docs/Requirements/Stakeholder Register` |
 | Decision Log | v0.10 (PR #134) | `docs/decisions/Decision Log` |
 | ADRs | DEC-003 v0.5 (PR #134); DEC-015 Addendum A v0.1; others as at M3 | `docs/decisions/ADR` |
 | Change Requests | CR-001 to CR-004 v0.2 (PR #137) | `docs/change` |
-| AI Usage Register | v0.15 (PR #139) | `docs/AI-Usage/AI Usage Register` |
+| AI Usage Register | v0.16 (PR #141) | `docs/AI-Usage/AI Usage Register` |
 | Staging deployment configuration | PR #133 | `deploy/` |
 
 ## M4 references
