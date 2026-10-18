@@ -1,0 +1,29 @@
+NFR-2.4 load run (staging)
+Started (UTC)        : 2026-10-18T00:59:58.694Z
+Target               : https://158.158.115.[redacted] (staging VM, Azure Spain Central)
+Database             : staging Atlas cluster civicconnectstaging, M0, Azure westeurope (Netherlands); not colocated with the VM
+Client location      : Stellenbosch, South Africa
+Node                 : v24.16.0
+NODE_EXTRA_CA_CERTS  : set (SHA-256: 74:2D:A5:C0:DF:68:F6:29:A7:61:41:33:5D:0B:53:F8:6D:5E:DD:2C:53:90:50:46:74:A4:DC:19:72:86:68:B2)
+NODE_TLS_REJECT_UNAUTHORIZED: unset
+Fixture run          : 7a5e8e2f
+Workload             : 100 users (50 Coordinators: list, read, reject; 50 Requesters: list, read, submit); ramp 60 s; window 600 s after the last login; think 10 s; a rejection every 6 iterations (Coordinators); a submission every 6 iterations (Requesters); timeout 30 s
+
+All users logged in (UTC): 2026-10-18T01:00:58.527Z
+Ended (UTC)          : 2026-10-18T01:11:08.894Z
+
+Per request type (all phases):
+  login      n=  100  failed=0  p50 432 ms  p95 456 ms  p99 691 ms  max 751 ms  statuses {"201":100}
+  list       n= 5565  failed=0  p50 209 ms  p95 686 ms  p99 1946 ms  max 4291 ms  statuses {"200":5565}
+  read       n= 5565  failed=0  p50 204 ms  p95 872 ms  p99 1978 ms  max 3990 ms  statuses {"200":5565}
+  transition n=  450  failed=0  p50 319 ms  p95 3983 ms  p99 4909 ms  max 5023 ms  statuses {"201":450}
+  submit     n=  450  failed=17  p50 343 ms  p95 24048 ms  p99 30001 ms  max 30003 ms  statuses {"201":433,"error":17}
+
+Requests in the 600 s window: 12030 (19.71 requests/s)
+
+Failed requests      : 17
+Unhandled server errors (5xx): 0
+Failures by type:
+  17 x submit: timeout after 30 s
+
+RESULT FAIL: NFR-2.4, 100 concurrent authenticated users for 600 s: 17 failed requests, 0 unhandled server errors
