@@ -11,8 +11,8 @@
 | **Institution** | Belgium Campus ITversity |
 | **Document** | Project Engineering Document (PED) |
 | **Version** | 4.0 |
-| **Status** | Milestone 4 final (draft of 18/10/2026, with the release-candidate results from staging). M1 and M2 content is the v2.0 baseline and the M3 part is the v3.0 record, both unchanged; the M4 part is added |
-| **Date** | 18 October 2026 (draft) [pending: date of the final version] |
+| **Status** | Final (Milestone 4), with the release-candidate results from staging. M1 and M2 content is the v2.0 baseline and the M3 part is the v3.0 record, both unchanged; the M4 part is added |
+| **Date** | 18/10/2026 |
 | **Supersedes** | PED v3.0 |
 | **Governing document** | SEN381 CivicConnect Master Project Brief v1.1 |
 
@@ -25,12 +25,12 @@
 | **Team name / number** | Stellenbosch Group G |
 | **Team members** | Ethan Lindsay (Member A), Robert van der Merwe (Member B), Christiaan Burger (Member C) |
 | **GitHub repository URL** | https://github.com/SEN381-org/Ticketing-System |
-| **Final commit / tag / release** | Tag `v4.0-M4-baseline` on `main` [pending] (M4.1). A document cannot contain the hash of the commit that contains it: the commit is given in the Moodle submission and by `git rev-parse v4.0-M4-baseline^{commit}`. The build deployed to staging is tag `v4.0-M4-rc` (commit `f1eb7af`, deployed 18/10/2026), whose runtime tree is the frozen build `6408ab7` |
+| **Final commit / tag / release** | Tag `v4.0-M4-baseline` on `main` (M4.1). A document cannot contain the hash of the commit that contains it: the commit is given in the Final Submission Information Block of the Moodle submission and by `git rev-parse v4.0-M4-baseline^{commit}`. The build deployed to staging is tag `v4.0-M4-rc` (commit `f1eb7af`, deployed 18/10/2026), whose runtime tree is the frozen build `6408ab7` |
 | **PED version** | v4.0 Final (`docs/PED/PED/PED_v4.0.md`) |
 | **Final RTM location** | v0.11, `docs/Requirements/Requirements Traceability Matrix/Requirements_Traceability_Matrix_v0.11.xlsx` (PR #139) |
 | **Final product access / demonstration information** | Staging at `https://civicconnect.co.za/`, running `v4.0-M4-rc` (deployed 18/10/2026). The release candidate was deployed and checked at the VM's address with a self-signed certificate; at 12:15 UTC the same build moved to the domain, with a publicly trusted Let's Encrypt certificate, so no certificate file is needed (RC record, section 14). The VM's IP address is not recorded in the repository (DEC-003). Demonstration accounts for each role are given at the presentation, not in the repository. Final deployment state: staging under a no-go decision (M4.7) |
-| **Pull requests that make up the final product** | #136 (M4 build), #122 (integration cases in CI) and #123 (pre-RC fixes: DEF-019, TD-007), both C. Burger, #133 (staging configuration), #137 (change requests), #138 (dev → main, the release candidate), #134 and #135 (registers), and #139 (records) |
-| **Date submitted** | [pending] |
+| **Pull requests that make up the final product** | #136 (M4 build), #122 (integration cases in CI) and #123 (pre-RC fixes: DEF-019, TD-007), both C. Burger, #133 (staging configuration), #137 (change requests), #138 (dev → main, the release candidate), #134 and #135 (registers), #139 (records), and #140 (this document and the RC record) |
+| **Date submitted** | 18/10/2026 |
 
 ---
 
@@ -105,7 +105,7 @@ author, in accordance with Master Brief §9. No member self-approves.
 | 2.1 | 13/10/2026 | C. Burger | M3 part added after §12, structured on the M3 brief §6 as an evidence index (M3.1–M3.10), with an owner for each section. M3.4 Construction and configuration written: rulesets (Branch Safety, dev rule), the approval-of-most-recent-push rule enabled on 13/10/2026, review evidence (PR #85, #88, #62, #90), configuration and secrets controls (PR #84, #85), construction notes (PR #83) and TD-004 as a known gap. M3.5 CI and automated verification written: the five required checks (PR #86), the scope and layer-check changes in PR #91 and the weekly all-branch secret scan, blocking evidence (PR #86, GATE-01 on PR #90, PR #92) and what CI does not cover. M3 references listed in the part, to move into §13 at v3.0. B evidence pack added in `docs/evidence/M3-B/`. Header and contents updated. §1 to §13 and Appendices A and B are unchanged from v2.0. PED v2.0 archived | E. Lindsay, R. van der Merwe |
 | 2.2 | 15/10/2026 | R. van der Merwe | M3.8 Performance and reliability written: the NFR-2.4 load run on staging (100 concurrent authenticated users for 600 s, PASS: 0 failed requests, 0 server errors), its workload with what NFR-2.4 fixes and what the team chose, the environment, results, interpretation and limits; the staging deployment evidence, failures found during the deploy, environment differences and rollback. Evidence: `docs/evidence/M3_Staging_Deploy_v3.0-M3-rc.md`, `docs/evidence/M3-perf/`. No other section changed | E. Lindsay, C. Burger |
 | 3.0 | 16/10/2026 | E. Lindsay | Milestone 3 version. M3 submission information block added after the title (brief §5.3). M3 part completed: M3.1 overview with the two tags and the rule that only `docs/` and `perf/` change between them; M3.2 M2 baseline conformance table; M3.3 controlled changes (DEC-018, DEC-019, DEC-003 v0.2 to v0.4 and OI-21, CR-001 status, the registers, RTM v0.10, `/health` release, DEF-020, the step-5 access-list exception), with the baselined Hostinger lines recorded as superseded rather than edited; M3.8 as written by R. van der Merwe at v2.2 (PR #114), unchanged; M3.4 updated with C. Burger's M3 lines (staging branch removed; environments as built under DEC-003 v0.4; TD-004 repaid on test and staging), corrected against the record; M3.5 updated (PR #95 merged; CI at the release candidate; the weekly all-branch scan's first run; the lock files' permanent warnings; CodeQL alerts; TD-007, TD-008); M3.6, M3.7, M3.9 and M3.10 written, with C. Burger's Risk Register lines (Risk Register V0.8); AI Usage Register v0.14 cited. Release Evidence Summary v0.1 added. PED v2.2 archived | R. van der Merwe, C. Burger |
-| 4.0 | 18/10/2026 (draft) | E. Lindsay | Milestone 4 version. Final Submission Information block added after the title (M4 brief, submission requirements). M4 part added after the M3 part (M4.1–M4.9, following the M4 brief §8): final product and the frozen build `6408ab7`; M1 scope → final delivery for every scope item and requirement, 63 of 80 = 78.75 % with and without CR-001 to CR-004, after the release-candidate session on staging (60.5 at the frozen build before it); the release-candidate results and finding (the counter-contention defect DEF-032, an additional no-go reason); final acceptance status and how it was evidenced; M3 findings → final status (DEF-007 to DEF-012 and DEF-022 to DEF-031 fixed; Technical Debt Register v0.4; Risk Register V0.9); the M4 decisions and the approval of CR-001 to CR-004, superseding §1.7, M3.3 and M3.10 where they described the change requests as proposed; known limitations and future work; the go-live decision and the final reflection (R. van der Merwe); evidence index and the controlled artefacts at M4. §1–§13, the appendices and the M3 part unchanged. Facts from staging are from the RC record, `docs/evidence/M4_Staging_Deploy_v4.0-M4-rc.md` | [pending] |
+| 4.0 | 18/10/2026 | E. Lindsay | Milestone 4 version. Final Submission Information block added after the title (M4 brief, submission requirements). M4 part added after the M3 part (M4.1–M4.9, following the M4 brief §8): final product and the frozen build `6408ab7`; M1 scope → final delivery for every scope item and requirement, 63 of 80 = 78.75 % with and without CR-001 to CR-004, after the release-candidate session on staging (60.5 at the frozen build before it); the release-candidate results and finding (the counter-contention defect DEF-032, an additional no-go reason); final acceptance status and how it was evidenced; M3 findings → final status (DEF-007 to DEF-012 and DEF-022 to DEF-031 fixed; Technical Debt Register v0.4; Risk Register V0.9); the M4 decisions and the approval of CR-001 to CR-004, superseding §1.7, M3.3 and M3.10 where they described the change requests as proposed; known limitations and future work; the go-live decision and the final reflection (R. van der Merwe); evidence index and the controlled artefacts at M4. §1–§13, the appendices and the M3 part unchanged. Facts from staging are from the RC record, `docs/evidence/M4_Staging_Deploy_v4.0-M4-rc.md` | R. van der Merwe, C. Burger |
 
 Baselined content is not silently overwritten. Changes after this baseline follow the
 change control process in Master Brief §14.
@@ -2735,7 +2735,7 @@ branch add evidence records in `docs/` only.
 | Tag | Commit | Meaning |
 |---|---|---|
 | `v4.0-M4-rc` | `f1eb7af` (tag object `be008dc`, 18/10/2026 00:22 UTC): the merge commit of the dev → main pull request #138, which carries PR #136 | The build deployed to staging. Its tree differs from the frozen build `6408ab7` only in `docs/`, `deploy/`, `.github/` and `tests/integration/_harness.js`; no runtime path changed (RC record, section 1) |
-| `v4.0-M4-baseline` | [pending]: the merge commit of the following dev → main pull request (this document is in it, so its hash is given in the Moodle submission) | **The assessed final baseline**: PED v4.0, RTM v0.11 and the registers referenced here |
+| `v4.0-M4-baseline` | The merge commit of the dev → main pull request that follows the release candidate. This document is in it, so the hash is given in the Final Submission Information Block of the Moodle submission | **The assessed final baseline**: PED v4.0, RTM v0.11 and the registers referenced here |
 
 Only `docs/` and `perf/` may change between the two tags. The check, whose expected output is
 empty, is run once both tags exist and its output is given with the Moodle submission:
@@ -2884,7 +2884,7 @@ variance. The per-row trace, with commits and test cases, is RTM v0.11 (PR #139)
 | NFR-1.4 | High / Baselined - CR-002 pending | PARTIALLY IMPLEMENTED | AC-NFR-1.4: Partially met | auth events written | 90 days cannot elapse; transition/assignment entries rely on triggers |
 | NFR-1.5 | Medium / Baselined — verify under DEC-003 | NOT IMPLEMENTED | AC-NFR-1.5: Not met | — | no restore performed (DEC-010) |
 | NFR-1.6 | Low / Baselined | IMPLEMENTED | AC-NFR-1.6: Met | HTTP test; staging /health | Delivered as committed. |
-| NFR-1.7 | High / Baselined | PARTIALLY IMPLEMENTED | AC-NFR-1.7: Partially met | layer check (routes, middleware) | not across all of src |
+| NFR-1.7 | High / Baselined | PARTIALLY IMPLEMENTED | AC-NFR-1.7: Partially met | layer check (routes, middleware) in the required Build and test job; seen to fail: GATE-01 (CI run 38357191208), GATE-02 (CI run 38437891644) | not across all of src |
 | NFR-1.8 | High / Baselined | PARTIALLY IMPLEMENTED | AC-NFR-1.8: Partially met | test and staging separate | development and production not shown (no production host) |
 | NFR-1.9 | High / Baselined | NOT IMPLEMENTED | AC-NFR-1.9: Not met | — | Atlas trigger not shown |
 | NFR-1.10 | High / Baselined | PARTIALLY IMPLEMENTED | AC-NFR-1.10: Partially met | integration case (40/40 at 6408ab7) transaction case: neither document changed, no event published | AC text changed by CR-001 (approved 17/10/2026); status the same either way; v0.3 (CR-001): the two auditLog clauses are not shown (trigger not deployed, test header says so). v0.2 without the CR: "all three tables", audit trail not shown. 0.5 either way |
@@ -2900,7 +2900,7 @@ variance. The per-row trace, with commits and test cases, is RTM v0.11 (PR #139)
 | NFR-3.2 | High / Baselined | IMPLEMENTED | AC-NFR-3.2: Met | RC staging T9a 18/10 02:10 UTC: a plain http:// request answered 301 to https://; TLS 1.0 and 1.1 refused by the server (alert 70); TLS 1.2 and 1.3 verified | Met |
 | NFR-3.3 | High / Baselined | IMPLEMENTED | AC-NFR-3.3: Met | integration case (40/40 at 6408ab7) 403; E2E-2 bypassing the UI; HTTP test wrong role on every new route | Delivered as committed. |
 | NFR-3.4 | Medium / Baselined | IMPLEMENTED | AC-NFR-3.4: Met | HTTP test idle expiry | Delivered as committed. |
-| NFR-3.5 | High / Baselined | IMPLEMENTED | AC-NFR-3.5: Met | CI full-history secret scan | green on PR #136 (CI run 39061540226, 45c6b06) |
+| NFR-3.5 | High / Baselined | IMPLEMENTED | AC-NFR-3.5: Met | CI full-history secret scan, a required check on every PR; seen to fail: GATE-01 (CI run 38357191208), GATE-02 (CI run 38437891644) | green on PR #136 (CI run 39061540226, 45c6b06) |
 | NFR-3.6 | High / Baselined | IMPLEMENTED | AC-NFR-3.6: Met | HTTP test audit record from history (T4 `82f41c4`) (persistence faked) | Delivered as committed. |
 | NFR-3.7 | High / Baselined | NOT IMPLEMENTED | AC-NFR-3.7: Not met | — | storage cannot be read directly on M0 |
 | NFR-4.1 | High / Baselined | NOT IMPLEMENTED | AC-NFR-4.1: Not met | — | Not Met: the field-to-purpose review against DEC-017 was not performed at M4 |
@@ -3024,7 +3024,7 @@ Every risk has an M4 review note in V0.9. The changes that matter:
 | RSK-010 quality thresholds unachievable on the chosen stack and platform | **Partly materialised**: at the RC, NFR-2.4 failed and NFR-2.1 was not met (DEF-032) |
 | RSK-019 free-cluster throughput ceiling | **Indicator reached, partly materialised**: during the NFR-2.4 run Atlas reported about 74 operations per second (indicator 70, M0 limit 100), and every request type's tail grew against M3. With the counter contention, submissions timed out or were lost. A paid or colocated tier is a go-live condition (M4.7) |
 | RSK-021 no login throttling | Unchanged; accepted under DEC-018, CodeQL alert #1 open, and a go-live blocker |
-| RSK-013 two-approval rule stalls the branch | Observed again: every M4 PR needs two approvals from the other members |
+| RSK-013 two-approval rule stalls the branch | **Closed at M4 — did not materialise**: every M4 PR needed two approvals from the other members, and the rule held without stalling the RC (#136 and #138, approved by both and merged on 17 and 18/10/2026) |
 
 ### Open items and the M3 accepted limitations
 
